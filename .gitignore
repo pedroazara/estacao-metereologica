@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+
+# dados coletados
+data/*.csv
+!data/.gitkeep
+
+# PDFs baixados do Drive da WitMotion
+docs/datasheets/*.pdf
