@@ -37,6 +37,8 @@ except ImportError:
     ENDERECO_PADRAO = 0x50
     ESCALA_ACC_G, ESCALA_GYRO_DPS, ESCALA_ANGULO = 16.0, 2000.0, 180.0
 
+from filtro_kalman import FiltroINS, NavegacaoInercial
+
 estado = {
     # --- comum ---
     "conectado": False, "mensagem": "iniciando...", "taxa": 0.0, "temp": 0.0,
@@ -44,6 +46,12 @@ estado = {
     "fix": False, "lat": None, "lon": None, "alt": 0.0, "vel": 0.0,
     "vel_max": 0.0, "sat": 0, "hdop": 0.0, "distancia_m": 0.0, "rumo_gps": 0.0,
     "pontos": [], "inicio": None, "descartados": 0,
+    # --- Kalman (GPS + acelerometro) ---
+    "kf_lat": None, "kf_lon": None, "kf_vel": 0.0, "kf_sigma": 0.0,
+    "kf_pontos": [], "kf_distancia_m": 0.0, "kf_parado": True,
+    # --- acelerometro puro, so comparacao ---
+    "dr_lat": None, "dr_lon": None, "dr_pontos": [], "dr_erro_m": 0.0,
+    "dr_calibrando": True,
     # --- IMU ---
     "ax": 0.0, "ay": 0.0, "az": 0.0, "gx": 0.0, "gy": 0.0, "gz": 0.0,
     "roll": 0.0, "pitch": 0.0, "yaw": 0.0, "g_total": 0.0,
@@ -53,6 +61,71 @@ estado = {
 _lock = threading.Lock()
 _parar = False
 _zero = {"ax": 0.0, "ay": 0.0, "az": 0.0}
+_kf = FiltroINS()
+_dr = NavegacaoInercial()
+
+
+def registrar_ponto_kf(lat, lon, args):
+    with _lock:
+        pts = estado["kf_pontos"]
+        if not pts:
+            pts.append([lat, lon]); return
+        d = haversine_m(pts[-1], (lat, lon))
+        if d > args.max_salto or d < args.min_dist:
+            return
+        pts.append([lat, lon])
+        estado["kf_distancia_m"] += d
+
+
+def registrar_ponto_dr(lat, lon):
+    """Sem filtro de jitter: aqui a deriva e justamente o que se quer ver."""
+    with _lock:
+        pts = estado["dr_pontos"]
+        if not pts or haversine_m(pts[-1], (lat, lon)) > 1.0:
+            pts.append([lat, lon])
+            if len(pts) > 3000:
+                del pts[0]
+        if estado["lat"] is not None:
+            estado["dr_erro_m"] = haversine_m((lat, lon),
+                                              (estado["lat"], estado["lon"]))
+
+
+def passo_fusao(dt):
+    """Predicao do Kalman e do inercial puro, a cada amostra do IMU."""
+    with _lock:
+        ax, ay, az = estado["ax"], estado["ay"], estado["az"]
+        roll, pitch, yaw = estado["roll"], estado["pitch"], estado["yaw"]
+    _kf.prever(ax, ay, az, roll, pitch, yaw, dt)
+    _dr.passo(ax, ay, az, roll, pitch, yaw, dt)
+    if _kf.pronto:
+        klat, klon = _kf.posicao
+        with _lock:
+            estado["kf_lat"], estado["kf_lon"] = klat, klon
+            estado["kf_vel"] = _kf.velocidade_kmh
+            estado["kf_sigma"] = _kf.sigma_pos
+            estado["kf_parado"] = _kf.parado
+    if _dr.pronto and not _dr.calibrando:
+        dlat, dlon = _dr.posicao
+        with _lock:
+            estado["dr_lat"], estado["dr_lon"] = dlat, dlon
+        registrar_ponto_dr(dlat, dlon)
+    with _lock:
+        estado["dr_calibrando"] = _dr.calibrando
+
+
+def fusao_gps(lat, lon, hdop, vel, rumo, args):
+    """Correcao do Kalman quando chega um fix."""
+    if not _kf.pronto:
+        _kf.iniciar(lat, lon)
+        _dr.iniciar(lat, lon)
+        return
+    _kf.corrigir_gps(lat, lon, hdop=hdop)
+    _kf.corrigir_velocidade(vel, rumo)
+    if vel > 3.0:
+        _kf.ancorar_rumo(estado["yaw"], rumo)
+        _dr.ancorar_rumo(estado["yaw"], rumo)
+    klat, klon = _kf.posicao
+    registrar_ponto_kf(klat, klon, args)
 
 
 def haversine_m(a, b) -> float:
@@ -159,6 +232,8 @@ def thread_sensor(args):
                 v[9]/32768*ESCALA_ANGULO, v[10]/32768*ESCALA_ANGULO,
                 v[11]/32768*ESCALA_ANGULO, v[12]/100.0, rastro)
 
+            passo_fusao(intervalo)
+
             # --- GPS: mais devagar
             ciclo += 1
             if ciclo % ciclos_gps == 0:
@@ -181,6 +256,8 @@ def thread_sensor(args):
                         estado["lat"], estado["lon"] = lat, lon
                         estado["mensagem"] = "rastreando"
                     registrar_ponto(lat, lon, args, gravador)
+                    fusao_gps(lat, lon, hdop, estado["vel"],
+                              estado["rumo_gps"], args)
                 elif not fix:
                     with _lock:
                         estado["mensagem"] = f"aguardando fix ({sat} satelites)"
@@ -234,14 +311,19 @@ def _simular(args, gravador):
             passo = 1.4 / 111320.0
             lat += passo*math.cos(rumo)
             lon += passo*math.sin(rumo)/math.cos(math.radians(lat))
+            lat_r = lat + random.gauss(0, 3.0)/111320.0
+            lon_r = lon + random.gauss(0, 3.0)/(111320.0*math.cos(math.radians(lat)))
             with _lock:
-                estado.update({"fix": True, "lat": lat, "lon": lon, "alt": 919.0,
+                estado.update({"fix": True, "lat": lat_r, "lon": lon_r, "alt": 919.0,
                                "sat": random.randint(12, 20),
                                "hdop": round(random.uniform(.8, 1.6), 2),
                                "rumo_gps": (math.degrees(rumo) % 360),
                                "vel": round(random.uniform(4, 6), 2)})
                 estado["vel_max"] = max(estado["vel_max"], estado["vel"])
-            registrar_ponto(lat, lon, args, gravador)
+            registrar_ponto(lat_r, lon_r, args, gravador)
+            fusao_gps(lat_r, lon_r, estado["hdop"], estado["vel"],
+                      estado["rumo_gps"], args)
+        passo_fusao(1.0 / args.hz)
         with _lock:
             estado["taxa"] = args.hz
         time.sleep(1.0 / args.hz)
@@ -267,11 +349,18 @@ class Handler(BaseHTTPRequestHandler):
                 d = dict(estado)
                 d["decorrido"] = time.time() - estado["inicio"] if estado["inicio"] else 0
                 d["n_pontos"] = len(estado["pontos"])
+                d["kf_n_pontos"] = len(estado["kf_pontos"])
+                d["dr_n_pontos"] = len(estado["dr_pontos"])
             self._envia(json.dumps(d))
         elif p.startswith("/limpar"):
             with _lock:
                 estado.update({"pontos": [], "distancia_m": 0.0, "vel_max": 0.0,
+                               "kf_pontos": [], "kf_distancia_m": 0.0,
+                               "dr_pontos": [], "dr_erro_m": 0.0,
                                "inicio": time.time()})
+                lat, lon = estado["lat"], estado["lon"]
+            if lat is not None:
+                _kf.iniciar(lat, lon); _dr.iniciar(lat, lon)
             self._envia('{"ok":true}')
         elif p.startswith("/picos"):
             with _lock:
@@ -361,6 +450,10 @@ PAGINA = r"""<!DOCTYPE html>
   .pico{position:absolute;top:0;bottom:0;width:2px;background:var(--alerta)}
   .escala{display:flex;justify-content:space-between;font-size:9px;color:var(--txt2);
           margin-top:3px;font-family:ui-monospace,Menlo,monospace}
+  .legenda{margin-top:12px;display:flex;flex-direction:column;gap:5px}
+  .lg{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--txt2)}
+  .lg b{color:var(--txt);font-weight:500}
+  .sw{width:16px;height:3px;border-radius:2px;flex:none}
   .botoes{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
   button.b{flex:1;min-width:88px;background:#1c242e;color:var(--txt);
            border:1px solid var(--borda);border-radius:7px;padding:9px;font-size:11px;
@@ -407,6 +500,18 @@ PAGINA = r"""<!DOCTYPE html>
         <div class="n"><div class="v" id="m_vmax">0,0</div><div class="r">max km/h</div></div>
         <div class="n"><div class="v" id="m_tempo">0:00</div><div class="r">duracao</div></div>
         <div class="n"><div class="v" id="m_alt">--</div><div class="r">altitude m</div></div>
+        <div class="n"><div class="v" id="m_kdist">0</div><div class="r">dist. Kalman m</div></div>
+        <div class="n"><div class="v" id="m_ksig">--</div><div class="r">incerteza &plusmn;m</div></div>
+        <div class="n" style="grid-column:1/-1"><div class="v" id="m_drerro">--</div>
+          <div class="r">deriva do acelerometro puro</div></div>
+      </div>
+      <div class="legenda">
+        <div class="lg"><span class="sw" style="background:#3fb950"></span>
+          <b>Kalman</b> &mdash; GPS + acelerometro</div>
+        <div class="lg"><span class="sw" style="background:#58a6ff"></span>
+          <b>GPS bruto</b> &mdash; sem tratamento</div>
+        <div class="lg"><span class="sw" style="background:#f85149"></span>
+          <b>Acelerometro</b> &mdash; integracao pura</div>
       </div>
       <div id="coords">aguardando posicao...</div>
       <div class="botoes">
@@ -414,6 +519,7 @@ PAGINA = r"""<!DOCTYPE html>
         <button class="b" id="b_limpar">Limpar</button>
         <button class="b" id="b_gpx">GPX</button>
         <button class="b" id="b_rumo">Rumo: bussola</button>
+        <button class="b ativo" id="b_kalman">Kalman</button>
       </div>
     </div>
     <div id="aviso"></div>
@@ -583,7 +689,12 @@ const cone = L.marker([0,0], {
 }).addTo(mapa);
 let coneEl = null;
 
-const rastroMapa = L.polyline([], {color:'#58a6ff', weight:4, opacity:.85}).addTo(mapa);
+const rastroMapa = L.polyline([], {color:'#58a6ff', weight:2, opacity:.4}).addTo(mapa);
+const rastroKF = L.polyline([], {color:'#3fb950', weight:4, opacity:.9}).addTo(mapa);
+const rastroDR = L.polyline([], {color:'#f85149', weight:2, opacity:.7, dashArray:'5,4'}).addTo(mapa);
+const marcadorDR = L.circleMarker([0,0],
+  {radius:5,color:'#f85149',weight:2,fillColor:'#0a0e13',fillOpacity:1,opacity:0});
+let kalmanOn = true;
 const marcador = L.circleMarker([0,0],
   {radius:8, color:'#fff', weight:3, fillColor:'#58a6ff', fillOpacity:1}).addTo(mapa);
 let marcadorInicio = null, seguir = true, primeiro = true, ultimosPontos = [];
@@ -607,6 +718,13 @@ document.getElementById('b_rumo').onclick = function(){
   this.textContent = FONTE_RUMO === 'bussola' ? 'Rumo: bussola' : 'Rumo: GPS';
 };
 
+document.getElementById('b_kalman').onclick = function(){
+  kalmanOn = !kalmanOn;
+  this.classList.toggle('ativo', kalmanOn);
+  rastroKF.setStyle({opacity: kalmanOn ? .9 : 0});
+  rastroMapa.setStyle({weight: kalmanOn ? 2 : 4, opacity: kalmanOn ? .4 : .85});
+  marcador.setStyle({fillColor: kalmanOn ? '#3fb950' : '#58a6ff'});
+};
 document.getElementById('b_seguir').onclick = function(){
   seguir = !seguir; this.classList.toggle('ativo', seguir);
 };
@@ -797,17 +915,32 @@ async function atualizar(){
       av.textContent = d.descartados + ' ponto(s) descartado(s) por salto anormal';
     } else av.style.display='none';
 
+    document.getElementById('m_kdist').textContent =
+      d.kf_distancia_m < 1000 ? Math.round(d.kf_distancia_m) : br(d.kf_distancia_m/1000,2);
+    document.getElementById('m_ksig').textContent = d.kf_sigma ? br(d.kf_sigma,1) : '--';
+    document.getElementById('m_drerro').textContent =
+      d.dr_calibrando ? 'medindo vies...' : (d.dr_erro_m ? br(d.dr_erro_m,0)+' m' : '--');
+
     if(d.lat !== null && d.lon !== null){
+      const usarKF = kalmanOn && d.kf_lat !== null;
+      const plat = usarKF ? d.kf_lat : d.lat, plon = usarKF ? d.kf_lon : d.lon;
       document.getElementById('coords').innerHTML =
-        'lat '+d.lat.toFixed(6)+'<br>lon '+d.lon.toFixed(6)+'<br>'+d.n_pontos+' pontos';
-      marcador.setLatLng([d.lat,d.lon]);
-      cone.setLatLng([d.lat,d.lon]);
+        'lat '+plat.toFixed(6)+'<br>lon '+plon.toFixed(6)+'<br>'+
+        d.n_pontos+' brutos / '+d.kf_n_pontos+' Kalman';
+      if(d.kf_pontos.length) rastroKF.setLatLngs(d.kf_pontos);
+      if(d.dr_pontos.length){
+        rastroDR.setLatLngs(d.dr_pontos);
+        if(!mapa.hasLayer(marcadorDR)) marcadorDR.addTo(mapa);
+        marcadorDR.setLatLng([d.dr_lat,d.dr_lon]).setStyle({opacity:1});
+      }
+      marcador.setLatLng([plat,plon]);
+      cone.setLatLng([plat,plon]);
       if(!coneEl && cone.getElement())
         coneEl = cone.getElement().querySelector('.cone-rot');
       anguloCone = caminhoCurto(rumoCone, anguloCone);
       if(coneEl) coneEl.style.transform = 'rotate(' + anguloCone + 'deg)';
-      if(primeiro){ mapa.setView([d.lat,d.lon],19); primeiro=false; }
-      if(seguir) mapa.panTo([d.lat,d.lon],{animate:true,duration:.4});
+      if(primeiro){ mapa.setView([plat,plon],19); primeiro=false; }
+      if(seguir) mapa.panTo([plat,plon],{animate:true,duration:.4});
     }
     if(d.pontos.length){
       ultimosPontos = d.pontos;
