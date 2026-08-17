@@ -9,20 +9,23 @@
  */
 
 #include "wtgahrs3.h"
+#include "ambiente_rs485.h"
 
 // -- pinos -------------------------------------------------------------------
 static const int8_t PINO_RX = 16;  // RO do transceptor -> RX2 do ESP32
 static const int8_t PINO_TX = 17;  // DI do transceptor <- TX2 do ESP32
 static const int8_t PINO_DE = 4;   // DE+RE do transceptor; use -1 se for automatico
 
-// -- sensor ------------------------------------------------------------------
-static const uint32_t BAUD_SENSOR = 9600;              // padrao de fabrica
-static const uint8_t  ENDERECO    = ENDERECO_PADRAO;   // 0x50
+// -- sensores (mesmo par A/B, enderecos Modbus diferentes) -------------------
+static const uint32_t BAUD_SENSOR      = 9600;              // padrao de fabrica dos dois
+static const uint8_t  ENDERECO         = ENDERECO_PADRAO;             // 0x50, WTGAHRS3
+static const uint8_t  ENDERECO_AMBIENTE = ENDERECO_AMBIENTAL_PADRAO;  // 0x01, sensor T/UR
 
 // -- ritmo de leitura --------------------------------------------------------
 static const uint32_t INTERVALO_MS = 1000;
 
-WTGAHRS3 sensor(Serial2, PINO_DE, ENDERECO);
+WTGAHRS3      sensor(Serial2, PINO_DE, ENDERECO);
+AmbienteRS485 ambiente(Serial2, PINO_DE, ENDERECO_AMBIENTE);  // UART/pino DE ja iniciados por sensor.iniciar()
 
 void setup() {
   Serial.begin(115200);
@@ -43,6 +46,16 @@ void setup() {
     delay(1000);
   }
   Serial.println(F("  sensor respondendo."));
+
+  Serial.print(F("Procurando o sensor ambiental em 0x"));
+  Serial.print(ENDERECO_AMBIENTE, HEX);
+  Serial.println(F(" no mesmo barramento..."));
+
+  while (!ambiente.estaRespondendo()) {
+    Serial.println(F("  sem resposta - conferir endereco Modbus e fiacao A/B"));
+    delay(1000);
+  }
+  Serial.println(F("  sensor ambiental respondendo."));
 }
 
 void loop() {
@@ -79,13 +92,24 @@ void loop() {
   }
 
   if (sensor.lerAmbiente(amb)) {
-    Serial.print(F("  "));
+    Serial.print(F("  wtgahrs3: "));
     Serial.print(amb.pressaoPa);
     Serial.print(F(" Pa   alt.baro "));
     Serial.print(amb.altitudeBaroM, 1);
-    Serial.print(F(" m   temp "));
+    Serial.print(F(" m   temp.chip "));
     Serial.print(amb.temperaturaC, 2);
     Serial.println(F(" C"));
+  }
+
+  AmbienteRS485Leitura amb485;
+  if (ambiente.ler(amb485)) {
+    Serial.print(F("  ambiental: temp "));
+    Serial.print(amb485.temperaturaC, 1);
+    Serial.print(F(" C   umid "));
+    Serial.print(amb485.umidadeRH, 1);
+    Serial.println(F(" %RH"));
+  } else {
+    Serial.println(F("  falha ao ler sensor ambiental"));
   }
 
   delay(INTERVALO_MS);

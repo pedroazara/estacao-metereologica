@@ -1,2 +1,7 @@
 pyserial>=3.5
 minimalmodbus>=2.1.1
+
+# Servidor de telemetria (src/servidor_telemetria.py): cliente MQTT que assina
+# o broker Mosquitto. O broker em si e pacote do sistema, nao do pip:
+#     sudo apt install mosquitto mosquitto-clients
+paho-mqtt>=2.1.0

@@ -6,14 +6,19 @@ Estação portátil para coleta de temperatura, umidade, pressão e posição.
 (GPS/BeiDou + IMU de 6 eixos), lido por Modbus RTU sobre um adaptador
 RS485-USB.
 
-## Duas áreas
+## Duas áreas, papéis distintos
 
-O projeto tem duas implementações independentes do mesmo sistema:
+O projeto tem duas áreas. Elas **não** são implementações rivais do mesmo
+sistema — cada uma faz uma parte (decidido em 17/08/2026, ver
+[docs/04](docs/04-telemetria.md)):
 
-| Área | Onde | O que é |
+| Área | Onde | Papel |
 |---|---|---|
-| **Python / PC** | raiz (`src/`, `docs/`, `tests/`) | bancada de estudo e validação: sensor por adaptador RS485-USB, painel web, filtro de Kalman |
-| **ESP32** | [`firmware/`](firmware/) | versão embarcada de campo: mesmo sensor lido direto no barramento RS485 |
+| **ESP32 — campo** | [`firmware/`](firmware/) | lê os sensores no RS485, carimba, grava tudo no cartão SD, serve um painel de conferência com o dado **cru**. Não interpreta nada. |
+| **Python — base** | raiz (`src/`, `docs/`, `tests/`) | recebe, roda o filtro de Kalman em lote, persiste, analisa. Roda num **Raspberry Pi** ligado na tomada; o PC continua servindo de bancada. |
+
+O objetivo final é um **produto**: uma base com tela touch para o pesquisador
+analisar a coleta.
 
 Este README cobre a área Python. A do ESP32 tem o seu próprio:
 [firmware/README.md](firmware/README.md).
@@ -28,6 +33,12 @@ Este README cobre a área Python. A do ESP32 tem o seu próprio:
    mapa completo de registradores e fórmulas de conversão.
 3. **[docs/03-filtro-kalman.md](docs/03-filtro-kalman.md)** — teoria, derivação
    e as decisões de projeto do filtro de fusão GPS + acelerômetro.
+4. **[docs/04-telemetria.md](docs/04-telemetria.md)** — **a arquitetura do
+   sistema**: divisão de papéis, contrato de dados, cartão SD, roadmap e o
+   histórico das decisões. Comece por aqui se a dúvida for "por que assim?".
+5. **[docs/05-base-raspberry-pi.md](docs/05-base-raspberry-pi.md)** — preparar o
+   Raspberry Pi da base do zero: sistema, broker, `systemd`, e o teste ponta a
+   ponta sem hardware nenhum.
 
 ## Instalação
 
@@ -91,6 +102,8 @@ estacao-metereologica/
 │   ├── 01-guia-conexao-linux.md      guia passo a passo
 │   ├── 02-protocolo-modbus-wtgahrs3.md  registradores e conversões
 │   ├── 03-filtro-kalman.md           teoria e aplicação do filtro
+│   ├── 04-telemetria.md              ← arquitetura do sistema e decisões
+│   ├── 05-base-raspberry-pi.md       preparar a base do zero
 │   └── datasheets/                   PDFs oficiais da WitMotion
 ├── src/
 │   ├── wtgahrs3.py                   driver Modbus do sensor
@@ -100,17 +113,24 @@ estacao-metereologica/
 │   ├── painel.py                     painel web: mapa GPS + acelerômetro
 │   ├── mapa_ao_vivo.py               só o mapa (versão separada)
 │   ├── ler_posicao.py                aquisição contínua → CSV
+│   ├── servidor_telemetria.py        ← base: recebe, filtra, grava e serve
+│   ├── simular_estacao.py            estação falsa, para testar a base sem hardware
 │   ├── diagnostico_gps.py            (investigação) decodificação de coordenadas
 │   ├── varredura_registradores.py    (investigação) busca no mapa de registradores
 │   ├── log_bruto.py                  (investigação) valores crus e codificação
 │   └── kalman/                       lições numeradas, do zero ao filtro final
+├── servidor/
+│   └── mosquitto-estacao.conf        config do broker (não é opcional — ver doc 04)
 ├── firmware/                         ← área do ESP32 (Arduino IDE)
 │   ├── README.md                     fiação, níveis lógicos e roteiro
 │   ├── teste_sensor_ambiental/       diagnóstico do sensor RS485 de T/UR/pressão
+│   ├── painel_wifi/                  painel de conferência de campo
 │   └── estacao_esp32/
 │       ├── estacao_esp32.ino         sketch: leitura contínua no monitor serial
 │       ├── wtgahrs3.h                driver Modbus RTU portado do Python
-│       └── wtgahrs3.cpp
+│       ├── wtgahrs3.cpp
+│       ├── ambiente_rs485.h          driver do sensor ambiental (T/UR)
+│       └── ambiente_rs485.cpp
 ├── data/                             CSVs coletados
 └── requirements.txt
 ```
@@ -203,8 +223,15 @@ posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
   das três de forma útil.
 - [ ] Definir montagem final: fixação do sensor, posição da antena GNSS com
   vista para o céu, alimentação por bateria, proteção contra chuva.
-- [ ] Avaliar operação autônoma (Raspberry Pi) para não depender do notebook
-  em campo.
+- [x] ~~Avaliar operação autônoma (Raspberry Pi) para não depender do notebook
+  em campo.~~ Decidido em 17/08/2026 — mas ao contrário do que a linha sugeria:
+  quem fica autônomo **em campo** é o ESP32; o **Pi 3B fica na base**, ligado na
+  tomada. Levar o Pi a campo esbarra em consumo (~2,5–3,5 W) e na entrada
+  microUSB, que dá *undervoltage* e corrompe o cartão. Ver
+  [docs/05](docs/05-base-raspberry-pi.md).
+- [ ] **Módulo de cartão SD no ESP32** (SPI, ~R$ 10–15). É o que fecha a
+  custódia do dado cru em campo — a flash interna só aguenta ~25 min.
+- [ ] Tela touch da base — preferir a DSI oficial de 7" a HDMI + USB.
 
 ### Software
 
@@ -213,7 +240,9 @@ posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
   único que só cresce.
 - [ ] **Mapa offline.** Cache dos tiles para uso em campo sem internet. Hoje o
   mapa depende de conexão — que é justamente o que falta onde a estação vai
-  ser usada.
+  ser usada. Virou **requisito**, não melhoria: o painel da base roda num Pi 3B
+  com 1 GB de RAM, onde tiles online são peso que não cabe. Ver
+  [docs/05](docs/05-base-raspberry-pi.md).
 - [x] ~~**Filtro de Kalman** fundindo GPS e acelerômetro.~~ Feito — estado 4D
   (posição e velocidade Norte/Leste), modelo de velocidade constante com Q
   modulado pelo acelerômetro e R adaptado pelo HDOP. Integrado ao painel,
@@ -229,6 +258,9 @@ posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
 - [ ] Detecção automática de paradas, para segmentar o trajeto em trechos.
 - [ ] Sincronizar o relógio dos registros pelo tempo do GPS, em vez do relógio
   do PC — o GPS é uma referência de tempo muito mais precisa e já está ali.
+  Especificado nos campos `ts` e `ms` do contrato de dados, incluindo o caso
+  em que o GPS **nunca** pega fix. Ver
+  [docs/04](docs/04-telemetria.md#contrato-de-dados).
 
 ### Validação
 
