@@ -56,7 +56,7 @@ Tudo em hexadecimal binário, **não** ASCII. CRC é o CRC-16 Modbus padrão.
 |---|---|---|
 | `0x34`–`0x36` | AX, AY, AZ | `valor / 32768 × 16` → g |
 | `0x37`–`0x39` | GX, GY, GZ | `valor / 32768 × 2000` → °/s |
-| `0x3A`–`0x3C` | HX, HY, HZ | campo magnético, valor bruto |
+| `0x3A`–`0x3C` | HX, HY, HZ | campo magnético — ⚠️ **não implementado neste modelo**, ver abaixo |
 | `0x3D` | Roll | `valor / 32768 × 180` → ° |
 | `0x3E` | Pitch | `valor / 32768 × 180` → ° |
 | `0x3F` | Yaw | `valor / 32768 × 180` → ° |
@@ -64,6 +64,31 @@ Tudo em hexadecimal binário, **não** ASCII. CRC é o CRC-16 Modbus padrão.
 
 Todos são int16 com sinal. Os fundos de escala 16 g / 2000 °/s são os padrões
 de fábrica; se você mudar `ACCRANGE`/`GYRORANGE`, ajuste o divisor.
+
+#### Os registradores de campo magnético não têm sensor atrás
+
+`0x3A`–`0x3C` respondem à leitura, mas o que devolvem não tem cara de medida
+física. Com o sensor **parado na mesa, sem estímulo nenhum**:
+
+- `HY` fica **congelado** num valor exato por centenas de amostras seguidas;
+- `HZ` fica congelado e então **salta a escala inteira** (de `252` a `31960`,
+  ou de `+32731` a `−32705`) de uma leitura para a outra, sozinho;
+- `HX` oscila numa faixa de ~100 LSB, ordens de grandeza abaixo do que o campo
+  terrestre produziria.
+
+Registrador que fica congelado e dá saltos de escala cheia sem estímulo não é
+saída de sensor. Para fechar a questão de forma direta, rode
+`src/verificar_bussola.py` e passe um ímã pela carcaça no teste 3: só um
+magnetômetro reage a campo magnético — acelerômetro, giroscópio e GNSS não.
+
+O que confunde: o `High-precision sensor Modbus protocol.pdf` lista `HX/HY/HZ`,
+os offsets `0x0B`–`0x0D` e os modos de calibração magnética do `CALSW`. Mas
+aquele PDF é o **mapa genérico da família WitMotion**, não deste produto — ele
+mesmo traz a ressalva *"The callout register is only applicable to HWTX073"*, e
+nem sequer descreve este modelo (nele os ângulos são de 32 bits em `0x3D`–`0x42`
+e a temperatura fica em `0x43`; aqui os ângulos são de 16 bits e a temperatura
+está em `0x40`). Endereço existir na tabela não significa silício existir na
+placa.
 
 ### Pressão e altitude barométrica — `0x45`–`0x48`
 

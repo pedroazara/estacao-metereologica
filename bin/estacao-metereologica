@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#
+# Abre o painel da estacao meteorologica, ja conectado ao sensor.
+#
+#   estacao-metereologica              descobre a porta e abre o painel
+#   estacao-metereologica --simular    sem hardware, com dados sinteticos
+#   estacao-metereologica --porta /dev/ttyUSB1   forca uma porta
+#
+# Qualquer opcao do painel.py e repassada adiante.
+
+set -euo pipefail
+
+# Resolve o proprio caminho seguindo symlinks, para achar a raiz do projeto
+# mesmo quando chamado por um link em ~/.local/bin.
+ORIGEM="${BASH_SOURCE[0]}"
+while [ -L "$ORIGEM" ]; do
+    DIR_LINK="$(cd -P "$(dirname "$ORIGEM")" && pwd)"
+    ORIGEM="$(readlink "$ORIGEM")"
+    [[ $ORIGEM != /* ]] && ORIGEM="$DIR_LINK/$ORIGEM"
+done
+RAIZ="$(cd -P "$(dirname "$ORIGEM")/.." && pwd)"
+
+PY="$RAIZ/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+    echo "erro: ambiente virtual nao encontrado em $RAIZ/.venv" >&2
+    echo "      crie com:  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+    exit 1
+fi
+
+# Se o usuario ja passou --porta ou --simular, nao ha o que descobrir.
+PRECISA_DESCOBRIR=1
+for arg in "$@"; do
+    case "$arg" in
+        --porta|--porta=*|--simular) PRECISA_DESCOBRIR=0 ;;
+    esac
+done
+
+EXTRA=()
+if [ "$PRECISA_DESCOBRIR" -eq 1 ]; then
+    # Varre as portas seriais e devolve a primeira que responder como WTGAHRS3.
+    # O diretorio vai por variavel de ambiente para o heredoc poder ser citado
+    # ('FIM'), senao o shell tentaria expandir o que e sintaxe do Python.
+    PORTA="$(SRC_DIR="$RAIZ/src" "$PY" - <<'FIM' || true
+import os, sys
+sys.path.insert(0, os.environ["SRC_DIR"])
+try:
+    from wtgahrs3 import WTGAHRS3, listar_portas
+except Exception:
+    sys.exit(1)
+
+for porta in listar_portas():
+    for baud in (9600, 115200, 19200, 38400, 57600):
+        try:
+            s = WTGAHRS3(porta, baudrate=baud, timeout=0.3)
+            if s.esta_respondendo():
+                print(f"{porta} {baud}")
+                s.fechar()
+                sys.exit(0)
+            s.fechar()
+        except Exception:
+            pass
+FIM
+)"
+
+    if [ -z "$PORTA" ]; then
+        echo "Nenhum sensor respondeu nas portas seriais." >&2
+        echo >&2
+        if ! ls /dev/ttyUSB* /dev/ttyACM* >/dev/null 2>&1; then
+            echo "  Nao ha nenhuma porta serial USB. O sensor esta ligado e conectado?" >&2
+        elif ! id -nG | grep -qw dialout; then
+            echo "  Voce nao esta no grupo 'dialout' - sem isso o acesso e negado." >&2
+            echo "  Resolva com:  sudo usermod -aG dialout \$USER   (e reinicie a sessao)" >&2
+        else
+            echo "  Portas encontradas: $(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | tr '\n' ' ')" >&2
+            echo "  Mas nenhuma respondeu ao protocolo Modbus. Confira alimentacao (5-36 V)" >&2
+            echo "  e a ligacao A/B do RS485 - inverter os dois e o erro mais comum." >&2
+        fi
+        echo >&2
+        echo "  Para rodar sem hardware:  estacao-metereologica --simular" >&2
+        exit 1
+    fi
+
+    read -r DEV BAUD <<< "$PORTA"
+    echo "sensor encontrado em $DEV @ $BAUD baud"
+    EXTRA=(--porta "$DEV" --baud "$BAUD")
+fi
+
+# O painel grava o CSV num caminho relativo (../data/trajeto.csv), entao roda
+# a partir de src/ para que o arquivo caia sempre no mesmo lugar.
+cd "$RAIZ/src"
+exec "$PY" painel.py "${EXTRA[@]}" "$@"

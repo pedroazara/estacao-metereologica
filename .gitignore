@@ -8,3 +8,6 @@ data/*.csv
 
 # PDFs baixados do Drive da WitMotion
 docs/datasheets/*.pdf
+
+# binários exportados pela Arduino IDE
+firmware/**/build/

@@ -37,7 +37,9 @@ except ImportError:
     ENDERECO_PADRAO = 0x50
     ESCALA_ACC_G, ESCALA_GYRO_DPS, ESCALA_ANGULO = 16.0, 2000.0, 180.0
 
-from filtro_kalman import FiltroINS, NavegacaoInercial
+from filtro_kalman import (SINAL_ROLL, CalibracaoInicial, DetectorPassos,
+                           EstimadorRumo, FiltroCV, MediaParado,
+                           NavegacaoInercial)
 
 estado = {
     # --- comum ---
@@ -49,20 +51,35 @@ estado = {
     # --- Kalman (GPS + acelerometro) ---
     "kf_lat": None, "kf_lon": None, "kf_vel": 0.0, "kf_sigma": 0.0,
     "kf_pontos": [], "kf_distancia_m": 0.0, "kf_parado": True,
+    # --- rumo geografico (yaw + COG do GPS; sem magnetometro) ---
+    "rumo": None, "rumo_confiavel": False, "rumo_incerteza": 180.0,
+    "rumo_ancoragens": 0,
+    # --- media de fixes em repouso ---
+    "med_lat": None, "med_lon": None, "med_n": 0, "med_sigma": 0.0,
+    # --- passos e calibracao inicial ---
+    "passos": 0, "cadencia": 0.0, "passo_m": 0.65,
+    "imu_desvio_g": 0.0, "giro_rms_dps": 0.0,
+    "gps_movendo": False, "gps_parado": False,
+    "cal_fase": "satelites", "cal_instrucao": "", "cal_progresso": 0.0,
+    "cal_pronto": False, "cal_retidao": 0.0, "cal_dist": 0.0,
     # --- acelerometro puro, so comparacao ---
     "dr_lat": None, "dr_lon": None, "dr_pontos": [], "dr_erro_m": 0.0,
     "dr_calibrando": True,
     # --- IMU ---
     "ax": 0.0, "ay": 0.0, "az": 0.0, "gx": 0.0, "gy": 0.0, "gz": 0.0,
-    "roll": 0.0, "pitch": 0.0, "yaw": 0.0, "g_total": 0.0,
+    "roll": 0.0, "roll_exib": 0.0, "pitch": 0.0, "yaw": 0.0, "g_total": 0.0,
     "pico_ax": 0.0, "pico_ay": 0.0, "pico_az": 0.0, "pico_total": 0.0,
     "pico_giro": 0.0, "rastro": [], "amostras_imu": 0,
 }
 _lock = threading.Lock()
 _parar = False
 _zero = {"ax": 0.0, "ay": 0.0, "az": 0.0}
-_kf = FiltroINS()
+_kf = FiltroCV()
 _dr = NavegacaoInercial()
+_rumo = EstimadorRumo()
+_media = MediaParado()
+_passos = DetectorPassos()
+_cal = CalibracaoInicial()
 
 
 def registrar_ponto_kf(lat, lon, args):
@@ -94,8 +111,32 @@ def passo_fusao(dt):
     """Predicao do Kalman e do inercial puro, a cada amostra do IMU."""
     with _lock:
         ax, ay, az = estado["ax"], estado["ay"], estado["az"]
+        gx, gy, gz = estado["gx"], estado["gy"], estado["gz"]
         roll, pitch, yaw = estado["roll"], estado["pitch"], estado["yaw"]
-    _kf.prever(ax, ay, az, roll, pitch, yaw, dt)
+
+    # PASSOS: a entrada do acelerometro na posicao. Nao integramos aceleracao -
+    # contamos passos e usamos cadencia x comprimento como MEDIDA DE VELOCIDADE.
+    # Erro cresce com a distancia (poucos %), nao com t^2.
+    houve_passo = _passos.amostra(ax, ay, az, dt)
+    passos_ativos = _passos.andando()
+
+    # O FiltroCV nao recebe yaw: o modelo de velocidade constante nao precisa
+    # de rumo. O giro, os passos e o GPS entram somente no detector de estado,
+    # com histerese, para decidir entre propagacao e ZUPT.
+    _kf.prever(ax, ay, az, roll, pitch, dt, gx, gy, gz,
+               passo_detectado=houve_passo, passos_ativos=passos_ativos)
+    if _kf.entrou_parado:
+        _passos.encerrar_movimento()
+
+    # gz cru corrigido pelo bias, nao o yaw do firmware. Em repouso a integral
+    # fica congelada e o proprio periodo parado refina lentamente o zero.
+    _rumo.passo(gz, dt, parado=_kf.parado)
+    _cal.passo_imu(gz, _kf.parado, time.monotonic())
+    if (houve_passo and _passos.andando() and not _kf.parado
+            and _cal.pronto and _rumo.rumo is not None):
+        _kf.corrigir_pdr(_passos.cadencia_hz, _cal.comprimento_passo,
+                         _rumo.rumo, _rumo.incerteza)
+
     _dr.passo(ax, ay, az, roll, pitch, yaw, dt)
     if _kf.pronto:
         klat, klon = _kf.posicao
@@ -104,6 +145,24 @@ def passo_fusao(dt):
             estado["kf_vel"] = _kf.velocidade_kmh
             estado["kf_sigma"] = _kf.sigma_pos
             estado["kf_parado"] = _kf.parado
+    with _lock:
+        estado["rumo"] = _rumo.rumo
+        estado["rumo_confiavel"] = _rumo.confiavel
+        estado["rumo_incerteza"] = _rumo.incerteza
+        estado["rumo_ancoragens"] = _rumo.ancoragens
+        estado["passos"] = _passos.passos
+        estado["cadencia"] = _passos.cadencia_hz
+        estado["passo_m"] = _cal.comprimento_passo
+        estado["imu_desvio_g"] = _kf.detector.desvio_acc_g
+        estado["giro_rms_dps"] = _kf.detector.giro_rms_dps
+        estado["gps_movendo"] = _kf.detector.gps_movendo
+        estado["gps_parado"] = _kf.detector.gps_parado
+        estado["cal_fase"] = _cal.fase
+        estado["cal_instrucao"] = _cal.instrucao()
+        estado["cal_progresso"] = _cal.progresso(time.monotonic())
+        estado["cal_pronto"] = _cal.pronto
+        estado["cal_retidao"] = _cal.retidao
+        estado["cal_dist"] = _cal.dist_reto
     if _dr.pronto and not _dr.calibrando:
         dlat, dlon = _dr.posicao
         with _lock:
@@ -115,15 +174,47 @@ def passo_fusao(dt):
 
 def fusao_gps(lat, lon, hdop, vel, rumo, args):
     """Correcao do Kalman quando chega um fix."""
+    agora = time.monotonic()
     if not _kf.pronto:
         _kf.iniciar(lat, lon)
         _dr.iniciar(lat, lon)
+        _kf.atualizar_movimento_gps(agora, lat, lon, vel)
         return
+
+    # Movimento e rumo usam a posicao GNSS original. Nunca use a saida do
+    # proprio Kalman aqui: ela pode conter PDR e criaria realimentacao circular.
+    n_gps, e_gps = _kf.graus_para_metros(lat, lon)
+    _kf.atualizar_movimento_gps(agora, lat, lon, vel)
     _kf.corrigir_gps(lat, lon, hdop=hdop)
     _kf.corrigir_velocidade(vel, rumo)
-    if vel > 3.0:
-        _kf.ancorar_rumo(estado["yaw"], rumo)
-        _dr.ancorar_rumo(estado["yaw"], rumo)
+
+    # Ancoragem pela DIRECAO DO DESLOCAMENTO sobre uma base de segundos, e nao
+    # pelo COG instantaneo: a pe o COG tem cauda de 16 graus por epoca, e chega
+    # a acusar 149 graus de curva em 2 s de caminhada quase reta.
+    if _kf.pronto:
+        if _cal.pronto:
+            _rumo.ancorar_por_deslocamento(
+                agora, n_gps, e_gps, movendo=_kf.detector.gps_movendo)
+        with _lock:
+            sat = estado["sat"]
+        mudou = _cal.passo_gps(
+            agora, n_gps, e_gps, sat, hdop, _passos.passos, _kf.parado)
+        # Ao fechar a fase RETO temos o primeiro rumo ABSOLUTO confiavel: o
+        # trecho foi reto, entao a direcao do deslocamento e a direcao do
+        # corpo. E o zero que o giroscopio sozinho nunca teria.
+        if mudou and _cal.pronto and _cal.rumo_inicial is not None:
+            _rumo.definir_vies_gz(_cal.vies_gz)
+            _rumo.fixar_rumo(_cal.rumo_inicial)
+    _dr.ancorar_rumo(estado["yaw"], rumo)
+
+    # Media de fixes em repouso: o ganho de precisao que este hardware permite.
+    _media.amostra(lat, lon, _kf.parado)
+    mlat, mlon = _media.posicao
+    with _lock:
+        estado["med_lat"], estado["med_lon"] = mlat, mlon
+        estado["med_n"] = _media.n
+        estado["med_sigma"] = _media.sigma_m if _media.n >= 2 else 0.0
+
     klat, klon = _kf.posicao
     registrar_ponto_kf(klat, klon, args)
 
@@ -164,8 +255,13 @@ def _aplica_imu(ax, ay, az, gx, gy, gz, roll, pitch, yaw, temp, rastro):
     with _lock:
         ax -= _zero["ax"]; ay -= _zero["ay"]; az -= _zero["az"]
         total = math.sqrt(ax*ax + ay*ay + az*az)
+        # "roll" fica com o valor CRU do sensor, para o log e para o filtro,
+        # que aplica SINAL_ROLL por conta propria. "roll_exib" e o valor com o
+        # sinal ja corrigido, que e o que o horizonte artificial deve mostrar -
+        # este exemplar reporta o roll invertido.
         estado.update({"ax": ax, "ay": ay, "az": az, "gx": gx, "gy": gy, "gz": gz,
-                       "roll": roll, "pitch": pitch, "yaw": yaw,
+                       "roll": roll, "roll_exib": SINAL_ROLL * roll,
+                       "pitch": pitch, "yaw": yaw,
                        "temp": temp, "g_total": total})
         estado["pico_ax"] = max(estado["pico_ax"], abs(ax))
         estado["pico_ay"] = max(estado["pico_ay"], abs(ay))
@@ -292,23 +388,62 @@ def _simular(args, gravador):
     rastro = deque(maxlen=args.rastro)
     lat, lon = -21.225671, -44.977374
     rumo, t = random.uniform(0, 6.28), 0.0
+    # O yaw simulado precisa imitar o do hardware para o EstimadorRumo ser
+    # testado de verdade: acompanha a direcao real de deslocamento, mas com um
+    # zero arbitrario e uma deriva lenta - as duas coisas que o firmware faz e
+    # que tornam o rumo inutil sem ancoragem no GPS. Deriva de 0,27 graus/s e a
+    # medida nesta bancada (32 graus em 120 s).
+    yaw_zero = random.uniform(0, 360)
+    yaw_deriva = 0.27
     with _lock:
         estado["conectado"] = True
         estado["mensagem"] = "MODO SIMULACAO (sem sensor real)"
     ciclos_gps = max(1, int(args.hz / max(args.hz_gps, 0.1)))
     ciclo = 0
+    dt_sim = 1.0 / args.hz
+    taxa_giro = 0.0        # graus/s de rotacao real da caminhada simulada
+    # ROTEIRO, para o procedimento de partida ser exercitado de ponta a ponta:
+    # 15 s parado (fase PARADO), 45 s em linha reta (fase RETO), depois solto.
+    T_PARADO, T_RETO = 15.0, 60.0
+    CADENCIA = 1.55        # passos/s, a mediana medida na caminhada real
+    AMPL_PASSO = 0.07      # g de oscilacao vertical; medido 0,0656 g
     while not _parar:
-        t += 1.0 / args.hz
+        t += dt_sim
+        parado_sim = t < T_PARADO
+        reto_sim = T_PARADO <= t < T_RETO
+
+        # A caminhada vira de forma continua, e o gz simulado e o NEGATIVO
+        # dessa taxa - a mesma convencao medida no hardware (giro anti-horario
+        # positivo, azimute horario positivo). Sem isso o gz nao tem relacao
+        # com o movimento e o EstimadorRumo nao e testado por nada.
+        if parado_sim or reto_sim:
+            taxa_giro = 0.0 if parado_sim else random.gauss(0, 0.8)
+        else:
+            taxa_giro += random.gauss(0, 4.0) * dt_sim
+            taxa_giro = max(-40.0, min(40.0, taxa_giro * 0.98))
+        rumo += math.radians(taxa_giro) * dt_sim
+        gz_sim = 0.0 if parado_sim else -taxa_giro + random.gauss(0, 1.5)
+
+        # Oscilacao do passo: e ela que o DetectorPassos procura. Parado, so
+        # ruido - do tamanho medido na bancada (0,0005 g).
+        if parado_sim:
+            osc = random.gauss(0, .0005)
+            bal = 0.0
+        else:
+            osc = AMPL_PASSO*math.sin(2*math.pi*CADENCIA*t) + random.gauss(0, .008)
+            bal = 0.05*math.sin(math.pi*CADENCIA*t)
         _aplica_imu(
-            0.45*math.sin(t*0.9)+random.gauss(0, .02),
-            0.60*math.cos(t*0.6)+random.gauss(0, .02),
-            1.00+0.10*math.sin(t*2.1)+random.gauss(0, .02),
-            40*math.sin(t*1.3), 30*math.cos(t*0.7), 60*math.sin(t*0.4),
-            18*math.sin(t*0.6), 12*math.cos(t*0.5), (t*12) % 360, 31.5, rastro)
+            bal + random.gauss(0, .01),
+            0.5*bal + random.gauss(0, .01),
+            1.00 + osc,
+            40*math.sin(t*1.3) if not parado_sim else 0.0,
+            30*math.cos(t*0.7) if not parado_sim else 0.0, gz_sim,
+            0.0 if parado_sim else 18*math.sin(t*0.6),
+            0.0 if parado_sim else 12*math.cos(t*0.5),
+            (math.degrees(rumo) + yaw_zero + yaw_deriva * t) % 360, 31.5, rastro)
         ciclo += 1
         if ciclo % ciclos_gps == 0:
-            rumo += random.uniform(-0.3, 0.3)
-            passo = 1.4 / 111320.0
+            passo = 0.0 if parado_sim else 1.4 / 111320.0
             lat += passo*math.cos(rumo)
             lon += passo*math.sin(rumo)/math.cos(math.radians(lat))
             lat_r = lat + random.gauss(0, 3.0)/111320.0
@@ -318,7 +453,7 @@ def _simular(args, gravador):
                                "sat": random.randint(12, 20),
                                "hdop": round(random.uniform(.8, 1.6), 2),
                                "rumo_gps": (math.degrees(rumo) % 360),
-                               "vel": round(random.uniform(4, 6), 2)})
+                               "vel": 0.0 if parado_sim else round(random.uniform(4, 6), 2)})
                 estado["vel_max"] = max(estado["vel_max"], estado["vel"])
             registrar_ponto(lat_r, lon_r, args, gravador)
             fusao_gps(lat_r, lon_r, estado["hdop"], estado["vel"],
@@ -513,12 +648,21 @@ PAGINA = r"""<!DOCTYPE html>
         <div class="lg"><span class="sw" style="background:#f85149"></span>
           <b>Acelerometro</b> &mdash; integracao pura</div>
       </div>
+      <div id="cal_banner" style="display:none;background:#1c2530;border:1px solid #d29922;
+           border-radius:6px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;color:#8b949e;letter-spacing:.5px" id="cal_fase">PARTIDA</div>
+        <div style="font-size:14px;color:#e6edf3;margin:4px 0 8px" id="cal_txt">...</div>
+        <div style="height:6px;background:#0d1117;border-radius:3px;overflow:hidden">
+          <div id="cal_barra" style="height:100%;width:0%;background:#d29922;transition:width .3s"></div>
+        </div>
+        <div style="font-size:11px;color:#8b949e;margin-top:6px" id="cal_extra"></div>
+      </div>
       <div id="coords">aguardando posicao...</div>
       <div class="botoes">
         <button class="b ativo" id="b_seguir">Seguir</button>
         <button class="b" id="b_limpar">Limpar</button>
         <button class="b" id="b_gpx">GPX</button>
-        <button class="b" id="b_rumo">Rumo: bussola</button>
+        <button class="b" id="b_rumo">Rumo: fundido</button>
         <button class="b ativo" id="b_kalman">Kalman</button>
       </div>
     </div>
@@ -575,17 +719,23 @@ PAGINA = r"""<!DOCTYPE html>
         <div class="nums" style="margin-top:12px">
           <div class="n"><div class="v" id="vroll">0,0</div><div class="r">roll (graus)</div></div>
           <div class="n"><div class="v" id="vpitch">0,0</div><div class="r">pitch (graus)</div></div>
+          <div class="n"><div class="v" id="vdesvioacc">0,000</div><div class="r">ruido |a| (g)</div></div>
+          <div class="n"><div class="v" id="vgrms">0,0</div><div class="r">giro RMS (graus/s)</div></div>
         </div>
       </div>
 
       <div class="card">
-        <div class="tit">Bussola / rumo</div>
+        <div class="tit">Rumo geografico</div>
+        <div id="rumo_aviso" style="font-size:12px;color:#d29922;margin:-4px 0 8px">
+          sem magnetometro: o rumo so fica valido depois de andar
+        </div>
         <canvas id="bussola" width="220" height="220"></canvas>
         <div class="nums" style="margin-top:12px">
-          <div class="n"><div class="v" id="vyaw">0,0</div><div class="r">rumo corrigido</div></div>
+          <div class="n"><div class="v" id="vyaw">0,0</div><div class="r">rumo (graus)</div></div>
+          <div class="n"><div class="v" id="vrumoinc">--</div><div class="r">incerteza (&deg;)</div></div>
           <div class="n"><div class="v" id="vyawbruto">0,0</div><div class="r">yaw cru</div></div>
+          <div class="n"><div class="v" id="vancoras">0</div><div class="r">ancoragens</div></div>
           <div class="n"><div class="v" id="vtemp">--</div><div class="r">temp chip (C)</div></div>
-          <div class="n"><div class="v" id="vcorr">0&deg;</div><div class="r">correcao</div></div>
         </div>
         <div class="botoes">
           <button class="b" id="b_inverter">Inverter sentido</button>
@@ -710,12 +860,14 @@ function caminhoCurto(alvo, atual){
   return atual + delta;
 }
 
-// Fonte do rumo: bussola (funciona parado) ou GPS (course over ground, so
-// confiavel em movimento). O Google Maps faz exatamente essa troca.
-let FONTE_RUMO = 'bussola';
+// Fonte do rumo. NAO existe bussola neste sensor (confirmado com ima), entao
+// as opcoes sao: 'fundido' = yaw do IMU ancorado no COG do GPS, que responde
+// na hora e sobrevive a paradas curtas; ou 'gps' = COG puro, absoluto mas so
+// valido em movimento e ruidoso a pe.
+let FONTE_RUMO = 'fundido';
 document.getElementById('b_rumo').onclick = function(){
-  FONTE_RUMO = FONTE_RUMO === 'bussola' ? 'gps' : 'bussola';
-  this.textContent = FONTE_RUMO === 'bussola' ? 'Rumo: bussola' : 'Rumo: GPS';
+  FONTE_RUMO = FONTE_RUMO === 'fundido' ? 'gps' : 'fundido';
+  this.textContent = FONTE_RUMO === 'fundido' ? 'Rumo: fundido' : 'Rumo: GPS';
 };
 
 document.getElementById('b_kalman').onclick = function(){
@@ -895,9 +1047,34 @@ async function atualizar(){
   document.getElementById('r_g').textContent    = br(d.g_total,2);
   document.getElementById('r_taxa').textContent = br(d.taxa,0);
 
-  // o rumo e usado nas duas abas (cone do mapa e bussola), entao calculamos sempre
+  // o rumo e usado nas duas abas (cone do mapa e bussola), entao calculamos sempre.
+  // d.rumo vem do EstimadorRumo (yaw + COG do GPS, reancorado a cada fix util).
+  // Enquanto ele nunca ancorou nao existe rumo geografico - sem magnetometro,
+  // parado e sem nunca ter andado, a direcao do Norte e desconhecida. Nesse caso
+  // caimos no yaw cru mais o ajuste manual, que e relativo e nao aponta o Norte.
+  // Banner do procedimento de partida. Some sozinho quando calibra.
+  const cb = document.getElementById('cal_banner');
+  if(d.cal_pronto){ cb.style.display='none'; }
+  else {
+    cb.style.display='block';
+    document.getElementById('cal_fase').textContent =
+      'PARTIDA - ' + (d.cal_fase||'').toUpperCase();
+    document.getElementById('cal_txt').textContent = d.cal_instrucao||'';
+    document.getElementById('cal_barra').style.width =
+      Math.round((d.cal_progresso||0)*100) + '%';
+    let extra = '';
+    if(d.cal_fase === 'satelites') extra = d.sat + ' satelites, HDOP ' + br(d.hdop,1);
+    else if(d.cal_fase === 'parado') extra = d.kf_parado
+      ? 'parado, contando...'
+      : 'movimento - ruido |a| ' + br(d.imu_desvio_g,3) + ' g | giro RMS ' +
+        br(d.giro_rms_dps,1) + ' graus/s | GPS ' + (d.gps_movendo ? 'movendo' : 'quieto');
+    else if(d.cal_fase === 'reto') extra = br(d.cal_dist,1) + ' m retos (precisa 15) | retidao ' +
+      br(d.cal_retidao,2) + ' (precisa 0,90) | ' + d.passos + ' passos';
+    document.getElementById('cal_extra').textContent = extra;
+  }
+
   yawCru = d.yaw;
-  const rumo = corrigeRumo(d.yaw);
+  const rumo = d.rumo !== null && d.rumo !== undefined ? d.rumo : corrigeRumo(d.yaw);
   const rumoCone = FONTE_RUMO === 'gps' ? d.rumo_gps : rumo;
 
   if(abaAtual === 'mapa'){
@@ -970,12 +1147,28 @@ async function atualizar(){
     document.getElementById('amostras').textContent = d.amostras_imu;
     document.getElementById('vroll').textContent  = br(d.roll,1);
     document.getElementById('vpitch').textContent = br(d.pitch,1);
+    document.getElementById('vdesvioacc').textContent = br(d.imu_desvio_g,3);
+    document.getElementById('vgrms').textContent = br(d.giro_rms_dps,1);
     document.getElementById('vtemp').textContent  = br(d.temp,1);
     document.getElementById('vyaw').textContent      = br(rumo,1);
     document.getElementById('vyawbruto').textContent = br(d.yaw,1);
-    document.getElementById('vcorr').textContent = (INVERTER?'inv ':'')+OFFSET+'°';
+    document.getElementById('vancoras').textContent  = d.rumo_ancoragens;
+    // Sem ancoragem nenhuma o numero exibido e relativo, nao aponta o Norte.
+    document.getElementById('vrumoinc').textContent =
+      d.rumo === null || d.rumo === undefined ? '--' : br(d.rumo_incerteza,0);
+    const av = document.getElementById('rumo_aviso');
+    if(d.rumo === null || d.rumo === undefined){
+      av.textContent = 'sem magnetometro: ande alguns metros para o rumo virar geografico';
+      av.style.color = '#d29922';
+    } else if(!d.rumo_confiavel){
+      av.textContent = 'rumo ancorado, mas ainda impreciso (' + br(d.rumo_incerteza,0) + '° de incerteza)';
+      av.style.color = '#d29922';
+    } else {
+      av.textContent = 'rumo geografico valido (±' + br(d.rumo_incerteza,0) + '°)';
+      av.style.color = '#3fb950';
+    }
     desenhaG(d.ay,d.ax,d.rastro,d.pico_total);
-    desenhaHorizonte(d.roll,d.pitch);
+    desenhaHorizonte(d.roll_exib,d.pitch);
     desenhaBussola(rumo);
   }
 }

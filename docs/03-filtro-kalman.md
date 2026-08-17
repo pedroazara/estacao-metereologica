@@ -205,7 +205,17 @@ preciso um modelo elipsoidal.
 ### Por que a aceleração NÃO entra na predição
 
 Esta é a decisão mais importante, e vem direto do que descobrimos nos
-datasheets: **o WTGAHRS3 não tem magnetômetro** (ver `README.md`).
+datasheets: **o WTGAHRS3 não tem magnetômetro** — agora confirmado
+empiricamente com ímã, não só por leitura de datasheet
+(`src/verificar_bussola.py`, ver `docs/02-protocolo-modbus-wtgahrs3.md`).
+
+> **Esta regra já foi violada uma vez.** Uma versão intermediária do filtro
+> (`FiltroINS`, 6 estados) girava a aceleração para Norte/Leste pelo yaw e a
+> integrava na predição. O resultado foi exatamente o previsto aqui: o filtro
+> "andava sozinho" e disparava dezenas de metros. Duas medidas explicam por quê:
+> o yaw do firmware **andou 32° com o sensor parado na mesa** em 2 minutos, e a
+> âncora do rumo era calculada **uma única vez** e nunca corrigida. Foi
+> revertido para o modelo CV descrito abaixo.
 
 O acelerômetro mede no referencial **do sensor** — eixos X, Y, Z do próprio
 módulo. Para somar isso a uma velocidade Norte/Leste é preciso saber para onde
@@ -226,18 +236,40 @@ Ele não fica de fora. Quando o módulo da aceleração cresce, a premissa de
 velocidade constante está sendo violada — e o filtro precisa saber disso:
 
 ```python
-q = self.q * (1.0 + self.ganho_acc * self.acc_horizontal)
+q = q_parado if parado else q_base * (1.0 + ganho_acc * acc_horizontal)
 ```
 
 Parado ou em velocidade constante, o filtro **aperta** e suaviza agressivamente.
 Em manobra, **afrouxa** e passa a seguir mais o GPS. É uma forma honesta de
 usar o IMU sem precisar de uma orientação que não temos.
 
+### Como o repouso é decidido
+
+Uma única fonte não é suficiente. O estado usa histerese e combina quatro
+evidências:
+
+- desvio de `|a|` numa janela curta;
+- RMS de `gx/gy/gz`;
+- sequência coerente de passos, não um pico isolado;
+- mediana da velocidade e deslocamento do GPS em alguns segundos.
+
+São necessários 1,5 s de quietude para entrar em repouso, mas movimento forte
+faz a saída ser imediata. Se o GPS confirmar que a velocidade está zerada e o
+giroscópio estiver quieto, vibração elétrica ou mecânica do acelerômetro não
+mantém falsamente o estado "andando".
+
+Ao entrar em repouso, o ZUPT é aplicado **antes** da propagação, a velocidade é
+zerada, o PDR é bloqueado e `Q` passa ao valor pequeno fixo `q_parado`. Assim a
+velocidade anterior não desloca mais uma amostra e o ruído do acelerômetro não
+abre a covariância enquanto o equipamento está imóvel.
+
 ### O rumo do GPS como medida de velocidade
 
 O *course over ground* e a velocidade do GPS, decompostos em Norte e Leste,
-entram como medidas do estado de velocidade — mas só acima de 1,5 km/h. Parado,
-o rumo do GPS é ruído puro e aplicá-lo injetaria lixo no filtro.
+entram como medidas do estado de velocidade — mas o rumo só é usado acima de
+3 km/h. Parado, o rumo do GPS é ruído puro e aplicá-lo injetaria lixo no
+filtro. Uma velocidade abaixo de 1 km/h só vira ZUPT quando a janela do GPS ou
+o detector completo também indicam repouso.
 
 ### R adaptado pelo HDOP
 
@@ -274,7 +306,197 @@ confiante demais — aumente `Q`.
 
 ---
 
+### O rumo geográfico, já que não há bússola
+
+O rumo não sai do filtro de posição — ele é um problema separado, resolvido por
+`EstimadorRumo` com um **filtro complementar**.
+
+A primeira versão usava o yaw do firmware ancorado no COG instantâneo do GPS.
+Uma caminhada real de 179 s (`data/caminhada-20260806-174706.csv`) mostrou que
+**as duas pontas estavam erradas**:
+
+| fonte descartada | por quê |
+|---|---|
+| yaw do firmware | erro com **p90 de 176°** — aponta para o lado oposto em 10% do tempo |
+| COG instantâneo | mediana boa (0,3°), mas **p90 de 16° por época** a 3-4 km/h |
+
+O caso mais eloquente: em 2 s de caminhada quase reta, o COG acusou **149° de
+curva** enquanto o giroscópio media 2,9°. A 1 m/s o deslocamento por época
+(~0,2 m) é uma fração do ruído de posição (~2,5 m), então o COG é quase só
+ruído — e ancorar nele é ancorar em lixo.
+
+**O que substituiu:**
+
+- **Curto prazo: o `gz` cru, integrado e NEGADO.** O giro é positivo no sentido
+  anti-horário e o azimute cresce no horário. Medido em 604 viradas reais:
+  **81% com `gz` de sinal oposto** à mudança de rumo. Sem inverter, o rumo gira
+  para o lado errado. O `gz` cru tem p90 de 34° contra os 176° do yaw.
+- **Longo prazo: a direção do deslocamento sobre uma base de ~8 s**, não o COG
+  instantâneo. A 1 m/s, 8 s valem ~8 m — bem acima do ruído do GPS. É a mesma
+  informação do COG, integrada por tempo suficiente para o ruído sair.
+
+O viés de `gz` medido nos 8 s da fase parada é subtraído de todas as amostras.
+Em repouso, o rumo deixa de ser integrado e esse viés é atualizado lentamente.
+Em movimento, a âncora usa exclusivamente posições GPS originais — nunca a
+posição do próprio Kalman, que pode conter PDR — e rejeita bases em que o
+giroscópio indica uma curva maior que 25°. Isso remove a realimentação circular
+`rumo → PDR → posição filtrada → rumo`.
+
+**A incerteza é medida, não prometida.** A v1 calculava a incerteza por uma
+fórmula de decaimento e relatava 3,5° quando o erro real era 21° — ou seja,
+mentia. Agora ela é a média móvel do resíduo observado nas ancoragens: o quanto
+giro e GPS de fato discordam.
+
+**Limite honesto, exposto na interface:** enquanto nunca houve ancoragem, não
+existe rumo geográfico — parado e sem nunca ter andado, a direção do Norte é
+fisicamente desconhecível neste hardware. O painel mostra isso em vez de fingir
+um número.
+
+### O acelerômetro na posição: contar passos, não integrar
+
+Integrar aceleração duas vezes faz o erro crescer com **t²** — foi o que
+destruiu o `FiltroINS`. Contar passos faz o erro crescer com a **distância
+percorrida**, e a poucos por cento: cada passo é um evento discreto, erra-se o
+comprimento, nunca a existência.
+
+Os dados da caminhada mostram que o sinal do passo é inequívoco:
+
+| | valor medido |
+|---|---|
+| oscilação de \|a\| parado | 0,0003 g |
+| oscilação de \|a\| andando | **0,0656 g** (200× maior) |
+| cadência | 1,50 passos/s, desvio de 0,106 s |
+| comprimento do passo | 0,53–0,70 m |
+
+O `DetectorPassos` remove a gravidade por média móvel de ~0,8 s — não por
+roll/pitch, porque para a oscilação não importa convenção de eixo nenhuma — e
+detecta picos com limiar e tempo refratário.
+
+O PDR só é liberado depois de pelo menos três passos com intervalos coerentes,
+é vetado durante ZUPT e sua cadência expira após 2 s sem passos. Portanto, um
+esbarrão isolado não reutiliza a última velocidade de caminhada.
+
+A entrada no filtro **não é deslocamento**, é uma **medida de velocidade**:
+
+```
+velocidade = cadência (Hz) × comprimento do passo (m)
+```
+
+Assim ela reaproveita o caminho de correção já testado, e o R reflete a
+incerteza real: o erro perpendicular ao rumo vale `v·sen(σ_rumo)`, muito maior
+que o longitudinal quando σ_rumo é de 21°.
+
+**Resultado com o GPS cortado aos 120 s** (túnel, obstrução):
+
+| tempo sem GPS | 5 s | 20 s | 50 s |
+|---|---|---|---|
+| só CV | 4,1 m | 14,0 m | **33,2 m** |
+| com PDR | 1,1 m | 4,7 m | **10,1 m** |
+
+Com o GPS presente o PDR desvia um pouco mais dos fixes crus (0,36 → 0,85 m),
+o que é esperado: o CV sozinho suaviza demais, e o PDR devolve o movimento real.
+
+### O procedimento de partida (`CalibracaoInicial`)
+
+Quatro fases, com instruções na tela:
+
+1. **Satélites** — espera GNSS travar (≥6 satélites, HDOP ≤2,5, sustentado 3 s)
+2. **Parado** — 8 s imóvel: viés do giro e posição média; o viés passa a ser
+   efetivamente subtraído de `gz`
+3. **Reto** — andar 15 m em linha reta
+4. **Pronto**
+
+**A fase 3 não é opcional.** Sem magnetômetro o giroscópio mede variação de
+ângulo, nunca o ângulo absoluto — alguém precisa dizer uma vez "você está
+apontado para cá", e a única fonte é o deslocamento do GPS. Andar reto torna
+esse deslocamento inequívoco: em linha reta o rumo do deslocamento **é** o rumo
+do corpo, o que não vale numa curva.
+
+O mesmo trecho dá o comprimento do passo de graça — distância dividida por
+passos contados. Ele varia de 0,4 a 0,8 m entre pessoas, então chutar custa erro
+proporcional à distância.
+
+A retidão é medida em **janela deslizante**, não desde o início da fase: a
+primeira caminhada gravada fechou um circuito e nunca calibraria (retidão 0,35)
+se bastasse uma curva para condenar o trecho inteiro. Basta que os últimos
+metros tenham sido retos.
+
+### Convenções de sinal (`SINAL_ROLL`, `SINAL_GZ`)
+
+O firmware não segue a mesma regra de mão em todos os eixos, e a documentação
+não fecha com o que o hardware entrega. Os sinais vivem em duas constantes no
+topo de `filtro_kalman.py`, e `src/verificar_eixos.py` confere ambas contra o
+hardware.
+
+Um sinal trocado não é detalhe: no nivelamento, inclinar o sensor passa a
+injetar gravidade nos eixos horizontais **para o lado errado** — o dobro do erro
+de simplesmente ignorar a inclinação.
+
+### A precisão que realmente dá para ganhar
+
+`MediaParado` promedia os fixes enquanto o ZUPT indica repouso. A parcela
+aleatória do erro do GPS cai com √N — 30 fixes a reduzem ~5,5×. A parcela
+sistemática (ionosfera, multicaminho) **não cai**, e é por isso que o ganho
+satura perto de 1 m sem correção diferencial.
+
+O acelerômetro não ajuda aqui: parado, ele só acrescenta a deriva medida de
+1,26 m em 30 s. Ficar parado e promediar é estritamente melhor.
+
 ## 6. Resultados medidos
+
+### Com o sensor parado, IMU real + GPS sintético
+
+120 s de IMU gravado com o sensor imóvel (18,2 Hz), GPS sintético de 1 Hz com
+ruído gaussiano de 2,5 m:
+
+| | erro |
+|---|---|
+| GPS bruto (médio) | 3,05 m |
+| FiltroCV (médio) | **0,42 m** |
+| FiltroCV (pico) | 1,16 m |
+| melhoria | 86,3 % |
+| média de 101 fixes em repouso | 0,55 m |
+
+Para comparação, o `FiltroINS` que isso substituiu acumulava **113,8 m** de
+deslocamento fantasma nos mesmos 120 s parado.
+
+> ⚠️ Os 86,3 % são otimistas: o ruído sintético é gaussiano e independente,
+> enquanto o erro real do GPS é correlacionado no tempo. Em campo espere menos.
+
+### Caminhada real, 179 s
+
+`data/caminhada-20260806-174706.csv` — 2142 amostras a 12 Hz, 972 fixes, com
+paradas no início e no fim e retorno ao ponto de partida.
+
+| | resultado |
+|---|---|
+| comprimento somando fixes crus | 120,5 m |
+| comprimento somando saída do filtro | **99,7 m** |
+| fechamento (início vs fim, fixes crus) | 6,12 m |
+| fechamento (início vs fim, filtro) | 6,31 m |
+| erro de rumo, método novo | mediana **21,1°**, p90 **72,2°** |
+| erro de rumo, método anterior | mediana 29,9°, p90 **176,5°** |
+
+O ganho maior está na **cauda**: o p90 do rumo caiu de 176° para 72°. A mediana
+de 21° ainda não é boa — a pé, com este hardware, é o que há.
+
+> ⚠️ A referência usada para medir o erro de rumo é a própria direção de
+> deslocamento de base longa, calculada do mesmo GPS que alimenta a âncora.
+> A comparação é parcialmente circular e não substitui uma referência externa.
+
+### Fixes corrompidos: 5,9 % da caminhada
+
+Alguns fixes vinham **257 km fora**, com 17-18 satélites e HDOP 2,09 — ou seja,
+saudáveis por qualquer métrica de qualidade. O bloco de registradores **não é
+atualizado atomicamente**: lat/lon vêm de uma época transitória enquanto `sat`
+e `HDOP` ainda seguram os valores bons da anterior.
+
+**Consequência: não dá para validar um fix pelo `sat`/`HDOP` lidos junto com
+ele.** A validação tem que ser espacial. O portão de inovação do `FiltroCV` dá
+conta — rodando a caminhada inteira sem nenhum pré-filtro, ele rejeitou 45
+fixes e o maior afastamento foi de 24,5 m.
+
+### Simulação controlada
 
 Simulação controlada, 180 s, ruído de GPS de 3 m (`04_no_gps_real.py`):
 

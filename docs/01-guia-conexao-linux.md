@@ -167,6 +167,30 @@ pip install -r requirements.txt
 
 Isso instala `pyserial` e `minimalmodbus`.
 
+### Atalho: o comando `estacao-metereologica`
+
+Para não precisar lembrar de caminho, venv nem porta, instale o lançador uma
+única vez:
+
+```bash
+ln -sf ~/Documentos/projetos/estacao-metereologica/bin/estacao-metereologica ~/.local/bin/
+```
+
+A partir daí, de qualquer diretório:
+
+```bash
+estacao-metereologica
+```
+
+Ele descobre sozinho em qual porta e em qual baud rate o sensor está, abre o
+painel no navegador e grava o trajeto em `data/trajeto.csv`. Sem hardware por
+perto, use `estacao-metereologica --simular`. Qualquer opção do `painel.py`
+(`--porta`, `--hz`, `--csv`, …) é repassada adiante.
+
+Se nada responder, ele diz o motivo provável — sem porta USB, fora do grupo
+`dialout`, ou porta presente mas muda (aí é fiação: A/B trocados é o erro mais
+comum).
+
 ---
 
 ## Passo 6 — Encontre o sensor

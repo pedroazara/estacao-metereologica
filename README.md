@@ -6,6 +6,18 @@ Estação portátil para coleta de temperatura, umidade, pressão e posição.
 (GPS/BeiDou + IMU de 6 eixos), lido por Modbus RTU sobre um adaptador
 RS485-USB.
 
+## Duas áreas
+
+O projeto tem duas implementações independentes do mesmo sistema:
+
+| Área | Onde | O que é |
+|---|---|---|
+| **Python / PC** | raiz (`src/`, `docs/`, `tests/`) | bancada de estudo e validação: sensor por adaptador RS485-USB, painel web, filtro de Kalman |
+| **ESP32** | [`firmware/`](firmware/) | versão embarcada de campo: mesmo sensor lido direto no barramento RS485 |
+
+Este README cobre a área Python. A do ESP32 tem o seu próprio:
+[firmware/README.md](firmware/README.md).
+
 ---
 
 ## Comece por aqui
@@ -92,6 +104,13 @@ estacao-metereologica/
 │   ├── varredura_registradores.py    (investigação) busca no mapa de registradores
 │   ├── log_bruto.py                  (investigação) valores crus e codificação
 │   └── kalman/                       lições numeradas, do zero ao filtro final
+├── firmware/                         ← área do ESP32 (Arduino IDE)
+│   ├── README.md                     fiação, níveis lógicos e roteiro
+│   ├── teste_sensor_ambiental/       diagnóstico do sensor RS485 de T/UR/pressão
+│   └── estacao_esp32/
+│       ├── estacao_esp32.ino         sketch: leitura contínua no monitor serial
+│       ├── wtgahrs3.h                driver Modbus RTU portado do Python
+│       └── wtgahrs3.cpp
 ├── data/                             CSVs coletados
 └── requirements.txt
 ```
