@@ -142,6 +142,52 @@ mosquitto_sub -h localhost -t 'estacao/#' -v
 Regra de diagnóstico: se aparece aqui, o problema está no servidor Python; se
 não aparece, está no ESP32 ou na rede.
 
+### 5.1 Monitor de terminal
+
+`src/monitor_terminal.py` é a tela de operação da base por SSH — a resposta
+rápida para *"está chegando dado, e o servidor está processando?"*. Na base ele
+está instalado como um comando só:
+
+```bash
+estacao
+```
+
+O atalho é `bin/estacao`, ligado em `/usr/local/bin/estacao` por symlink — o
+script resolve o próprio caminho e acha a raiz do projeto, então funciona de
+qualquer diretório e continua válido se o repositório for movido. Não confundir
+com `bin/estacao-metereologica`, que abre o painel web do sensor ligado por USB;
+este aqui não fala com sensor nenhum, só olha o que chega pela rede. Instalar
+noutra máquina:
+
+```bash
+sudo ln -sf "$PWD/bin/estacao" /usr/local/bin/estacao
+```
+
+Sem o atalho, o caminho longo é:
+
+```bash
+~/estacao/.venv/bin/python3 ~/estacao/src/monitor_terminal.py
+```
+
+Ele aplica a regra de diagnóstico acima **na mesma tela**, e é por isso que lê
+de duas fontes de propósito: assina o broker por conta própria (painel
+`BARRAMENTO`, o que o MQTT está entregando) e consulta o `/dados` do servidor
+(painéis `GPS`/`IMU`, o que o Kalman fez com aquilo). Barramento andando com o
+resto congelado acusa o servidor Python; barramento parado acusa o ESP32 ou a
+rede. Com uma fonte só isso exigiria um segundo terminal.
+
+Depende apenas de `paho-mqtt` e da stdlib (`curses`) — nada de framework de TUI,
+pela mesma regra de painel leve. O layout se adapta: abaixo de 30 linhas ele
+comprime as seções para não sacrificar o feed do barramento, que é o ponto da
+tela. Use `--ascii` em terminal sem UTF-8, e `--broker`/`--servidor` para
+monitorar a base a partir do notebook.
+
+> **Confira o fuso antes de confiar no carimbo.** A imagem do Raspberry Pi OS
+> pode nascer em `Europe/London`; como o `servidor_telemetria.py` grava com
+> `datetime.now()` (hora local, sem offset), o CSV inteiro sai com hora errada e
+> nada no arquivo denuncia isso. Corrija com
+> `sudo timedatectl set-timezone America/Sao_Paulo` e **reinicie o serviço**.
+
 ### 6. Adaptador RS485-USB no Pi
 
 A base normalmente não lê sensor — quem lê é o ESP32. Mas vale validar que o

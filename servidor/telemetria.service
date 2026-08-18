@@ -1,0 +1,45 @@
+; Unit systemd do servidor de telemetria, para a base (Raspberry Pi).
+;
+; Instale a partir do repositorio clonado em /home/pedro/estacao:
+;
+;     sudo cp servidor/telemetria.service /etc/systemd/system/telemetria.service
+;     sudo systemctl daemon-reload
+;     sudo systemctl enable --now telemetria
+;
+; POR QUE ESTE ARQUIVO EXISTE: sem ele a base e um computador com um script,
+; que morre quando a sessao SSH fecha e nao volta depois de uma queda de luz.
+; Com ele, a estacao liga na tomada e funciona - ver docs/05-base-raspberry-pi.md.
+
+[Unit]
+Description=Servidor de telemetria da estacao meteorologica
+Documentation=file:/home/pedro/estacao/docs/04-telemetria.md
+; O broker precisa estar de pe antes: o servidor tenta conectar uma vez no
+; arranque e ENCERRA se o broker recusar (ver main() em servidor_telemetria.py).
+; Com Restart=always isso nao trava a base - ele volta e tenta de novo - mas
+; ordenar aqui evita um ciclo de reinicios a cada boot.
+After=network-online.target mosquitto.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=pedro
+Group=pedro
+WorkingDirectory=/home/pedro/estacao/src
+; -u desliga o buffer do Python: sem isso a saida so aparece no journal em
+; blocos de 8 KB, e o `journalctl -f` fica inutil para diagnostico ao vivo.
+ExecStart=/home/pedro/estacao/.venv/bin/python3 -u /home/pedro/estacao/src/servidor_telemetria.py
+
+; Instrumento nao pede para ser reiniciado: se o processo morrer, volta.
+Restart=always
+RestartSec=5
+
+; O servidor imprime uma linha de status a cada mensagem recebida (~1/s). Isso
+; e util no terminal e e desgaste de cartao SD num servico 24/7: ~7 MB/dia so
+; de log. O limite abaixo guarda as rajadas iniciais - que sao as que importam
+; para diagnostico - e descarta o resto do regime permanente.
+LogRateLimitIntervalSec=30
+LogRateLimitBurst=20
+
+[Install]
+WantedBy=multi-user.target

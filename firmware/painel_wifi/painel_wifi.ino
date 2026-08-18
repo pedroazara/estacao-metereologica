@@ -23,7 +23,7 @@
  * rede Wi-Fi" no rodape), sem precisar regravar o firmware.
  *
  * TELEMETRIA MQTT: alem do painel local, o ESP32 publica num broker Mosquitto
- * rodando no PC, onde src/servidor_telemetria.py roda o filtro de Kalman e
+ * rodando na base (Raspberry Pi), onde src/servidor_telemetria.py roda o Kalman e
  * grava CSV. Topicos separados por taxa:
  *
  *     estacao/<dev>/pos      1 Hz     posicao GPS
@@ -31,7 +31,7 @@
  *     estacao/<dev>/amb      0.5 Hz   temperatura e umidade
  *     estacao/<dev>/status   retained + LWT
  *
- * Ajuste MQTT_BROKER para o IP do PC. Deixe "" para desligar o envio e usar
+ * Ajuste MQTT_HOST para o nome mDNS da base. Deixe "" para desligar o envio e usar
  * so o painel local. Precisa da biblioteca PubSubClient (Gerenciador de
  * Bibliotecas da IDE) — a unica dependencia externa do firmware.
  *
@@ -99,10 +99,17 @@ static const uint8_t  SLOT_GPS_A    = 9;
 static const uint8_t  SLOT_GPS_B    = 19;
 
 // -- MQTT --------------------------------------------------------------------
-// IP do PC que roda o Mosquitto e o src/servidor_telemetria.py. Confira com
-// `hostname -I` no PC — se o roteador der outro IP por DHCP, atualize aqui.
-// Deixe vazio ("") para desligar o envio MQTT e usar so o painel local.
-static const char *MQTT_BROKER = "192.168.0.111";
+// Nome mDNS da BASE: o Raspberry Pi que roda o Mosquitto e o
+// src/servidor_telemetria.py. Sem o sufixo ".local" — o MDNS.queryHost recebe
+// so o nome do host. Deixe vazio ("") para desligar o envio MQTT e usar so o
+// painel local.
+//
+// POR QUE NOME E NAO IP: a base pega endereco por DHCP. Um IP fixo gravado no
+// firmware quebra em SILENCIO quando o roteador entrega outro — o ESP32 publica
+// no vazio, o painel local continua mostrando os sensores normalmente, e a
+// falha so aparece quando alguem for procurar o dado que nao chegou. Resolvendo
+// o nome a cada tentativa de conexao, mudanca de IP se conserta sozinha.
+static const char *MQTT_HOST = "raspberrypi";
 static const uint16_t MQTT_PORTA = 1883;
 static const char *DEVICE_ID = "esp32-01";
 
@@ -216,8 +223,13 @@ void lerImu() {
 // MQTT
 // ---------------------------------------------------------------------------
 bool mqttLigado() {
-  return MQTT_BROKER[0] != '\0';
+  return MQTT_HOST[0] != '\0';
 }
+
+// Endereco da base, resolvido por mDNS e guardado entre tentativas para nao
+// repetir a consulta a cada publicacao. Volta a zero sempre que uma conexao
+// falha, e e isso que faz o ESP32 redescobrir a base quando ela troca de IP.
+IPAddress ipBase;
 
 String topico(const char *tipo) {
   return String("estacao/") + DEVICE_ID + "/" + tipo;
@@ -231,6 +243,24 @@ String topico(const char *tipo) {
 bool conectarMqtt() {
   if (!mqttLigado() || WiFi.status() != WL_CONNECTED) return false;
 
+  // A consulta mDNS bloqueia ate o timeout abaixo. Isso so acontece enquanto o
+  // MQTT esta desconectado, no maximo uma vez a cada 5 s (ver o loop()), e o
+  // proprio mqtt.connect() ja bloqueia de forma parecida — nao e uma classe
+  // nova de pausa. Ainda assim o timeout e curto de proposito: a prioridade do
+  // firmware e nao perder amostra, e a rede vem depois disso.
+  if (ipBase == INADDR_NONE) {
+    ipBase = MDNS.queryHost(MQTT_HOST, 1500);
+    if (ipBase == INADDR_NONE) {
+      Serial.print(F("mDNS nao resolveu "));
+      Serial.print(MQTT_HOST);
+      Serial.println(F(".local — a base esta ligada e na mesma rede?"));
+      return false;
+    }
+    Serial.print(F("base encontrada em "));
+    Serial.println(ipBase);
+    mqtt.setServer(ipBase, MQTT_PORTA);
+  }
+
   String topicoStatus = topico("status");
   bool ok = mqtt.connect(DEVICE_ID,
                          nullptr, nullptr,                 // sem usuario/senha
@@ -239,6 +269,10 @@ bool conectarMqtt() {
   if (ok) {
     mqtt.publish(topicoStatus.c_str(), "{\"online\":true}", true);
     Serial.println(F("mqtt conectado"));
+  } else {
+    // Esquece o endereco: se a base mudou de IP, insistir no antigo nunca
+    // conectaria. A proxima tentativa refaz o mDNS.
+    ipBase = INADDR_NONE;
   }
   return ok;
 }
@@ -802,16 +836,16 @@ void iniciarPainel() {
   lerGps();
 
   if (mqttLigado()) {
-    mqtt.setServer(MQTT_BROKER, MQTT_PORTA);
+    // O setServer fica no conectarMqtt(), depois do mDNS resolver o endereco.
     mqtt.setBufferSize(MQTT_BUFFER);   // o padrao de 256 B nao cabe o lote de IMU
     mqtt.setKeepAlive(30);
-    Serial.print(F("broker MQTT: "));
-    Serial.print(MQTT_BROKER);
-    Serial.print(':');
+    Serial.print(F("base MQTT: "));
+    Serial.print(MQTT_HOST);
+    Serial.print(F(".local:"));
     Serial.println(MQTT_PORTA);
-    conectarMqtt();
+    conectarMqtt();   // se a base estiver fora, o loop() tenta de novo a cada 5 s
   } else {
-    Serial.println(F("MQTT desligado (MQTT_BROKER vazio) - so painel local"));
+    Serial.println(F("MQTT desligado (MQTT_HOST vazio) - so painel local"));
   }
 
   servidor.on("/", rotaRaiz);

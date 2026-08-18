@@ -286,7 +286,12 @@ def ao_receber(cliente, dados, msg):
 # ---------------------------------------------------------------------------
 # CSV
 # ---------------------------------------------------------------------------
-CABECALHO = ["hora", "lat", "lon", "alt", "vel", "sat", "hdop",
+# "dev" e a PRIMEIRA coluna de proposito: e a procedencia do dado, e sem ela um
+# CSV gerado pelo src/simular_estacao.py (dev "esp32-sim") fica indistinguivel
+# de uma coleta real na mesma pasta, com o mesmo padrao de nome. Meses depois
+# ninguem separa os dois - e um instrumento de pesquisa nao pode ter dado de
+# origem duvidosa no acervo.
+CABECALHO = ["dev", "hora", "lat", "lon", "alt", "vel", "sat", "hdop",
              "kf_lat", "kf_lon", "kf_vel", "kf_sigma", "kf_parado",
              "temp", "umid", "ax", "ay", "az", "roll", "pitch", "yaw", "passos"]
 
@@ -307,6 +312,7 @@ def gravar_csv():
         return
     with _lock:
         linha = [
+            estado["dev"] or "?",
             datetime.now().isoformat(timespec="milliseconds"),
             estado["lat"], estado["lon"], estado["alt"], estado["vel"],
             estado["sat"], estado["hdop"],

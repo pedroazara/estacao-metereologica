@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# Abre o monitor de terminal da BASE (o Raspberry Pi que recebe a telemetria).
+#
+#   estacao                      broker e servidor locais
+#   estacao --ascii              terminal sem UTF-8
+#   estacao --broker 192.168.0.100 --servidor 192.168.0.100
+#                                monitora a base a partir de outra maquina
+#
+# Qualquer opcao do monitor_terminal.py e repassada adiante.
+#
+# NAO CONFUNDA com `estacao-metereologica`, que abre o painel web do sensor
+# ligado por USB nesta maquina. Este aqui nao fala com sensor nenhum: ele olha
+# o que chega pela rede. Ver docs/05-base-raspberry-pi.md.
+
+set -euo pipefail
+
+# Resolve o proprio caminho seguindo symlinks, para achar a raiz do projeto
+# mesmo quando chamado por um link em /usr/local/bin.
+ORIGEM="${BASH_SOURCE[0]}"
+while [ -L "$ORIGEM" ]; do
+    DIR_LINK="$(cd -P "$(dirname "$ORIGEM")" && pwd)"
+    ORIGEM="$(readlink "$ORIGEM")"
+    [[ $ORIGEM != /* ]] && ORIGEM="$DIR_LINK/$ORIGEM"
+done
+RAIZ="$(cd -P "$(dirname "$ORIGEM")/.." && pwd)"
+
+PY="$RAIZ/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+    echo "erro: ambiente virtual nao encontrado em $RAIZ/.venv" >&2
+    echo "      crie com:  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+    exit 1
+fi
+
+# Aviso util antes de abrir a tela cheia: se o servico nem esta no ar, o monitor
+# abriria mostrando tudo vazio e a causa nao apareceria em lugar nenhum. So
+# avisa - nao impede, porque o monitor tambem serve para olhar o barramento MQTT
+# cru quando o servidor Python e justamente o suspeito.
+if command -v systemctl >/dev/null 2>&1; then
+    if ! systemctl is-active --quiet telemetria 2>/dev/null; then
+        echo "aviso: o servico 'telemetria' nao esta ativo nesta maquina." >&2
+        echo "       os paineis GPS/IMU vao ficar vazios ate ele subir:" >&2
+        echo "       sudo systemctl start telemetria" >&2
+        echo >&2
+        sleep 2
+    fi
+fi
+
+cd "$RAIZ/src"
+exec "$PY" monitor_terminal.py "$@"
