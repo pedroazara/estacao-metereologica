@@ -242,9 +242,32 @@ ao lado são compilados junto automaticamente.
 
 - Placa: **ESP32 Dev Module** (pacote *esp32* da Espressif, em *Gerenciador de Placas*)
 - Monitor serial: **115200 baud**
+- Para o `painel_wifi`: **Partition Scheme → "Huge APP (3MB No OTA/1MB SPIFFS)"**
 
-Nenhuma biblioteca externa é necessária — o Modbus RTU (função 0x03, CRC16) está
-implementado no próprio driver.
+O Modbus RTU (função 0x03, CRC16) está implementado no próprio driver. O
+`painel_wifi` precisa de uma biblioteca externa: **PubSubClient**, pelo
+Gerenciador de Bibliotecas. O BLE já vem no core da Espressif.
+
+### O esquema de partição não é opcional no `painel_wifi`
+
+Medido com `arduino-cli` no core esp32 3.3.11:
+
+| | flash | do limite padrão |
+|---|---|---|
+| sem BLE | 999.808 B | 76% |
+| **com BLE** | **1.751.199 B** | **134% — não cabe** |
+
+A pilha BLE custa ~730 KB. Com a partição padrão (1.310.720 B para a aplicação)
+o upload **falha**; com `huge_app` (3.145.728 B) o sketch fica em 55%. A RAM não
+é problema: 20%, com 261 KB livres, mesmo com Wi-Fi e BLE no ar juntos.
+
+O custo de `huge_app` é ficar sem partição de OTA — que este projeto não usa.
+
+Pela linha de comando:
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app firmware/painel_wifi
+```
 
 ## Estado atual
 

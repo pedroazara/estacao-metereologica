@@ -59,6 +59,7 @@
 
 #include "wtgahrs3.h"
 #include "ambiente_rs485.h"
+#include "ble_estacao.h"
 
 // ---------------------------------------------------------------------------
 // Configuracao
@@ -174,6 +175,99 @@ uint32_t seqPos = 0, seqImu = 0, seqAmb = 0;
 uint32_t publicadas = 0, falhasPublicacao = 0;
 
 // ---------------------------------------------------------------------------
+// Configuracao ajustavel pelo app (caracteristica BLE `cfg`)
+// ---------------------------------------------------------------------------
+// Persiste em Preferences: um instrumento que esquece o ajuste a cada queda de
+// energia obriga a reconfigurar em campo, que e onde menos se quer mexer nisso.
+struct Config {
+  bool     usarGps  = true;
+  bool     usarImu  = true;
+  bool     usarAmb  = true;
+  bool     usarMqtt = true;
+  uint16_t pubMs    = INTERVALO_PUBLICACAO_MS;
+  uint8_t  lote     = IMU_LOTE;
+};
+Config cfg;
+Preferences prefsCfg;
+
+void carregarConfig() {
+  prefsCfg.begin("cfg", false);
+  cfg.usarGps  = prefsCfg.getBool("gps", true);
+  cfg.usarImu  = prefsCfg.getBool("imu", true);
+  cfg.usarAmb  = prefsCfg.getBool("amb", true);
+  cfg.usarMqtt = prefsCfg.getBool("mqtt", true);
+  cfg.pubMs    = prefsCfg.getUShort("pubms", INTERVALO_PUBLICACAO_MS);
+  cfg.lote     = prefsCfg.getUChar("lote", IMU_LOTE);
+  // Limites de sanidade: o app e a fonte, mas um valor absurdo gravado por
+  // engano deixaria a estacao inutil ate alguem regravar o firmware.
+  if (cfg.pubMs < 200)   cfg.pubMs = 200;
+  if (cfg.pubMs > 60000) cfg.pubMs = 60000;
+  if (cfg.lote < 1)         cfg.lote = 1;
+  if (cfg.lote > IMU_LOTE)  cfg.lote = IMU_LOTE;   // o array tem esse tamanho
+}
+
+void salvarConfig() {
+  prefsCfg.putBool("gps", cfg.usarGps);
+  prefsCfg.putBool("imu", cfg.usarImu);
+  prefsCfg.putBool("amb", cfg.usarAmb);
+  prefsCfg.putBool("mqtt", cfg.usarMqtt);
+  prefsCfg.putUShort("pubms", cfg.pubMs);
+  prefsCfg.putUChar("lote", cfg.lote);
+}
+
+String configJson() {
+  char j[224];
+  snprintf(j, sizeof(j),
+           "{\"dev\":\"%s\",\"gps\":%s,\"imu\":%s,\"amb\":%s,\"mqtt\":%s,"
+           "\"pubms\":%u,\"lote\":%u,\"lotemax\":%u}",
+           DEVICE_ID,
+           cfg.usarGps ? "true" : "false", cfg.usarImu ? "true" : "false",
+           cfg.usarAmb ? "true" : "false", cfg.usarMqtt ? "true" : "false",
+           (unsigned)cfg.pubMs, (unsigned)cfg.lote, (unsigned)IMU_LOTE);
+  return String(j);
+}
+
+// Extratores minimos de JSON. ArduinoJson seria uma segunda dependencia
+// externa para um schema fixo de seis campos - o mesmo criterio que o resto do
+// firmware ja usa ao montar JSON na mao.
+bool extrairBool(const String &j, const char *chave, bool atual) {
+  int i = j.indexOf(String("\"") + chave + "\"");
+  if (i < 0) return atual;
+  int c = j.indexOf(':', i);
+  if (c < 0) return atual;
+  while (c + 1 < (int)j.length() && j[c + 1] == ' ') c++;
+  return j.startsWith("true", c + 1);
+}
+
+long extrairInt(const String &j, const char *chave, long atual) {
+  int i = j.indexOf(String("\"") + chave + "\"");
+  if (i < 0) return atual;
+  int c = j.indexOf(':', i);
+  if (c < 0) return atual;
+  return j.substring(c + 1).toInt();
+}
+
+/** Aplica o que o app escreveu. Roda no loop(), nunca na task do BLE. */
+void aplicarConfigPendente() {
+  String j = BleEstacao::configPendente();
+  if (j.length() == 0) return;
+
+  cfg.usarGps  = extrairBool(j, "gps", cfg.usarGps);
+  cfg.usarImu  = extrairBool(j, "imu", cfg.usarImu);
+  cfg.usarAmb  = extrairBool(j, "amb", cfg.usarAmb);
+  cfg.usarMqtt = extrairBool(j, "mqtt", cfg.usarMqtt);
+  cfg.pubMs    = (uint16_t)constrain(extrairInt(j, "pubms", cfg.pubMs), 200, 60000);
+  cfg.lote     = (uint8_t)constrain(extrairInt(j, "lote", cfg.lote), 1, IMU_LOTE);
+
+  salvarConfig();
+  // Devolve o estado REAL depois dos limites, nao o que foi pedido: o app tem
+  // de mostrar o que a estacao realmente ficou, nao ecoar o proprio pedido.
+  BleEstacao::publicarCfg(configJson());
+  Serial.print(F("cfg aplicada: "));
+  Serial.println(configJson());
+}
+
+// ---------------------------------------------------------------------------
 // Leitura dos sensores
 // ---------------------------------------------------------------------------
 void lerAmbiente() {
@@ -216,14 +310,16 @@ void lerImu() {
   lidasImu++;
   if (!imuValida) { falhasImu++; return; }
   if (loteN == 0) loteInicioUs = t0;
-  if (loteN < IMU_LOTE) loteImu[loteN++] = imu;
+  // cfg.lote e limitado a IMU_LOTE no carregarConfig/aplicarConfigPendente, que
+  // e o tamanho real do array - o limite aqui nao pode vir so da configuracao.
+  if (loteN < cfg.lote) loteImu[loteN++] = imu;
 }
 
 // ---------------------------------------------------------------------------
 // MQTT
 // ---------------------------------------------------------------------------
 bool mqttLigado() {
-  return MQTT_HOST[0] != '\0';
+  return MQTT_HOST[0] != '\0' && cfg.usarMqtt;
 }
 
 // Endereco da base, resolvido por mDNS e guardado entre tentativas para nao
@@ -277,17 +373,23 @@ bool conectarMqtt() {
   return ok;
 }
 
+// O BLE e notificado ANTES do teste de MQTT em todas as funcoes abaixo. Nao e
+// detalhe de ordem: em campo o cenario normal e nao haver Wi-Fi nenhum, e era
+// o `return` por MQTT desconectado que deixaria o app do celular sem dado
+// exatamente quando ele e a unica janela para a estacao.
 void publicarAmbiente() {
-  if (!mqtt.connected() || !leituraValida) return;
+  if (!leituraValida) return;
   char json[96];
   snprintf(json, sizeof(json), "{\"seq\":%lu,\"temp\":%.1f,\"umid\":%.1f}",
            (unsigned long)seqAmb++, temperatura, umidade);
+  BleEstacao::publicarAmb(json);
+  if (!mqtt.connected()) return;
   if (mqtt.publish(topico("amb").c_str(), json)) publicadas++;
   else                                           falhasPublicacao++;
 }
 
 void publicarPosicao() {
-  if (!mqtt.connected() || !posValida) return;
+  if (!posValida) return;
   char json[220];
   snprintf(json, sizeof(json),
            "{\"seq\":%lu,\"fix\":%s,\"lat\":%.7f,\"lon\":%.7f,\"alt\":%.1f,"
@@ -295,6 +397,8 @@ void publicarPosicao() {
            (unsigned long)seqPos++, pos.temFix() ? "true" : "false",
            pos.latitude, pos.longitude, pos.altitudeGpsM,
            pos.velocidadeKmh, pos.satelites, pos.hdop, pos.rumoGpsDeg);
+  BleEstacao::publicarPos(json);
+  if (!mqtt.connected()) return;
   if (mqtt.publish(topico("pos").c_str(), json)) publicadas++;
   else                                           falhasPublicacao++;
 }
@@ -305,31 +409,81 @@ void publicarPosicao() {
  * nominal mente, porque cada transacao Modbus tem jitter proprio.
  */
 void publicarImu() {
-  if (!mqtt.connected() || loteN == 0) return;
+  if (loteN == 0) return;
 
   uint32_t agoraUs = (uint32_t)esp_timer_get_time();
   float dt = ((agoraUs - loteInicioUs) / 1e6f) / (float)loteN;
   if (dt <= 0.0f || dt >= 1.0f) { loteN = 0; return; }
 
-  // Monta o array manualmente: ArduinoJson seria outra dependencia, e o
-  // formato aqui e fixo.
-  String json = "{\"seq\":" + String(seqImu++) + ",\"dt\":" + String(dt, 4) + ",\"m\":[";
-  for (uint8_t i = 0; i < loteN; i++) {
-    char amostra[150];
-    snprintf(amostra, sizeof(amostra),
-             "%s{\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
-             "\"gx\":%.2f,\"gy\":%.2f,\"gz\":%.2f,"
-             "\"roll\":%.2f,\"pitch\":%.2f,\"yaw\":%.2f}",
-             i ? "," : "",
-             loteImu[i].accX, loteImu[i].accY, loteImu[i].accZ,
-             loteImu[i].gyroX, loteImu[i].gyroY, loteImu[i].gyroZ,
-             loteImu[i].roll, loteImu[i].pitch, loteImu[i].yaw);
-    json += amostra;
-  }
-  json += "]}";
+  // O seq avanca aqui, fora dos dois ramos: e o contador do LOTE, nao da
+  // entrega. Se so incrementasse no ramo do MQTT, uma sessao de campo sem rede
+  // mandaria todos os pedacos BLE com seq 0 e o celular nao teria como ordenar
+  // nem detectar furo. Avancando sempre, um salto no seq denuncia exatamente o
+  // que nao foi entregue - que e para o que ele serve.
+  const uint32_t seqLote = seqImu++;
 
-  if (mqtt.publish(topico("imu").c_str(), json.c_str())) publicadas++;
-  else                                                   falhasPublicacao++;
+  // --- BLE: lote CRU, fatiado ----------------------------------------------
+  // Enquanto o ESP32 nao tem cartao SD, o celular e a custodia da coleta - a
+  // unica copia do cru ate chegar na base. Por isso vai o dado inteiro e nao um
+  // resumo: media nao se reprocessa (ver ble_estacao.h e docs/04-telemetria.md).
+  //
+  // Cada pedaco e um envelope completo e independente, com o mesmo `seq` do
+  // lote mais `p`/`np`. O app grava cada um direto na fila; se um se perder, o
+  // furo fica visivel no par (seq, p) sem estragar os outros.
+  if (BleEstacao::conectado()) {
+    const uint8_t POR_PEDACO = 3;   // 3 x ~120 B + cabecalho ~= 400 B < 512
+    const uint8_t pedacos = (loteN + POR_PEDACO - 1) / POR_PEDACO;
+    for (uint8_t p = 0; p < pedacos; p++) {
+      String j = "{\"seq\":" + String(seqLote) + ",\"dt\":" + String(dt, 4)
+               + ",\"p\":" + String(p) + ",\"np\":" + String(pedacos) + ",\"m\":[";
+      for (uint8_t k = 0; k < POR_PEDACO; k++) {
+        uint8_t i = p * POR_PEDACO + k;
+        if (i >= loteN) break;
+        char amostra[150];
+        snprintf(amostra, sizeof(amostra),
+                 "%s{\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
+                 "\"gx\":%.2f,\"gy\":%.2f,\"gz\":%.2f,"
+                 "\"roll\":%.2f,\"pitch\":%.2f,\"yaw\":%.2f}",
+                 k ? "," : "",
+                 loteImu[i].accX, loteImu[i].accY, loteImu[i].accZ,
+                 loteImu[i].gyroX, loteImu[i].gyroY, loteImu[i].gyroZ,
+                 loteImu[i].roll, loteImu[i].pitch, loteImu[i].yaw);
+        j += amostra;
+      }
+      j += "]}";
+      BleEstacao::publicarImu(j);
+      // A fila de transmissao do Bluedroid e curta: quatro notificacoes
+      // seguidas sem respiro sao descartadas em silencio, e o sintoma seria
+      // "o app so recebe o primeiro pedaco".
+      delay(12);
+    }
+  }
+
+  // --- MQTT: lote cru ------------------------------------------------------
+  if (mqtt.connected()) {
+    // Monta o array manualmente: ArduinoJson seria outra dependencia, e o
+    // formato aqui e fixo.
+    String json = "{\"seq\":" + String(seqLote) + ",\"dt\":" + String(dt, 4) + ",\"m\":[";
+    for (uint8_t i = 0; i < loteN; i++) {
+      char amostra[150];
+      snprintf(amostra, sizeof(amostra),
+               "%s{\"ax\":%.3f,\"ay\":%.3f,\"az\":%.3f,"
+               "\"gx\":%.2f,\"gy\":%.2f,\"gz\":%.2f,"
+               "\"roll\":%.2f,\"pitch\":%.2f,\"yaw\":%.2f}",
+               i ? "," : "",
+               loteImu[i].accX, loteImu[i].accY, loteImu[i].accZ,
+               loteImu[i].gyroX, loteImu[i].gyroY, loteImu[i].gyroZ,
+               loteImu[i].roll, loteImu[i].pitch, loteImu[i].yaw);
+      json += amostra;
+    }
+    json += "]}";
+
+    if (mqtt.publish(topico("imu").c_str(), json.c_str())) publicadas++;
+    else                                                   falhasPublicacao++;
+  }
+
+  // Fora do if do MQTT: sem isto, uma sessao sem rede encheria o lote uma vez
+  // e congelaria nele para sempre, porque lerImu() so acumula ate IMU_LOTE.
   loteN = 0;
 }
 
@@ -864,6 +1018,15 @@ void setup() {
   Serial.println();
   Serial.println(F("Estacao Meteorologica - painel Wi-Fi"));
 
+  // BLE sobe ANTES do Wi-Fi, e de proposito fora dos dois ramos abaixo: o
+  // cenario do app de campo e justamente nao haver rede. Se o BLE dependesse do
+  // Wi-Fi ter conectado, uma estacao longe do roteador cairia no portal de
+  // configuracao e ficaria invisivel para o celular - que e quando o app mais
+  // faz falta.
+  carregarConfig();          // antes do BLE: o app le a cfg assim que conecta
+  BleEstacao::iniciar(DEVICE_ID);
+  BleEstacao::publicarCfg(configJson());
+
   prefs.begin("wifi", false);
   String ssidSalvo  = prefs.getString("ssid", "");
   String senhaSalva = prefs.getString("senha", "");
@@ -883,6 +1046,11 @@ void setup() {
 }
 
 void loop() {
+  // Antes do desvio do modo de configuracao: o anuncio BLE tem de voltar
+  // mesmo com a estacao sem Wi-Fi, que e quando o app do celular importa.
+  BleEstacao::manter();
+  aplicarConfigPendente();
+
   if (modoConfig) {
     dns.processNextRequest();
     servidor.handleClient();
@@ -910,11 +1078,15 @@ void loop() {
   static uint8_t  slot = 0;
   if (millis() >= proximoSlot) {
     proximoSlot = millis() + SLOT_MS;
+    // Sensor desligado apenas cede o slot; o ciclo nao e reorganizado. Dar os
+    // slots livres do GPS para o IMU aumentaria a taxa dele, e ai o `dt` do
+    // lote mudaria junto com a configuracao - efeito colateral escondido num
+    // botao que so dizia "desligar GPS".
     switch (slot) {
-      case SLOT_AMBIENTE: lerAmbiente(); break;
+      case SLOT_AMBIENTE: if (cfg.usarAmb) lerAmbiente(); break;
       case SLOT_GPS_A:
-      case SLOT_GPS_B:    lerGps();      break;
-      default:            lerImu();      break;
+      case SLOT_GPS_B:    if (cfg.usarGps) lerGps();      break;
+      default:            if (cfg.usarImu) lerImu();      break;
     }
     slot = (slot + 1) % SLOTS_CICLO;
   }
@@ -922,7 +1094,26 @@ void loop() {
   // Publicacao e relato, uma vez por segundo.
   static uint32_t proximaPublicacao = 0;
   if (millis() >= proximaPublicacao) {
-    proximaPublicacao = millis() + INTERVALO_PUBLICACAO_MS;
+    proximaPublicacao = millis() + cfg.pubMs;
+
+    // Status vai primeiro: e a caracteristica que responde "a estacao esta
+    // viva e os sensores respondem?", e ela precisa chegar mesmo quando as
+    // outras nao tem o que publicar - GPS sem fix, ambiente sem leitura.
+    if (BleEstacao::conectado()) {
+      char st[176];
+      snprintf(st, sizeof(st),
+               "{\"dev\":\"%s\",\"up\":%lu,\"wifi\":%s,\"mqtt\":%s,"
+               "\"amb\":%s,\"gps\":%s,\"fix\":%s,\"sat\":%u}",
+               DEVICE_ID, (unsigned long)(millis() / 1000),
+               WiFi.status() == WL_CONNECTED ? "true" : "false",
+               mqtt.connected() ? "true" : "false",
+               leituraValida ? "true" : "false",
+               posValida ? "true" : "false",
+               (posValida && pos.temFix()) ? "true" : "false",
+               posValida ? pos.satelites : 0);
+      BleEstacao::publicarStatus(st);
+    }
+
     publicarPosicao();
     publicarImu();
     publicarAmbiente();
