@@ -14,6 +14,7 @@ BLECharacteristic *carPos     = nullptr;
 BLECharacteristic *carAmb     = nullptr;
 BLECharacteristic *carImu     = nullptr;
 BLECharacteristic *carCfg     = nullptr;
+BLECharacteristic *carLoc     = nullptr;
 
 volatile bool clienteConectado = false;
 volatile bool precisaReanunciar = false;
@@ -22,6 +23,8 @@ volatile bool precisaReanunciar = false;
 // protege a troca: sao tasks diferentes, possivelmente em nucleos diferentes.
 portMUX_TYPE muxCfg = portMUX_INITIALIZER_UNLOCKED;
 String cfgRecebida;
+portMUX_TYPE muxLoc = portMUX_INITIALIZER_UNLOCKED;
+String locRecebida;
 
 // Teto do Bluedroid. O cliente ainda precisa PEDIR (ver o comentario no .h);
 // isto so garante que o pedido nao seja recusado por limite nosso. Com 517
@@ -58,6 +61,18 @@ class CallbacksCfg : public BLECharacteristicCallbacks {
 };
 
 CallbacksCfg callbacksCfg;
+
+class CallbacksLoc : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *c) override {
+    String v = c->getValue();
+    if (v.length() == 0) return;
+    portENTER_CRITICAL(&muxLoc);
+    locRecebida = v;
+    portEXIT_CRITICAL(&muxLoc);
+  }
+};
+
+CallbacksLoc callbacksLoc;
 
 BLECharacteristic *criar(BLEService *servico, const char *uuid) {
   BLECharacteristic *c = servico->createCharacteristic(
@@ -100,6 +115,11 @@ void iniciar(const char *nomeAnunciado) {
   carCfg->addDescriptor(new BLE2902());
   carCfg->setCallbacks(&callbacksCfg);
 
+  // Localizacao do telefone: write puro (sem notify/read - o app so escreve).
+  carLoc = servico->createCharacteristic(
+      UUID_LOC, BLECharacteristic::PROPERTY_WRITE);
+  carLoc->setCallbacks(&callbacksLoc);
+
   servico->start();
 
   BLEAdvertising *anuncio = BLEDevice::getAdvertising();
@@ -130,6 +150,15 @@ String configPendente() {
   v = cfgRecebida;
   cfgRecebida = "";
   portEXIT_CRITICAL(&muxCfg);
+  return v;
+}
+
+String localizacaoPendente() {
+  String v;
+  portENTER_CRITICAL(&muxLoc);
+  v = locRecebida;
+  locRecebida = "";
+  portEXIT_CRITICAL(&muxLoc);
   return v;
 }
 

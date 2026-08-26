@@ -42,10 +42,28 @@ class EstacaoBle extends ChangeNotifier {
 
   BluetoothDevice? _dispositivo;
   BluetoothCharacteristic? _carCfg;
+  BluetoothCharacteristic? _carLoc;
   final _assinaturas = <StreamSubscription<dynamic>>[];
   StreamSubscription<dynamic>? _assEstado;
+  Timer? _autoTimer;
 
   bool get conectado => estado == EstadoLigacao.ligado;
+
+  /// Auto-conexao: enquanto ligado, o app tenta achar e conectar na estacao
+  /// sozinho, e reconecta se ela cair. Assim, chegar perto do ESP ja conecta -
+  /// sem apertar botao. O botao "Conectar" continua valendo como forcar agora.
+  void iniciarAutoConexao() {
+    _autoTimer?.cancel();
+    _tentarSeSolto();
+    _autoTimer = Timer.periodic(
+        const Duration(seconds: 5), (_) => _tentarSeSolto());
+  }
+
+  void _tentarSeSolto() {
+    if (estado == EstadoLigacao.desligado || estado == EstadoLigacao.erro) {
+      procurarEConectar();
+    }
+  }
 
   /// Liga o GPS do telefone e encaminha cada posicao para o Kalman e a gravacao.
   /// Chamado uma vez, na partida do app.
@@ -57,29 +75,20 @@ class EstacaoBle extends ChangeNotifier {
 
   void _gpsDoTelefone(
       double lat, double lon, double precisaoM, double velKmh, double rumo) {
-    // Constroi uma Posicao equivalente para reusar o mesmo caminho de fusao.
-    // hdop a partir da precisao (m): o filtro espera hdop, entao aproximamos
-    // dividindo por ~5 m (precisao tipica de hdop 1). fix sempre true: o
-    // telefone so emite quando ja tem posicao.
-    final p = Posicao(
-      seq: 0,
-      fix: true,
-      lat: lat,
-      lon: lon,
-      alt: 0,
-      vel: velKmh,
-      satelites: 0,
-      hdop: (precisaoM / 5.0).clamp(0.5, 20.0),
-      rumo: rumo.isNaN ? 0.0 : rumo,
-    );
-    fusao.gps(p);
-    if (gravador.gravando) {
-      gravador.anexar('gps_tel', {
-        'lat': lat, 'lon': lon, 'precisao': precisaoM,
-        'vel': velKmh, 'rumo': rumo,
-      });
-    }
-    notifyListeners();
+    // ESCREVE a posicao no ESP, que a re-emite como `pos`. Nao alimenta a fusao
+    // aqui: o dado entra pelo mesmo caminho que o resto (a notificacao `pos`),
+    // com a linha de tempo do ESP. Uma fonte so. Se o ESP nao estiver conectado,
+    // simplesmente nao ha para onde mandar - o mapa ainda mostra a posicao crua
+    // do telefone (telLat/telLon) para o usuario nao ficar sem referencia.
+    final c = _carLoc;
+    if (c == null) return;
+    final corpo = jsonEncode({
+      'lat': lat, 'lon': lon, 'vel': velKmh,
+      'rumo': rumo.isNaN ? 0.0 : rumo,
+    });
+    // WRITE_NR (sem resposta): posicao e continua, perder uma nao importa, e
+    // esperar confirmacao a cada fix so encheria a fila do BLE.
+    c.write(utf8.encode(corpo), withoutResponse: true).catchError((_) {});
   }
 
   /// Procura a estacao e conecta na primeira que anunciar o nosso servico.
@@ -125,7 +134,9 @@ class EstacaoBle extends ChangeNotifier {
       await FlutterBluePlus.stopScan();
 
       if (achado == null) {
-        _mudar(EstadoLigacao.erro,
+        // desligado (nao "erro"): a auto-conexao vai tentar de novo, e ficar
+        // fora de alcance e normal. So o botao manual mostra isso como aviso.
+        _mudar(EstadoLigacao.desligado,
             'estacao nao encontrada - ela esta ligada e por perto?');
         return;
       }
@@ -173,6 +184,7 @@ class EstacaoBle extends ChangeNotifier {
     for (final c in servico.characteristics) {
       final id = c.uuid.toString().toLowerCase();
       if (id == Contrato.cfg.toLowerCase()) _carCfg = c;
+      if (id == Contrato.loc.toLowerCase()) _carLoc = c;
       await _assinar(c, id);
     }
 
@@ -212,10 +224,11 @@ class EstacaoBle extends ChangeNotifier {
         status = Status.doJson(j);
         _gravar('status', j);
       case _ when id == Contrato.pos.toLowerCase():
-        // GPS do ESP: apenas registrado, NAO alimenta mais o Kalman. A posicao
-        // agora vem do telefone (gpsDoTelefone). O cru do ESP fica guardado para
-        // a comparacao de drift; ver a decisao de 25/08/2026 em docs/04.
+        // `pos` agora carrega a posicao do TELEFONE, re-emitida pelo ESP com a
+        // linha de tempo dele (o campo interno "src" diz tel/esp). Uma fonte so:
+        // alimenta o Kalman e vai para a gravacao pelo mesmo caminho.
         posicao = Posicao.doJson(j);
+        fusao.gps(posicao!);
         _gravar('pos', j);
       case _ when id == Contrato.amb.toLowerCase():
         ambiente = Ambiente.doJson(j);
@@ -274,6 +287,7 @@ class EstacaoBle extends ChangeNotifier {
     } catch (_) {}
     _dispositivo = null;
     _carCfg = null;
+    _carLoc = null;
     _mudar(EstadoLigacao.desligado, 'desconectado');
   }
 
@@ -290,10 +304,23 @@ class EstacaoBle extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Operacoes assincronas (GPS, BLE, HTTP) podem completar depois do dispose e
+  // chamar notifyListeners num objeto morto - assercao. O guarda torna isso um
+  // no-op, seguro tanto em teste quanto ao fechar o app.
+  bool _vivo = true;
+
+  @override
+  void notifyListeners() {
+    if (_vivo) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _vivo = false;
+    _autoTimer?.cancel();
     _limparAssinaturas();
     _assEstado?.cancel();
+    gps.removeListener(notifyListeners);
     gps.parar();
     gravador.encerrar();
     super.dispose();

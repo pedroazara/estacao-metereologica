@@ -79,14 +79,9 @@ def processar_sessao(caminho_jsonl, caminho_db):
     temp = umid = None
     derivadas = []
 
-    # Fonte de posicao: o GPS do TELEFONE (src "gps_tel"), se a sessao tiver.
-    # O GPS do ESP (src "pos") continua no arquivo cru para a comparacao de
-    # drift, mas nao alimenta o filtro. Sessao antiga, so com "pos", cai de
-    # volta para ele - senao nao teria trajeto nenhum.
-    with open(caminho_jsonl, "r", encoding="utf-8") as f:
-        tem_telefone = any('"gps_tel"' in linha for linha in f)
-    fonte = "gps_tel" if tem_telefone else "pos"
-
+    # Posicao vem toda pela caracteristica "pos": o ESP re-emite a localizacao
+    # do telefone com a linha de tempo dele (o campo interno m["src"] diz se
+    # veio do telefone ou do proprio GPS do ESP). Uma fonte so simplifica tudo.
     with open(caminho_jsonl, "r", encoding="utf-8") as f:
         for linha in f:
             linha = linha.strip()
@@ -121,10 +116,8 @@ def processar_sessao(caminho_jsonl, caminho_db):
                               gx=a.get("gx", 0.0), gy=a.get("gy", 0.0),
                               gz=a.get("gz", 0.0))
 
-            elif src == fonte:
-                # "gps_tel" nao tem campo fix (o telefone so reporta quando ja
-                # tem posicao); "pos" do ESP tem. So exige fix quando for o ESP.
-                if fonte == "pos" and not m.get("fix"):
+            elif src == "pos":
+                if not m.get("fix"):
                     continue
                 lat, lon = m.get("lat"), m.get("lon")
                 if lat is None or lon is None:

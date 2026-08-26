@@ -247,6 +247,38 @@ long extrairInt(const String &j, const char *chave, long atual) {
   return j.substring(c + 1).toInt();
 }
 
+double extrairDouble(const String &j, const char *chave, double atual) {
+  int i = j.indexOf(String("\"") + chave + "\"");
+  if (i < 0) return atual;
+  int c = j.indexOf(':', i);
+  if (c < 0) return atual;
+  return j.substring(c + 1).toDouble();
+}
+
+// ---------------------------------------------------------------------------
+// Localizacao vinda do telefone (a fonte de posicao atual). O ESP so recebe e
+// re-emite como `pos`, com o proprio seq - unificando a linha de tempo.
+// ---------------------------------------------------------------------------
+double   telLat = 0.0, telLon = 0.0;
+float    telVel = 0.0f, telRumo = 0.0f;
+uint32_t telQuandoMs = 0;   // millis() da ultima escrita; 0 = nunca
+
+void aplicarLocalizacaoPendente() {
+  String j = BleEstacao::localizacaoPendente();
+  if (j.length() == 0) return;
+  telLat = extrairDouble(j, "lat", telLat);
+  telLon = extrairDouble(j, "lon", telLon);
+  telVel = (float)extrairDouble(j, "vel", telVel);
+  telRumo = (float)extrairDouble(j, "rumo", telRumo);
+  telQuandoMs = millis();
+}
+
+// Posicao do telefone e "fresca" se chegou nos ultimos 8 s. Depois disso,
+// para de ser publicada como pos - melhor sem posicao do que com uma velha.
+bool telFresca() {
+  return telQuandoMs != 0 && (millis() - telQuandoMs) < 8000;
+}
+
 /** Aplica o que o app escreveu. Roda no loop(), nunca na task do BLE. */
 void aplicarConfigPendente() {
   String j = BleEstacao::configPendente();
@@ -389,14 +421,25 @@ void publicarAmbiente() {
 }
 
 void publicarPosicao() {
-  if (!posValida) return;
   char json[220];
-  snprintf(json, sizeof(json),
-           "{\"seq\":%lu,\"fix\":%s,\"lat\":%.7f,\"lon\":%.7f,\"alt\":%.1f,"
-           "\"vel\":%.2f,\"sat\":%u,\"hdop\":%.2f,\"rumo\":%.1f}",
-           (unsigned long)seqPos++, pos.temFix() ? "true" : "false",
-           pos.latitude, pos.longitude, pos.altitudeGpsM,
-           pos.velocidadeKmh, pos.satelites, pos.hdop, pos.rumoGpsDeg);
+  // Prioridade para a localizacao do TELEFONE: e a fonte de posicao atual. O
+  // "src":"tel" deixa a base e o app saberem a origem. So cai para o GPS do
+  // ESP se nao houver posicao fresca do telefone E o GPS do ESP tiver fix.
+  if (telFresca()) {
+    snprintf(json, sizeof(json),
+             "{\"seq\":%lu,\"src\":\"tel\",\"fix\":true,\"lat\":%.7f,\"lon\":%.7f,"
+             "\"vel\":%.2f,\"rumo\":%.1f}",
+             (unsigned long)seqPos++, telLat, telLon, telVel, telRumo);
+  } else if (posValida) {
+    snprintf(json, sizeof(json),
+             "{\"seq\":%lu,\"src\":\"esp\",\"fix\":%s,\"lat\":%.7f,\"lon\":%.7f,"
+             "\"alt\":%.1f,\"vel\":%.2f,\"sat\":%u,\"hdop\":%.2f,\"rumo\":%.1f}",
+             (unsigned long)seqPos++, pos.temFix() ? "true" : "false",
+             pos.latitude, pos.longitude, pos.altitudeGpsM,
+             pos.velocidadeKmh, pos.satelites, pos.hdop, pos.rumoGpsDeg);
+  } else {
+    return;
+  }
   BleEstacao::publicarPos(json);
   if (!mqtt.connected()) return;
   if (mqtt.publish(topico("pos").c_str(), json)) publicadas++;
@@ -1050,6 +1093,7 @@ void loop() {
   // mesmo com a estacao sem Wi-Fi, que e quando o app do celular importa.
   BleEstacao::manter();
   aplicarConfigPendente();
+  aplicarLocalizacaoPendente();
 
   if (modoConfig) {
     dns.processNextRequest();

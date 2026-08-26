@@ -28,6 +28,7 @@ class _AppEstacaoState extends State<AppEstacao> {
     super.initState();
     _base.iniciar();
     _ble.iniciarGpsTelefone();
+    _ble.iniciarAutoConexao(); // conecta sozinho quando a estacao estiver perto
     // Em campo (gravando) o telefone nao fala com a base; no laboratorio
     // (parado) fala. A gravacao e o proprio sinal de "sai para medir".
     _ble.addListener(_coordenarBase);

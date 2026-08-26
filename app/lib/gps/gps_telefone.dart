@@ -27,7 +27,15 @@ class GpsTelefone extends ChangeNotifier {
 
   Future<void> iniciar() async {
     if (_sub != null) return;
-    if (!await _garantirPermissao()) return;
+    try {
+      if (!await _garantirPermissao()) return;
+    } catch (_) {
+      // Sem plataforma de localizacao (ex.: ambiente de teste): nao e fatal, o
+      // app segue funcionando so sem GPS do telefone.
+      mensagem = 'localizacao indisponivel';
+      notifyListeners();
+      return;
+    }
     permitido = true;
     mensagem = 'GPS do telefone ligado';
 

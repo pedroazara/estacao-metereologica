@@ -74,8 +74,16 @@ class BaseStatus extends ChangeNotifier {
     }
   }
 
+  bool _vivo = true;
+
+  @override
+  void notifyListeners() {
+    if (_vivo) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _vivo = false;
     _timer?.cancel();
     super.dispose();
   }
