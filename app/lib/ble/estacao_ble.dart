@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../armazenamento/gravador.dart';
+import '../gps/gps_telefone.dart';
+import '../kalman/fusao.dart';
 import '../modelo/leituras.dart';
 import 'contrato.dart';
 
@@ -27,12 +29,58 @@ class EstacaoBle extends ChangeNotifier {
 
   final gravador = Gravador();
 
+  /// Previa de Kalman ao vivo. Alimentada pelas notificacoes; a base continua
+  /// dona do resultado oficial. Ver kalman/filtro_cv.dart.
+  final fusao = FusaoAoVivo();
+
+  /// GPS do telefone: a fonte de posicao atual (o do ESP fica dormente).
+  final gps = GpsTelefone();
+
+  /// Ultima posicao do telefone, para o mapa marcar onde voce esta.
+  double? get telLat => gps.lat;
+  double? get telLon => gps.lon;
+
   BluetoothDevice? _dispositivo;
   BluetoothCharacteristic? _carCfg;
   final _assinaturas = <StreamSubscription<dynamic>>[];
   StreamSubscription<dynamic>? _assEstado;
 
   bool get conectado => estado == EstadoLigacao.ligado;
+
+  /// Liga o GPS do telefone e encaminha cada posicao para o Kalman e a gravacao.
+  /// Chamado uma vez, na partida do app.
+  Future<void> iniciarGpsTelefone() async {
+    gps.aoReceber = _gpsDoTelefone;
+    gps.addListener(notifyListeners); // o mapa observa a posicao do telefone
+    await gps.iniciar();
+  }
+
+  void _gpsDoTelefone(
+      double lat, double lon, double precisaoM, double velKmh, double rumo) {
+    // Constroi uma Posicao equivalente para reusar o mesmo caminho de fusao.
+    // hdop a partir da precisao (m): o filtro espera hdop, entao aproximamos
+    // dividindo por ~5 m (precisao tipica de hdop 1). fix sempre true: o
+    // telefone so emite quando ja tem posicao.
+    final p = Posicao(
+      seq: 0,
+      fix: true,
+      lat: lat,
+      lon: lon,
+      alt: 0,
+      vel: velKmh,
+      satelites: 0,
+      hdop: (precisaoM / 5.0).clamp(0.5, 20.0),
+      rumo: rumo.isNaN ? 0.0 : rumo,
+    );
+    fusao.gps(p);
+    if (gravador.gravando) {
+      gravador.anexar('gps_tel', {
+        'lat': lat, 'lon': lon, 'precisao': precisaoM,
+        'vel': velKmh, 'rumo': rumo,
+      });
+    }
+    notifyListeners();
+  }
 
   /// Procura a estacao e conecta na primeira que anunciar o nosso servico.
   ///
@@ -164,6 +212,9 @@ class EstacaoBle extends ChangeNotifier {
         status = Status.doJson(j);
         _gravar('status', j);
       case _ when id == Contrato.pos.toLowerCase():
+        // GPS do ESP: apenas registrado, NAO alimenta mais o Kalman. A posicao
+        // agora vem do telefone (gpsDoTelefone). O cru do ESP fica guardado para
+        // a comparacao de drift; ver a decisao de 25/08/2026 em docs/04.
         posicao = Posicao.doJson(j);
         _gravar('pos', j);
       case _ when id == Contrato.amb.toLowerCase():
@@ -171,6 +222,10 @@ class EstacaoBle extends ChangeNotifier {
         _gravar('amb', j);
       case _ when id == Contrato.imu.toLowerCase():
         ultimoLote = LoteImu.doJson(j);
+        // Cada amostra do pedaco adianta a predicao, com o dt do proprio lote.
+        for (final a in ultimoLote!.amostras) {
+          fusao.imu(a, ultimoLote!.dt);
+        }
         _gravar('imu', j);
       case _ when id == Contrato.cfg.toLowerCase():
         config = Configuracao.doJson(j);
@@ -239,6 +294,7 @@ class EstacaoBle extends ChangeNotifier {
   void dispose() {
     _limparAssinaturas();
     _assEstado?.cancel();
+    gps.parar();
     gravador.encerrar();
     super.dispose();
   }

@@ -6,10 +6,7 @@ plugins {
 
 android {
     namespace = "br.estacao.estacao_movel"
-    // Fixado em 37 porque o plugin permission_handler_android exige 37 ou
-    // maior. Deixar o padrao do Flutter (36) faz o build falhar com um aviso
-    // que e facil de confundir com ruido.
-    compileSdk = 37
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

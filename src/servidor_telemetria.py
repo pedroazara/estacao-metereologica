@@ -40,6 +40,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import paho.mqtt.client as mqtt
 
 from filtro_kalman import DetectorPassos, FiltroCV
+from processar_sessao import processar_sessao
 
 # ---------------------------------------------------------------------------
 # Estado compartilhado entre o receptor MQTT e o painel
@@ -329,214 +330,329 @@ def gravar_csv():
 # ---------------------------------------------------------------------------
 # Pagina
 # ---------------------------------------------------------------------------
-PAGINA = """<!DOCTYPE html>
+PAGINA = r"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Telemetria da estacao</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>Base da Estacao</title>
 <style>
-  :root { --fundo:#f4f5f7; --cartao:#fff; --texto:#16181d; --fraco:#6b7280;
-          --borda:#e3e5e9; --temp:#e0533d; --umid:#2f7fd1; --cru:#9099a8; --kf:#2f9e57; }
-  @media (prefers-color-scheme: dark) {
-    :root { --fundo:#111317; --cartao:#1a1d23; --texto:#f0f2f5; --fraco:#9099a8;
-            --borda:#2a2e36; --temp:#ff7a5e; --umid:#63aef5; --cru:#6b7280; --kf:#4fd07a; }
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; padding:20px 16px 40px; background:var(--fundo); color:var(--texto);
-         font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  .env { max-width:760px; margin:0 auto; }
-  header { display:flex; align-items:baseline; justify-content:space-between;
-           gap:12px; margin-bottom:18px; flex-wrap:wrap; }
-  h1 { font-size:1.05rem; font-weight:600; margin:0; }
-  .estado { font-size:.8rem; color:var(--fraco); display:flex; align-items:center; gap:6px; }
-  .bolinha { width:8px; height:8px; border-radius:50%; background:#35c46a; }
-  .bolinha.ruim { background:#e04b4b; }
-  .grade { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-  @media (max-width:640px) { .grade { grid-template-columns:repeat(2,1fr); } }
-  .cartao { background:var(--cartao); border:1px solid var(--borda);
-            border-radius:14px; padding:16px 18px; margin-top:12px; }
-  .grade .cartao { margin-top:0; }
-  .rotulo { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
-            color:var(--fraco); margin-bottom:6px; }
-  .valor { font-size:1.8rem; font-weight:650; line-height:1; font-variant-numeric:tabular-nums; }
-  .valor span { font-size:.9rem; font-weight:500; color:var(--fraco); margin-left:3px; }
-  #mapa { width:100%; height:420px; border-radius:10px; z-index:0; }
-  .leaflet-container { background:var(--fundo); font:inherit; }
-  /* Os tiles do OSM sao claros; no tema escuro, suaviza para nao ofuscar. */
-  @media (prefers-color-scheme: dark) {
-    .leaflet-tile { filter:brightness(.75) contrast(1.05); }
-  }
-  .cabecalho-mapa { display:flex; justify-content:space-between; align-items:center;
-                    gap:10px; margin-bottom:6px; flex-wrap:wrap; }
-  .seguir { font-size:.72rem; color:var(--fraco); display:flex; align-items:center;
-            gap:5px; cursor:pointer; text-transform:none; letter-spacing:0; }
-  .semfix { font-size:.8rem; color:var(--fraco); padding:24px 0; text-align:center; }
-  .legenda { display:flex; gap:16px; font-size:.75rem; color:var(--fraco); margin-top:8px; flex-wrap:wrap; }
-  .legenda i { display:inline-block; width:10px; height:3px; border-radius:2px;
-               margin-right:5px; vertical-align:middle; }
-  table { width:100%; border-collapse:collapse; font-size:.85rem;
-          font-variant-numeric:tabular-nums; }
-  td { padding:5px 0; border-bottom:1px solid var(--borda); }
-  td:last-child { text-align:right; font-weight:600; }
-  tr:last-child td { border-bottom:none; }
-  footer { margin-top:20px; font-size:.72rem; color:var(--fraco); text-align:center; }
+  :root{--bg:#0d1117;--card:#161b22;--borda:#232d38;--txt:#e6edf3;--txt2:#8b949e;
+        --verde:#3fb950;--azul:#58a6ff;--amarelo:#d29922;--vermelho:#f85149}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+            background:var(--bg);color:var(--txt)}
+  #topo{height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;
+        background:var(--card);border-bottom:1px solid var(--borda)}
+  #topo h1{font-size:15px;font-weight:600}
+  .pilula{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);
+          background:#0d1117;border:1px solid var(--borda);border-radius:999px;padding:5px 11px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--txt2)}
+  .dot.on{background:var(--verde);box-shadow:0 0 7px var(--verde)}
+  .dot.off{background:var(--vermelho)}
+  #corpo{display:flex;height:calc(100% - 56px)}
+  #lista{width:300px;border-right:1px solid var(--borda);overflow-y:auto;flex:none;
+         background:var(--card)}
+  .cab{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--txt2);
+       padding:14px 16px 8px}
+  .sessao{padding:12px 16px;border-bottom:1px solid var(--borda);cursor:pointer}
+  .sessao:hover{background:#1c2430}
+  .sessao.sel{background:#132132;border-left:3px solid var(--azul)}
+  .sessao .nome{font-size:12.5px;font-family:ui-monospace,monospace;word-break:break-all}
+  .sessao .sub{font-size:11px;color:var(--txt2);margin-top:3px}
+  #vazio{padding:24px 16px;font-size:12.5px;color:var(--txt2);line-height:1.6}
+  #direita{flex:1;display:flex;flex-direction:column;min-width:0}
+  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda)}
+  #resumo{display:flex;gap:22px;padding:0 20px 16px;flex-wrap:wrap}
+  .n .v{font-size:19px;font-weight:650;font-family:ui-monospace,monospace}
+  .n .r{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
+  #placeholder{flex:1;display:flex;align-items:center;justify-content:center;
+               color:var(--txt2);font-size:13px;text-align:center;padding:30px}
 </style>
 </head>
 <body>
-<div class="env">
-  <header>
-    <h1>Telemetria da estacao</h1>
-    <div class="estado"><span class="bolinha" id="bolinha"></span><span id="conn">iniciando</span></div>
-  </header>
-
-  <div class="grade">
-    <div class="cartao"><div class="rotulo">Temperatura</div>
-      <div class="valor" id="vt" style="color:var(--temp)">--<span>&deg;C</span></div></div>
-    <div class="cartao"><div class="rotulo">Umidade</div>
-      <div class="valor" id="vu" style="color:var(--umid)">--<span>%</span></div></div>
-    <div class="cartao"><div class="rotulo">Velocidade</div>
-      <div class="valor" id="vv">--<span>km/h</span></div></div>
-    <div class="cartao"><div class="rotulo">Satelites</div>
-      <div class="valor" id="vs">--</div></div>
-  </div>
-
-  <div class="cartao">
-    <div class="cabecalho-mapa">
-      <span class="rotulo" style="margin:0">Trajeto</span>
-      <label class="seguir"><input type="checkbox" id="seguir" checked>seguir a estacao</label>
-    </div>
-    <div id="semfix" class="semfix">esperando o primeiro fix do GPS...</div>
-    <div id="mapa" style="display:none"></div>
-    <div class="legenda">
-      <span><i style="background:var(--cru)"></i>GPS cru</span>
-      <span><i style="background:var(--kf)"></i>Kalman</span>
-    </div>
-  </div>
-
-  <div class="cartao">
-    <div class="rotulo">Detalhes</div>
-    <table id="tab"></table>
-  </div>
-
-  <footer><span id="rodape">&nbsp;</span></footer>
+<div id="topo">
+  <h1>Base da Estacao</h1>
+  <span class="pilula"><span class="dot" id="d_base"></span><span id="t_base">base</span></span>
+  <span class="pilula"><span class="dot" id="d_esp"></span><span id="t_esp">estacao ao vivo</span></span>
+  <span class="pilula"><span id="t_sess">0 sessoes</span></span>
+  <span style="margin-left:auto;font-size:11px;color:var(--txt2)" id="relogio"></span>
 </div>
-
+<div id="corpo">
+  <div id="lista">
+    <div class="cab">Coletas recebidas</div>
+    <div id="sessoes"></div>
+    <div id="vazio" style="display:none">
+      Nenhuma coleta ainda.<br><br>
+      No app do celular, aba <b>Sessoes</b>, envie uma coleta para esta base.
+      Ela chega aqui ja processada pelo Kalman.
+    </div>
+  </div>
+  <div id="direita">
+    <div id="placeholder">Selecione uma coleta a esquerda para ver o trajeto.</div>
+    <canvas id="mapa" style="display:none"></canvas>
+    <div id="resumo" style="display:none"></div>
+  </div>
+</div>
 <script>
-// --- Mapa (Leaflet + tiles do OpenStreetMap) -------------------------------
-// Os tiles vem da internet: o navegador que abre este painel precisa de rede.
-// O painel do proprio ESP32 (firmware/painel_wifi) segue com rastro em canvas
-// justamente porque em campo pode nao haver internet.
-let mapa = null, traceCru = null, traceKf = null, marcador = null;
-let primeiroEnquadre = true;
+const $ = s => document.querySelector(s);
+let sel = null, traj = null;
 
-function corDe(nome) {
-  return getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+function fmtData(iso){
+  if(!iso) return '';
+  return iso.replace('T',' ').slice(0,16);
 }
 
-function iniciarMapa(centro) {
-  mapa = L.map('mapa', { zoomControl: true }).setView(centro, 18);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-  }).addTo(mapa);
-
-  traceCru = L.polyline([], { color: corDe('--cru'), weight: 3, opacity: .8 }).addTo(mapa);
-  traceKf  = L.polyline([], { color: corDe('--kf'),  weight: 4 }).addTo(mapa);
-  marcador = L.circleMarker(centro, {
-    radius: 7, color: '#fff', weight: 2,
-    fillColor: corDe('--kf'), fillOpacity: 1
-  }).addTo(mapa);
-
-  // Arrastar o mapa desliga o seguimento automatico - senao o proximo fix
-  // puxaria a vista de volta e voce nunca conseguiria olhar em volta.
-  mapa.on('dragstart', () => { document.getElementById('seguir').checked = false; });
+async function carregarSessoes(){
+  try{
+    const d = await (await fetch('/sessoes',{cache:'no-store'})).json();
+    const lista = d.sessoes || [];
+    $('#t_sess').textContent = lista.length + (lista.length===1?' sessao':' sessoes');
+    $('#vazio').style.display = lista.length ? 'none':'block';
+    const box = $('#sessoes');
+    box.innerHTML = lista.map(s => `
+      <div class="sessao ${s.sessao===sel?'sel':''}" data-n="${s.sessao}">
+        <div class="nome">${s.sessao}</div>
+        <div class="sub">${s.n_derivado} pontos &middot; ${fmtData(s.processada_em)}</div>
+      </div>`).join('');
+    box.querySelectorAll('.sessao').forEach(el =>
+      el.onclick = () => selecionar(el.dataset.n));
+    // seleciona a primeira automaticamente
+    if(!sel && lista.length) selecionar(lista[0].sessao);
+  }catch(e){}
 }
 
-function atualizarMapa(d) {
-  const cru = d.pontos || [], kf = d.kf_pontos || [];
-  // Preferimos a saida do Kalman para o marcador; sem ela, o fix cru serve.
-  const atual = kf.length ? kf[kf.length-1] : (cru.length ? cru[cru.length-1] : null);
-  if (!atual) return;
+async function carregarEstado(){
+  const on = (id,ok) => { $(id).className = 'dot '+(ok?'on':'off'); };
+  try{
+    const d = await (await fetch('/dados',{cache:'no-store'})).json();
+    on('#d_base', true); $('#t_base').textContent = 'base no ar';
+    // Presenca ao vivo do ESP pelo MQTT (caminho legado, secundario).
+    on('#d_esp', d.recebendo);
+    $('#t_esp').textContent = d.recebendo ? ('estacao publicando ('+(d.dev||'esp32')+')')
+                                          : 'sem estacao ao vivo';
+  }catch(e){
+    on('#d_base', false); $('#t_base').textContent = 'base fora do ar';
+  }
+}
 
-  if (typeof L === 'undefined') {
-    document.getElementById('semfix').textContent =
-      'nao foi possivel carregar o mapa - este computador esta sem internet?';
+async function selecionar(nome){
+  sel = nome;
+  document.querySelectorAll('.sessao').forEach(el =>
+    el.classList.toggle('sel', el.dataset.n===nome));
+  traj = await (await fetch('/sessao?nome='+encodeURIComponent(nome),{cache:'no-store'})).json();
+  $('#placeholder').style.display='none';
+  $('#mapa').style.display='block';
+  $('#resumo').style.display='flex';
+  const r = traj.resumo||{};
+  $('#resumo').innerHTML = [
+    ['pontos', r.n||0], ['vel final', (r.vel??0).toFixed(1)+' km/h'],
+    ['incerteza', '±'+(r.sigma??0).toFixed(1)+' m'],
+    ['temp', r.temp!=null? r.temp.toFixed(1)+' C':'--'],
+    ['umid', r.umid!=null? r.umid.toFixed(1)+' %':'--'],
+  ].map(([k,v])=>`<div class="n"><div class="v">${v}</div><div class="r">${k}</div></div>`).join('');
+  desenhar();
+}
+
+function desenhar(){
+  const c = $('#mapa'), ctx = c.getContext('2d');
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width; c.height = rect.height;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(!traj || !traj.cru.length){
+    ctx.fillStyle='#8b949e'; ctx.font='13px system-ui'; ctx.textAlign='center';
+    ctx.fillText('Esta coleta nao tem pontos de GPS com fix.', c.width/2, c.height/2);
     return;
   }
-
-  document.getElementById('semfix').style.display = 'none';
-  document.getElementById('mapa').style.display = 'block';
-
-  if (!mapa) {
-    iniciarMapa(atual);
-    mapa.invalidateSize();   // o div estava escondido; sem isto os tiles saem tortos
-  }
-
-  traceCru.setLatLngs(cru);
-  traceKf.setLatLngs(kf);
-  marcador.setLatLng(atual);
-
-  if (primeiroEnquadre && (cru.length > 1 || kf.length > 1)) {
-    const todos = cru.concat(kf);
-    mapa.fitBounds(L.latLngBounds(todos), { padding: [30, 30], maxZoom: 18 });
-    primeiroEnquadre = false;
-  } else if (document.getElementById('seguir').checked) {
-    mapa.panTo(atual, { animate: true, duration: .5 });
-  }
+  const lat0 = traj.cru[0][0], lon0 = traj.cru[0][1];
+  const cosLat = Math.cos(lat0*Math.PI/180);
+  const m = p => [ (p[1]-lon0)*111320*cosLat, -(p[0]-lat0)*111320 ];
+  const todos = traj.cru.concat(traj.kf).map(m);
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for(const [x,y] of todos){ minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+                              minY=Math.min(minY,y);maxY=Math.max(maxY,y); }
+  const mg=12; minX-=mg;maxX+=mg;minY-=mg;maxY+=mg;
+  // Piso de escala: parado, o GPS oscila poucos metros; sem um span minimo o
+  // ajuste amplia o ruido ate encher a tela. 50 m deixa o aglomerado parado
+  // como um borrao pequeno no centro, em vez de rabisco.
+  const SPAN_MIN = 50;
+  const esc = Math.min(c.width/Math.max(maxX-minX,SPAN_MIN), c.height/Math.max(maxY-minY,SPAN_MIN));
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  const T = ([x,y]) => [ c.width/2+(x-cx)*esc, c.height/2+(y-cy)*esc ];
+  const linha = (pts,cor,larg) => {
+    if(pts.length<2) return;
+    ctx.strokeStyle=cor; ctx.lineWidth=larg; ctx.lineJoin='round'; ctx.lineCap='round';
+    ctx.beginPath();
+    pts.forEach((p,i)=>{ const [x,y]=T(m(p)); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.stroke();
+  };
+  linha(traj.cru, 'rgba(88,166,255,.55)', 2);
+  linha(traj.kf, '#3fb950', 3.5);
+  const [ax,ay]=T(m(traj.kf[traj.kf.length-1]||traj.cru[traj.cru.length-1]));
+  ctx.fillStyle='#3fb950'; ctx.beginPath(); ctx.arc(ax,ay,6,0,7); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+  // legenda
+  ctx.font='11px ui-monospace'; ctx.textAlign='left';
+  ctx.fillStyle='#3fb950'; ctx.fillRect(12,12,16,3); ctx.fillStyle='#e6edf3';
+  ctx.fillText('Kalman', 34, 16);
+  ctx.fillStyle='rgba(88,166,255,.7)'; ctx.fillRect(12,28,16,3); ctx.fillStyle='#e6edf3';
+  ctx.fillText('GPS cru', 34, 32);
 }
 
-function linha(r, v) { return '<tr><td>' + r + '</td><td>' + v + '</td></tr>'; }
-
-async function atualizar() {
-  try {
-    const d = await (await fetch('/dados', {cache:'no-store'})).json();
-    const vivo = d.broker && d.recebendo;
-    document.getElementById('bolinha').className = 'bolinha' + (vivo ? '' : ' ruim');
-    document.getElementById('conn').textContent =
-      !d.broker ? 'sem broker MQTT'
-                : (d.recebendo ? ('recebendo de ' + (d.dev || 'esp32'))
-                               : 'broker ok, ESP32 sem publicar');
-
-    const n = (v, c) => v === null || v === undefined ? '--' : v.toFixed(c);
-    document.getElementById('vt').innerHTML = n(d.temp,1) + '<span>&deg;C</span>';
-    document.getElementById('vu').innerHTML = n(d.umid,1) + '<span>%</span>';
-    document.getElementById('vv').innerHTML = n(d.kf_vel,1) + '<span>km/h</span>';
-    document.getElementById('vs').textContent = d.sat;
-
-    document.getElementById('tab').innerHTML =
-      linha('lat / lon (GPS)', d.lat === null ? '--' : n(d.lat,6) + ', ' + n(d.lon,6)) +
-      linha('lat / lon (Kalman)', d.kf_lat === null ? '--' : n(d.kf_lat,6) + ', ' + n(d.kf_lon,6)) +
-      linha('incerteza do Kalman', n(d.kf_sigma,1) + ' m') +
-      linha('altitude', n(d.alt,1) + ' m') +
-      linha('HDOP', n(d.hdop,2)) +
-      linha('estado', d.kf_parado ? 'parado' : 'em movimento') +
-      linha('passos', d.passos) +
-      linha('roll / pitch / yaw', n(d.roll,1)+' / '+n(d.pitch,1)+' / '+n(d.yaw,1)) +
-      linha('amostras de IMU', d.amostras_imu);
-
-    atualizarMapa(d);
-    document.getElementById('rodape').textContent =
-      d.msgs + ' mensagens | ' + d.perdidos + ' perdidas | ' +
-      d.pontos.length + ' pontos GPS | ' + d.kf_pontos.length + ' pontos Kalman';
-  } catch (e) {
-    document.getElementById('bolinha').className = 'bolinha ruim';
-    document.getElementById('conn').textContent = 'servidor fora do ar';
-  }
-}
-atualizar();
-setInterval(atualizar, 1000);
+window.addEventListener('resize', desenhar);
+setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+carregarEstado(); carregarSessoes();
+setInterval(carregarEstado, 3000);
+setInterval(carregarSessoes, 5000);
 </script>
 </body>
 </html>
 """
 
 
+def _limpar_nome(s):
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)[:40] or "x"
+
+
+def _contar_linhas(caminho):
+    try:
+        with open(caminho, "rb") as f:
+            return sum(1 for _ in f)
+    except OSError:
+        return 0
+
+
+def _pasta_sincronizadas():
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pasta = os.path.join(raiz, "data", "sincronizadas")
+    os.makedirs(pasta, exist_ok=True)
+    return pasta
+
+
+def _caminho_banco():
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(raiz, "data", "estacao.db")
+
+
+def _listar_sessoes():
+    """Coletas ja recebidas e processadas, da mais recente para a mais antiga.
+    Le do SQLite; se o banco ainda nao existe, devolve lista vazia sem erro."""
+    import sqlite3
+    db = _caminho_banco()
+    if not os.path.exists(db):
+        return {"sessoes": []}
+    con = sqlite3.connect(db)
+    try:
+        linhas = con.execute(
+            "SELECT sessao, dev, processada_em, n_derivado FROM sessoes "
+            "ORDER BY processada_em DESC").fetchall()
+    except sqlite3.Error:
+        return {"sessoes": []}
+    finally:
+        con.close()
+    return {"sessoes": [
+        {"sessao": s, "dev": d, "processada_em": p, "n_derivado": n}
+        for (s, d, p, n) in linhas]}
+
+
+def _trajeto_sessao(nome):
+    """Trajeto cru e filtrado de uma sessao, para o mapa do painel."""
+    import sqlite3
+    nome = os.path.basename(nome or "")
+    db = _caminho_banco()
+    if not nome or not os.path.exists(db):
+        return {"cru": [], "kf": []}
+    con = sqlite3.connect(db)
+    try:
+        linhas = con.execute(
+            "SELECT lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid "
+            "FROM derivado WHERE sessao = ? ORDER BY ts", (nome,)).fetchall()
+    except sqlite3.Error:
+        return {"cru": [], "kf": []}
+    finally:
+        con.close()
+    cru = [[la, lo] for (la, lo, _kla, _klo, _v, _s, _t, _u) in linhas]
+    kf = [[kla, klo] for (_la, _lo, kla, klo, _v, _s, _t, _u) in linhas]
+    ult = linhas[-1] if linhas else None
+    resumo = {}
+    if ult:
+        resumo = {"vel": ult[4], "sigma": ult[5], "temp": ult[6],
+                  "umid": ult[7], "n": len(linhas)}
+    return {"cru": cru, "kf": kf, "resumo": resumo}
+
+
 class Manipulador(BaseHTTPRequestHandler):
     def log_message(self, formato, *args):
         pass  # silencia o log por requisicao - o console mostra o resumo
+
+    def do_POST(self):
+        # Recepcao das coletas que o celular guardou em campo. Enquanto o ESP32
+        # nao tem cartao SD, o telefone e a custodia; aqui a base recebe a copia.
+        #
+        # MANIFESTO por nome de arquivo: se a sessao ja foi recebida, a base NAO
+        # regrava e responde "ja_tinha". E o que evita duplicata quando uma
+        # transferencia cai na metade e o celular reenvia - duplicata em serie
+        # temporal e veneno (docs/04-telemetria.md).
+        if self.path != "/sync":
+            self.send_error(404)
+            return
+        dev = self.headers.get("X-Dev", "desconhecido")
+        sessao = os.path.basename(self.headers.get("X-Sessao", ""))
+        if not sessao or "/" in sessao or "\\" in sessao:
+            self._json(400, {"ok": False, "erro": "cabecalho X-Sessao invalido"})
+            return
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+            corpo = self.rfile.read(n) if n > 0 else b""
+        except (ValueError, OSError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo ilegivel: {e}"})
+            return
+
+        pasta_dev = os.path.join(_pasta_sincronizadas(), _limpar_nome(dev))
+        os.makedirs(pasta_dev, exist_ok=True)
+        destino = os.path.join(pasta_dev, sessao)
+        if os.path.exists(destino):
+            self._json(200, {"ok": True, "ja_tinha": True,
+                             "linhas": _contar_linhas(destino)})
+            return
+
+        # Grava primeiro num arquivo temporario e so entao renomeia: uma queda
+        # no meio da escrita nao deixa um arquivo pela metade passar por sessao
+        # completa no proximo manifesto.
+        tmp = destino + ".parcial"
+        try:
+            with open(tmp, "wb") as f:
+                f.write(corpo)
+            os.replace(tmp, destino)
+        except OSError as e:
+            self._json(500, {"ok": False, "erro": str(e)})
+            return
+
+        linhas = _contar_linhas(destino)
+        print(f"\nsync: recebida {dev}/{sessao} - {linhas} registros")
+
+        # Processa em lote na chegada: roda o Kalman e grava o derivado no banco.
+        # Uma falha aqui NAO perde a coleta - o cru ja esta salvo em `destino`, e
+        # a sessao pode ser reprocessada depois. Por isso o except so avisa.
+        n_deriv, erro_proc = 0, None
+        try:
+            raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            n_deriv = processar_sessao(destino, os.path.join(raiz, "data", "estacao.db"))
+            print(f"sync: processada {sessao} - {n_deriv} pontos no banco")
+        except Exception as e:      # noqa: BLE001 - custodia acima de tudo
+            erro_proc = str(e)
+            print(f"sync: cru salvo, mas o processamento falhou: {e}")
+
+        self._json(200, {"ok": True, "ja_tinha": False, "linhas": linhas,
+                         "derivados": n_deriv, "erro_processamento": erro_proc})
+
+    def _json(self, codigo, obj):
+        corpo = json.dumps(obj).encode()
+        self.send_response(codigo)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(corpo)))
+        self.end_headers()
+        self.wfile.write(corpo)
 
     def do_GET(self):
         if self.path == "/":
@@ -548,6 +664,15 @@ class Manipulador(BaseHTTPRequestHandler):
                 # O ESP32 e dado como ausente depois de 5 s sem publicar.
                 instantaneo["recebendo"] = (time.time() - estado["ultimo_pacote"]) < 5.0
             corpo = json.dumps(instantaneo).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/sessoes"):
+            corpo = json.dumps(_listar_sessoes()).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/sessao"):
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query)
+            nome = (q.get("nome") or [""])[0]
+            corpo = json.dumps(_trajeto_sessao(nome)).encode()
             tipo = "application/json"
         else:
             self.send_error(404)

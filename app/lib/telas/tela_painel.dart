@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../ble/estacao_ble.dart';
 import '../modelo/leituras.dart';
+import '../rede/base_status.dart';
 
 /// A tela de campo. Responde, em ordem de importancia: a estacao esta viva? o
 /// GPS pegou fix? estou gravando? Analise e da base, nao daqui.
 class TelaPainel extends StatelessWidget {
   final EstacaoBle ble;
-  const TelaPainel({super.key, required this.ble});
+  final BaseStatus base;
+  const TelaPainel({super.key, required this.ble, required this.base});
 
   @override
   Widget build(BuildContext context) {
+    // Ouve os dois: o estado do BLE (estacao) e o da rede (base).
     return ListenableBuilder(
-      listenable: ble,
+      listenable: Listenable.merge([ble, base]),
       builder: (context, _) {
-        if (!ble.conectado) return _Desconectado(ble: ble);
-        return _Conectado(ble: ble);
+        if (!ble.conectado) return _Desconectado(ble: ble, base: base);
+        return _Conectado(ble: ble, base: base);
       },
     );
   }
@@ -23,48 +26,102 @@ class TelaPainel extends StatelessWidget {
 
 class _Desconectado extends StatelessWidget {
   final EstacaoBle ble;
-  const _Desconectado({required this.ble});
+  final BaseStatus base;
+  const _Desconectado({required this.ble, required this.base});
 
   @override
   Widget build(BuildContext context) {
     final procurando = ble.estado == EstadoLigacao.procurando ||
         ble.estado == EstadoLigacao.conectando;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.sensors_off,
-                size: 64, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 20),
-            Text('Estacao Movel',
-                style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            Text(ble.mensagem,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Theme.of(context).colorScheme.outline)),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: procurando ? null : ble.procurarEConectar,
-              icon: procurando
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.bluetooth_searching),
-              label: Text(procurando ? 'procurando...' : 'Conectar'),
+    return Column(children: [
+      Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: _ChipBase(base: base))),
+      Expanded(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.sensors_off,
+                    size: 64, color: Theme.of(context).colorScheme.outline),
+                const SizedBox(height: 20),
+                Text('Estacao Movel',
+                    style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text(ble.mensagem,
+                    textAlign: TextAlign.center,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.outline)),
+                const SizedBox(height: 28),
+                FilledButton.icon(
+                  onPressed: procurando ? null : ble.procurarEConectar,
+                  icon: procurando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.bluetooth_searching),
+                  label: Text(procurando ? 'procurando...' : 'Conectar'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    ]);
+  }
+}
+
+/// Chip de alcance da base. Verde = o telefone esta na rede da base e da para
+/// sincronizar. Cinza = fora de alcance (normal em campo).
+class _ChipBase extends StatelessWidget {
+  final BaseStatus base;
+  const _ChipBase({required this.base});
+
+  @override
+  Widget build(BuildContext context) {
+    // Tres estados: em campo (gravando, base pausada de proposito), ao alcance,
+    // fora de alcance. O modo campo NAO e falha — e o esperado saindo a medir.
+    final IconData icone;
+    final String texto;
+    final Color cor;
+    if (base.pausado) {
+      icone = Icons.hiking;
+      texto = 'em campo';
+      cor = const Color(0xFFD29922);
+    } else if (base.alcancavel) {
+      icone = Icons.cloud_done;
+      texto = 'base ao alcance';
+      cor = const Color(0xFF3FB950);
+    } else {
+      icone = Icons.cloud_off;
+      texto = 'base fora de alcance';
+      cor = const Color(0xFF7D8794);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A0E13),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFF232D38)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icone, size: 14, color: cor),
+        const SizedBox(width: 6),
+        Text(texto, style: TextStyle(fontSize: 11, color: cor)),
+      ]),
     );
   }
 }
 
 class _Conectado extends StatelessWidget {
   final EstacaoBle ble;
-  const _Conectado({required this.ble});
+  final BaseStatus base;
+  const _Conectado({required this.ble, required this.base});
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +133,10 @@ class _Conectado extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _Cabecalho(ble: ble),
+        Row(children: [
+          Expanded(child: _Cabecalho(ble: ble)),
+          _ChipBase(base: base),
+        ]),
         const SizedBox(height: 12),
 
         // Gravacao vem no topo: e a unica acao irreversivel desta tela. Se o
