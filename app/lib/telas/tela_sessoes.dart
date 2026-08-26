@@ -133,6 +133,65 @@ class _Item extends StatelessWidget {
       required this.ocupado,
       required this.onEnviar});
 
+  Future<void> _verConteudo(BuildContext context) async {
+    int linhas = 0, gps = 0, amb = 0;
+    String trecho = '';
+    try {
+      final texto = await arquivo.readAsString();
+      final ls = texto.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      linhas = ls.length;
+      gps = ls.where((l) => l.contains('"gps"')).length;
+      amb = ls.where((l) => l.contains('"amb"')).length;
+      trecho = ls.take(6).join('\n');
+    } catch (_) {}
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(arquivo.path.split('/').last,
+            style: const TextStyle(fontSize: 13)),
+        content: SingleChildScrollView(
+          child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(linhas == 0
+                    ? 'ARQUIVO VAZIO — nada foi gravado nesta sessao.'
+                    : '$linhas linhas  ·  $gps pontos de GPS  ·  $amb leituras de ambiente'),
+                if (linhas == 0)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'A gravacao comecou mas nenhum dado chegou. Verifique se '
+                      'o GPS pegou posicao (ponto verde no Mapa) e se a estacao '
+                      'estava conectada, e grave de novo.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                if (trecho.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0A0E13),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: SelectableText(trecho,
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 10)),
+                  ),
+                ],
+              ]),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fechar')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fraco = Theme.of(context).colorScheme.outline;
@@ -141,12 +200,13 @@ class _Item extends StatelessWidget {
 
     return Card(
       child: ListTile(
+        onTap: () => _verConteudo(context),
         leading: Icon(
             enviado ? Icons.cloud_done : Icons.description_outlined,
             color: enviado ? const Color(0xFF3FB950) : null),
         title: Text(nome, style: const TextStyle(fontSize: 13)),
         subtitle: Text(
-            '${_tamanho(tam)}${enviado ? "  ·  na base" : ""}',
+            '${_tamanho(tam)}${enviado ? "  ·  na base" : ""}  ·  toque para ver',
             style: TextStyle(fontSize: 12, color: fraco)),
         trailing: ocupado
             ? const SizedBox(

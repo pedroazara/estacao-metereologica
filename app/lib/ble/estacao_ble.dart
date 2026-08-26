@@ -42,6 +42,7 @@ class EstacaoBle extends ChangeNotifier {
   final _assinaturas = <StreamSubscription<dynamic>>[];
   StreamSubscription<dynamic>? _assEstado;
   Timer? _autoTimer;
+  Timer? _timerGrava;
 
   bool get conectado => estado == EstadoLigacao.ligado;
 
@@ -55,32 +56,44 @@ class EstacaoBle extends ChangeNotifier {
 
   void _gpsDoTelefone(
       double lat, double lon, double precisaoM, double velKmh, double rumo) {
-    // So registra e desenha durante a gravacao: a trajetoria e da medida.
-    if (gravador.gravando) {
-      gravador.anexar('gps', {
-        'lat': lat, 'lon': lon, 'precisao': precisaoM,
-        'vel': velKmh, 'rumo': rumo.isNaN ? 0.0 : rumo,
-      });
-      if (trilha.isEmpty ||
-          trilha.last[0] != lat || trilha.last[1] != lon) {
-        trilha.add([lat, lon]);
-        if (trilha.length > 5000) trilha.removeAt(0);
-      }
-    }
+    // So mantem a posicao atual viva (para o ponto no mapa). A GRAVACAO nao
+    // acontece aqui: e um timer de 1 s que le a posicao atual e grava, para nao
+    // depender do ritmo dos eventos do stream de GPS - que pode espacar ou
+    // pausar, e era isso que deixava a coleta vazia.
     notifyListeners();
   }
 
   // -------------------------------------------------------------- Gravacao
   Future<void> iniciarGravacao() async {
     trilha.clear();
-    // Comeca a trajetoria na posicao atual, se ja houver fix.
-    final la = gps.lat, lo = gps.lon;
-    if (la != null && lo != null) trilha.add([la, lo]);
     await gravador.iniciar(status?.dev ?? 'estacao');
+    _registrarPosicao();          // grava o primeiro ponto ja, se houver fix
+    _timerGrava?.cancel();
+    // 1 Hz, garantido enquanto houver posicao. Parado, grava o mesmo ponto -
+    // uma trajetoria parada, que e a verdade. Movendo, grava o ponto novo.
+    _timerGrava =
+        Timer.periodic(const Duration(seconds: 1), (_) => _registrarPosicao());
+    notifyListeners();
+  }
+
+  void _registrarPosicao() {
+    if (!gravador.gravando) return;
+    final la = gps.lat, lo = gps.lon;
+    if (la == null || lo == null) return; // sem fix ainda: nada a gravar
+    gravador.anexar('gps', {
+      'lat': la, 'lon': lo, 'precisao': gps.precisaoM ?? 0.0,
+      'vel': gps.velKmh ?? 0.0, 'rumo': gps.rumo ?? 0.0,
+    });
+    if (trilha.isEmpty || trilha.last[0] != la || trilha.last[1] != lo) {
+      trilha.add([la, lo]);
+      if (trilha.length > 5000) trilha.removeAt(0);
+    }
     notifyListeners();
   }
 
   Future<void> pararGravacao() async {
+    _timerGrava?.cancel();
+    _timerGrava = null;
     await gravador.encerrar();
     notifyListeners();
   }
@@ -264,6 +277,7 @@ class EstacaoBle extends ChangeNotifier {
   void dispose() {
     _vivo = false;
     _autoTimer?.cancel();
+    _timerGrava?.cancel();
     _limparAssinaturas();
     _assEstado?.cancel();
     gps.removeListener(notifyListeners);
