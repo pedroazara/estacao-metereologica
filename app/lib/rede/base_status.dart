@@ -59,8 +59,9 @@ class BaseStatus extends ChangeNotifier {
     final cliente = HttpClient()
       ..connectionTimeout = const Duration(seconds: 3);
     try {
+      // /sessoes existe na base simplificada (o antigo /dados foi removido).
       final req = await cliente
-          .getUrl(Uri.parse('http://$host:8771/dados'))
+          .getUrl(Uri.parse('http://$host:8771/sessoes'))
           .timeout(const Duration(seconds: 3));
       final resp = await req.close().timeout(const Duration(seconds: 3));
       await resp.drain<void>();

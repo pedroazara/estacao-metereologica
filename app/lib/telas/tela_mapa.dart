@@ -4,12 +4,10 @@ import 'package:latlong2/latlong.dart';
 
 import '../ble/estacao_ble.dart';
 
-/// Mapa de verdade (OpenStreetMap) com a sua localizacao e a trajetoria.
+/// Mapa de verdade (OpenStreetMap) com a sua posicao e a trajetoria da medicao.
 ///
-/// A posicao vem do GPS do TELEFONE (decisao de 25/08/2026). Desenha duas
-/// linhas: o GPS cru do telefone e a PREVIA do Kalman por cima. Os tiles vem da
-/// internet quando ha rede; offline, o mapa usa o que ja estiver em cache e as
-/// linhas continuam aparecendo sobre o fundo.
+/// A trajetoria so aparece quando voce esta GRAVANDO - e o caminho da medida,
+/// nao do trajeto ate comecar. A posicao vem do GPS do proprio telefone.
 class TelaMapa extends StatefulWidget {
   final EstacaoBle ble;
   const TelaMapa({super.key, required this.ble});
@@ -20,7 +18,7 @@ class TelaMapa extends StatefulWidget {
 
 class _TelaMapaState extends State<TelaMapa> {
   final _mapa = MapController();
-  bool _seguir = true; // a camera acompanha a posicao ate o usuario arrastar
+  bool _seguir = true;
 
   @override
   void initState() {
@@ -73,8 +71,8 @@ class _TelaMapaState extends State<TelaMapa> {
     }
 
     final aqui = LatLng(la, lo);
-    final cru = ble.fusao.trilhaCru.map((p) => LatLng(p[0], p[1])).toList();
-    final kf = ble.fusao.trilhaFiltrada.map((p) => LatLng(p[0], p[1])).toList();
+    final trilha =
+        ble.trilha.map((p) => LatLng(p[0], p[1])).toList(growable: false);
 
     return Stack(children: [
       FlutterMap(
@@ -83,8 +81,6 @@ class _TelaMapaState extends State<TelaMapa> {
           initialCenter: aqui,
           initialZoom: 17,
           onPositionChanged: (pos, gesto) {
-            // Arrastar o mapa desliga o seguimento; senao a proxima posicao
-            // puxaria a vista de volta e nao daria para olhar em volta.
             if (gesto && _seguir) setState(() => _seguir = false);
           },
         ),
@@ -94,13 +90,9 @@ class _TelaMapaState extends State<TelaMapa> {
             userAgentPackageName: 'br.estacao.estacao_movel',
             maxNativeZoom: 19,
           ),
-          if (cru.length > 1)
+          if (trilha.length > 1)
             PolylineLayer(polylines: [
-              Polyline(points: cru, strokeWidth: 3, color: const Color(0x8858A6FF)),
-            ]),
-          if (kf.length > 1)
-            PolylineLayer(polylines: [
-              Polyline(points: kf, strokeWidth: 4, color: const Color(0xFF3FB950)),
+              Polyline(points: trilha, strokeWidth: 4, color: const Color(0xFF3FB950)),
             ]),
           MarkerLayer(markers: [
             Marker(
@@ -121,7 +113,6 @@ class _TelaMapaState extends State<TelaMapa> {
           ]),
         ],
       ),
-      // Atribuicao do OSM (exigida pela licenca dos tiles).
       Positioned(
         bottom: 2,
         right: 4,
@@ -132,13 +123,7 @@ class _TelaMapaState extends State<TelaMapa> {
               style: TextStyle(fontSize: 9, color: Colors.white70)),
         ),
       ),
-      // Painel de resumo flutuante.
-      Positioned(
-        top: 12,
-        left: 12,
-        child: _Resumo(ble: ble),
-      ),
-      // Botao para religar o seguimento depois de arrastar.
+      Positioned(top: 12, left: 12, child: _Resumo(ble: ble)),
       if (!_seguir)
         Positioned(
           bottom: 16,
@@ -161,8 +146,9 @@ class _Resumo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final f = ble.fusao;
-    final prec = ble.gps.precisaoM;
+    final prec = ble.precisaoM;
+    final a = ble.ambiente;
+    final gravando = ble.gravador.gravando;
     Widget linha(String r, String v, [Color? cor]) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -184,18 +170,21 @@ class _Resumo extends StatelessWidget {
         border: Border.all(color: const Color(0xFF232D38)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Icon(Icons.circle, size: 8, color: Color(0xFF3FB950)),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(gravando ? Icons.fiber_manual_record : Icons.circle_outlined,
+              size: 10,
+              color: gravando ? const Color(0xFFE04B4B) : const Color(0xFF7D8794)),
           const SizedBox(width: 6),
-          Text(f.parado ? 'parado' : 'em movimento',
+          Text(gravando ? 'gravando trajetoria' : 'nao gravando',
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         ]),
         const SizedBox(height: 6),
-        linha('velocidade', '${f.velocidadeKmh.toStringAsFixed(1)} km/h'),
-        linha('incerteza Kalman', '±${f.sigmaPos.toStringAsFixed(1)} m',
-            const Color(0xFF3FB950)),
         linha('precisao GPS', prec == null ? '--' : '±${prec.toStringAsFixed(0)} m'),
-        linha('pontos', '${f.trilhaCru.length}'),
+        linha('temperatura',
+            a == null ? '--' : '${a.temperatura.toStringAsFixed(1)} °C',
+            const Color(0xFFFF7A5E)),
+        linha('umidade', a == null ? '--' : '${a.umidade.toStringAsFixed(0)} %'),
+        linha('pontos', '${ble.trilha.length}'),
       ]),
     );
   }

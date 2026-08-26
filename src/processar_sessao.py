@@ -22,11 +22,7 @@ filtro mora aqui.
 import json
 import os
 import sqlite3
-import sys
 from datetime import datetime
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from filtro_kalman import FiltroCV  # noqa: E402
 
 
 def _epoch(iso):
@@ -74,14 +70,13 @@ def processar_sessao(caminho_jsonl, caminho_db):
     sessao = os.path.basename(caminho_jsonl)
     dev = sessao.split("-")[0]
 
-    kf = FiltroCV()
-    t0 = None
     temp = umid = None
     derivadas = []
 
-    # Posicao vem toda pela caracteristica "pos": o ESP re-emite a localizacao
-    # do telefone com a linha de tempo dele (o campo interno m["src"] diz se
-    # veio do telefone ou do proprio GPS do ESP). Uma fonte so simplifica tudo.
+    # SIMPLIFICADO em 26/08/2026: sem Kalman. A posicao e o GPS do telefone
+    # (`gps`), gravado direto. Cada ponto leva a ultima temperatura/umidade
+    # conhecida - e isso que o painel colore no mapa. As colunas kf_* repetem a
+    # posicao crua (nao ha filtro), para o painel nao precisar mudar.
     with open(caminho_jsonl, "r", encoding="utf-8") as f:
         for linha in f:
             linha = linha.strip()
@@ -96,44 +91,20 @@ def processar_sessao(caminho_jsonl, caminho_db):
             t = _epoch(env.get("ts_app"))
             if t is None:
                 continue
-            if t0 is None:
-                t0 = t
-            rel = t - t0
 
             if src == "amb":
                 temp = m.get("temp", temp)
                 umid = m.get("umid", umid)
 
-            elif src == "imu":
-                dt = m.get("dt", 0.0)
-                if dt <= 0:
-                    continue
-                for a in m.get("m", []):
-                    if not kf.pronto:
-                        break  # sem posicao inicial o filtro nao propaga
-                    kf.prever(a.get("ax", 0.0), a.get("ay", 0.0), a.get("az", 1.0),
-                              a.get("roll", 0.0), a.get("pitch", 0.0), dt,
-                              gx=a.get("gx", 0.0), gy=a.get("gy", 0.0),
-                              gz=a.get("gz", 0.0))
-
-            elif src == "pos":
-                if not m.get("fix"):
-                    continue
+            elif src == "gps":
                 lat, lon = m.get("lat"), m.get("lon")
                 if lat is None or lon is None:
                     continue
                 vel = m.get("vel", 0.0)
-                if not kf.pronto:
-                    kf.iniciar(lat, lon)
-                    continue
-                kf.atualizar_movimento_gps(rel, lat, lon, vel)
-                kf.corrigir_gps(lat, lon, hdop=m.get("hdop", 1.0))
-                kf.corrigir_velocidade(vel, m.get("rumo", 0.0))
-                klat, klon = kf.posicao
                 derivadas.append((
-                    dev, sessao, t, lat, lon, klat, klon,
-                    kf.velocidade_kmh, kf.sigma_pos, 1 if kf.parado else 0,
-                    m.get("sat", 0), m.get("hdop", 0.0), temp, umid,
+                    dev, sessao, t, lat, lon, lat, lon,
+                    vel, m.get("precisao", 0.0), 0,
+                    0, 0.0, temp, umid,
                 ))
 
     con = abrir_banco(caminho_db)

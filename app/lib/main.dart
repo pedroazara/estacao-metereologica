@@ -5,7 +5,6 @@ import 'rede/base_status.dart';
 import 'telas/tela_config.dart';
 import 'telas/tela_mapa.dart';
 import 'telas/tela_painel.dart';
-import 'telas/tela_sensores.dart';
 import 'telas/tela_sessoes.dart';
 
 void main() => runApp(const AppEstacao());
@@ -84,7 +83,6 @@ class _CascaState extends State<Casca> {
     final telas = [
       TelaPainel(ble: widget.ble, base: widget.base),
       TelaMapa(ble: widget.ble),
-      TelaSensores(ble: widget.ble),
       TelaConfig(ble: widget.ble),
       const TelaSessoes(),
     ];
@@ -103,10 +101,6 @@ class _CascaState extends State<Casca> {
               icon: Icon(Icons.map_outlined),
               selectedIcon: Icon(Icons.map),
               label: 'Mapa'),
-          NavigationDestination(
-              icon: Icon(Icons.speed_outlined),
-              selectedIcon: Icon(Icons.speed),
-              label: 'Sensores'),
           NavigationDestination(
               icon: Icon(Icons.tune_outlined),
               selectedIcon: Icon(Icons.tune),

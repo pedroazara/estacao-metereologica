@@ -12,10 +12,9 @@ void main() {
   testWidgets('sobe e mostra a navegacao', (tester) async {
     await tester.pumpWidget(const AppEstacao());
 
-    // As cinco abas da navegacao inferior - estaveis, sem depender de conexao.
+    // As quatro abas da navegacao inferior - estaveis, sem depender de conexao.
     expect(find.text('Painel'), findsOneWidget);
     expect(find.text('Mapa'), findsOneWidget);
-    expect(find.text('Sensores'), findsOneWidget);
     expect(find.text('Estacao'), findsOneWidget);
     expect(find.text('Sessoes'), findsOneWidget);
   });
