@@ -92,18 +92,26 @@ def _trajeto_sessao(nome):
     con = sqlite3.connect(db)
     try:
         linhas = con.execute(
-            "SELECT lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid "
+            "SELECT ts, lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid "
             "FROM derivado WHERE sessao = ? ORDER BY ts", (nome,)).fetchall()
     except sqlite3.Error:
-        return {"cru": [], "kf": []}
+        return {"cru": [], "kf": [], "pontos": []}
     finally:
         con.close()
-    cru = [[la, lo] for (la, lo, _a, _b, _v, _s, _t, _u) in linhas]
-    kf = [[a, b] for (_la, _lo, a, b, _v, _s, _t, _u) in linhas]
+    cru = [[la, lo] for (_ts, la, lo, _a, _b, _v, _s, _t, _u) in linhas]
+    kf = [[a, b] for (_ts, _la, _lo, a, b, _v, _s, _t, _u) in linhas]
+    # Um ponto por fix, com o que medir nele: e isso que o mapa colore por
+    # temperatura e mostra ao passar o mouse. Usa a posicao filtrada (kf) para
+    # o ponto ficar sobre o trajeto limpo, nao sobre o jitter cru.
+    pontos = [{"lat": a, "lon": b, "temp": t, "umid": u, "vel": v}
+              for (_ts, _la, _lo, a, b, v, _s, t, u) in linhas]
+    temps = [t for (*_, t, _u) in linhas if t is not None]
     ult = linhas[-1] if linhas else None
-    resumo = {"vel": ult[4], "sigma": ult[5], "temp": ult[6],
-              "umid": ult[7], "n": len(linhas)} if ult else {}
-    return {"cru": cru, "kf": kf, "resumo": resumo}
+    resumo = {"vel": ult[5], "sigma": ult[6], "temp": ult[7], "umid": ult[8],
+              "n": len(linhas),
+              "temp_min": min(temps) if temps else None,
+              "temp_max": max(temps) if temps else None} if ult else {}
+    return {"cru": cru, "kf": kf, "pontos": pontos, "resumo": resumo}
 
 
 # ---------------------------------------------------------------------------
@@ -136,8 +144,16 @@ PAGINA = r"""<!DOCTYPE html>
   .sessao .nome{font-size:12.5px;font-family:ui-monospace,monospace;word-break:break-all}
   .sessao .sub{font-size:11px;color:var(--txt2);margin-top:3px}
   #vazio{padding:24px 16px;font-size:12.5px;color:var(--txt2);line-height:1.6}
-  #direita{flex:1;display:flex;flex-direction:column;min-width:0}
-  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda)}
+  #direita{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda);cursor:crosshair}
+  #tip{position:absolute;pointer-events:none;display:none;z-index:5;
+       background:#0d1117ee;border:1px solid var(--borda);border-radius:8px;
+       padding:8px 10px;font-size:12px;font-family:ui-monospace,monospace;white-space:nowrap}
+  #tip b{color:#ff7a5e}
+  #escala{position:absolute;top:24px;right:26px;z-index:4;background:#0d1117cc;
+          border:1px solid var(--borda);border-radius:8px;padding:8px 10px;font-size:10px;color:var(--txt2)}
+  #escala .barra{width:14px;height:90px;border-radius:3px;margin:4px auto;
+       background:linear-gradient(to top,#58a6ff,#3fb950,#d29922,#f85149)}
   #resumo{display:flex;gap:22px;padding:0 20px 16px;flex-wrap:wrap}
   .n .v{font-size:19px;font-weight:650;font-family:ui-monospace,monospace}
   .n .r{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
@@ -165,6 +181,13 @@ PAGINA = r"""<!DOCTYPE html>
   <div id="direita">
     <div id="placeholder">Selecione uma coleta a esquerda para ver o trajeto.</div>
     <canvas id="mapa" style="display:none"></canvas>
+    <div id="tip"></div>
+    <div id="escala" style="display:none">
+      <div style="text-align:center" id="esc_max">--</div>
+      <div class="barra"></div>
+      <div style="text-align:center" id="esc_min">--</div>
+      <div style="text-align:center;margin-top:4px">°C</div>
+    </div>
     <div id="resumo" style="display:none"></div>
   </div>
 </div>
@@ -233,15 +256,64 @@ function desenhar(){
     ctx.strokeStyle=cor; ctx.lineWidth=larg; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath();
     pts.forEach((p,i)=>{ const [x,y]=T(m(p)); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
   };
-  linha(traj.cru, 'rgba(88,166,255,.55)', 2);
-  linha(traj.kf, '#3fb950', 3.5);
-  const [ax,ay]=T(m(traj.kf[traj.kf.length-1]||traj.cru[traj.cru.length-1]));
-  ctx.fillStyle='#3fb950'; ctx.beginPath(); ctx.arc(ax,ay,6,0,7); ctx.fill();
-  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-  ctx.font='11px ui-monospace'; ctx.textAlign='left';
-  ctx.fillStyle='#3fb950'; ctx.fillRect(12,12,16,3); ctx.fillStyle='#e6edf3'; ctx.fillText('Kalman', 34, 16);
-  ctx.fillStyle='rgba(88,166,255,.7)'; ctx.fillRect(12,28,16,3); ctx.fillStyle='#e6edf3'; ctx.fillText('posicao crua', 34, 32);
+  // O trajeto filtrado como linha fina de fundo; a temperatura vem nos pontos.
+  linha(traj.kf.length>1?traj.kf:traj.cru, 'rgba(63,185,80,.5)', 2.5);
+
+  // Pontos coloridos pela temperatura. Escala sequencial azul->verde->amarelo->
+  // vermelho, mapeada na faixa da propria sessao (senao uma variacao de 0,5 C
+  // ficaria toda de uma cor). Guarda a posicao de tela para o hover achar.
+  const r = traj.resumo||{};
+  const tmin = r.temp_min, tmax = r.temp_max;
+  const faixa = (tmax!=null && tmax> tmin) ? tmax - tmin : 1;
+  pontosTela = [];
+  for(const p of (traj.pontos||[])){
+    const [x,y] = T(m([p.lat,p.lon]));
+    pontosTela.push({x,y,p});
+    ctx.beginPath(); ctx.arc(x,y,5,0,7);
+    ctx.fillStyle = p.temp==null ? '#7d8794' : corTemp((p.temp-tmin)/faixa);
+    ctx.fill();
+    ctx.strokeStyle='rgba(13,17,23,.8)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  // Marca o inicio e o fim do percurso.
+  if(pontosTela.length){
+    const A=pontosTela[0], B=pontosTela[pontosTela.length-1];
+    ctx.font='10px ui-monospace'; ctx.fillStyle='#e6edf3'; ctx.textAlign='center';
+    ctx.fillText('inicio', A.x, A.y-9); ctx.fillText('fim', B.x, B.y-9);
+  }
+  // Legenda da escala de temperatura.
+  const esc2=$('#escala');
+  if(tmin!=null){ esc2.style.display='block';
+    $('#esc_max').textContent=tmax.toFixed(1); $('#esc_min').textContent=tmin.toFixed(1);
+  } else esc2.style.display='none';
 }
+
+// Sequencial azul->verde->amarelo->vermelho para t em [0,1].
+function corTemp(t){
+  t = Math.max(0, Math.min(1, t));
+  const paradas = [[88,166,255],[63,185,80],[210,153,34],[248,81,73]];
+  const f = t*(paradas.length-1); const i = Math.floor(f); const k = f-i;
+  const a = paradas[i], b = paradas[Math.min(i+1,paradas.length-1)];
+  return `rgb(${a[0]+(b[0]-a[0])*k|0},${a[1]+(b[1]-a[1])*k|0},${a[2]+(b[2]-a[2])*k|0})`;
+}
+
+// Hover: acha o ponto mais proximo e mostra temperatura/umidade/velocidade.
+let pontosTela = [];
+$('#mapa').addEventListener('mousemove', ev => {
+  const c=$('#mapa'), rect=c.getBoundingClientRect();
+  const mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
+  let perto=null, dmin=14*14;
+  for(const pt of pontosTela){ const dx=pt.x-mx, dy=pt.y-my, d=dx*dx+dy*dy; if(d<dmin){dmin=d;perto=pt;} }
+  const tip=$('#tip');
+  if(!perto){ tip.style.display='none'; return; }
+  const p=perto.p;
+  tip.innerHTML = `<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'temp --'}</b>`
+    + `  ·  ${p.umid!=null?p.umid.toFixed(0)+' %':'--'}`
+    + `<br>${(p.vel||0).toFixed(1)} km/h`;
+  tip.style.display='block';
+  tip.style.left=Math.min(perto.x+12, rect.width-140)+'px';
+  tip.style.top=(perto.y+12)+'px';
+});
+$('#mapa').addEventListener('mouseleave', ()=>{ $('#tip').style.display='none'; });
 
 window.addEventListener('resize', desenhar);
 setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -289,7 +361,11 @@ class Manipulador(BaseHTTPRequestHandler):
         pasta_dev = os.path.join(_pasta_sincronizadas(), _limpar_nome(dev))
         os.makedirs(pasta_dev, exist_ok=True)
         destino = os.path.join(pasta_dev, sessao)
-        if os.path.exists(destino):
+        # Manifesto por TAMANHO, nao so por nome: se a sessao ja chegou mas o
+        # novo envio e MAIOR, e uma versao mais completa da mesma coleta (o caso
+        # de ter sincronizado durante a gravacao e reenviado depois de parar).
+        # Aceita a maior e reprocessa; um reenvio igual ou menor e no-op.
+        if os.path.exists(destino) and len(corpo) <= os.path.getsize(destino):
             self._json(200, {"ok": True, "ja_tinha": True,
                              "linhas": _contar_linhas(destino)})
             return
