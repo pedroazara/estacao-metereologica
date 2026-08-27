@@ -35,6 +35,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from processar_sessao import processar_sessao
+import planejamento
 
 
 # ---------------------------------------------------------------------------
@@ -52,6 +53,25 @@ def _pasta_sincronizadas():
 
 def _caminho_banco():
     return os.path.join(_raiz(), "data", "estacao.db")
+
+
+def _validar_tracos(tracos):
+    """Confere o formato de `tracos`: lista de {"raio_m": numero (0,500],
+    "pontos": [[lat,lon], ...] nao vazia}. Devolve a mensagem de erro, ou None
+    se estiver tudo certo. Cada pincelada carrega o proprio raio - e o que
+    permite mudar o tamanho do pincel sem afetar o que ja foi pintado."""
+    if not isinstance(tracos, list) or not tracos:
+        return "tracos precisa ser uma lista nao vazia"
+    for t in tracos:
+        if not isinstance(t, dict):
+            return "cada traco precisa ser {raio_m, pontos}"
+        raio_m = t.get("raio_m")
+        pontos = t.get("pontos")
+        if not isinstance(raio_m, (int, float)) or raio_m <= 0 or raio_m > 500:
+            return "raio_m de um traco fora da faixa (0-500 m)"
+        if not isinstance(pontos, list) or not pontos:
+            return "um traco esta sem pontos"
+    return None
 
 
 def _limpar_nome(s):
@@ -196,11 +216,32 @@ PAGINA = r"""<!DOCTYPE html>
   .leaflet-popup-tip{background:#161b22}
   .leaflet-popup-content{font-family:ui-monospace,monospace;font-size:12px;margin:8px 10px}
   .leaflet-popup-content b{color:#ff7a5e}
+
+  .aba{background:transparent;border:1px solid var(--borda);color:var(--txt2);
+       padding:5px 12px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit}
+  .aba.on{background:var(--azul);border-color:var(--azul);color:#07121f;font-weight:600}
+  .btn{background:#1c242e;color:var(--txt);border:1px solid var(--borda);border-radius:7px;
+       padding:7px 12px;font-size:11.5px;cursor:pointer;font-family:inherit}
+  .btn:hover{background:#26303c}
+  .btn.primario{background:var(--verde);border-color:var(--verde);color:#07120d;font-weight:600}
+  .btn.perigo{color:#f85149;border-color:#4a2325}
+  #corpo_planos{display:none;height:calc(100% - 56px)}
+  #painel_novo{padding:14px 16px}
+  #barra_pincel{display:none;align-items:center;gap:10px;padding:10px 16px;
+                background:var(--card);border-bottom:1px solid var(--borda);flex-wrap:wrap}
+  #barra_pincel label{font-size:11px;color:var(--txt2)}
+  #barra_pincel input[type=text]{background:#0d1117;border:1px solid var(--borda);color:var(--txt);
+                                  border-radius:6px;padding:5px 8px;font-size:12px;width:90px}
+  #raio_val{font-family:ui-monospace,monospace;font-size:12px;min-width:44px;display:inline-block}
+  #resumo_plano{display:none;padding:14px 20px}
+  #acoes_plano{display:flex;gap:8px;padding:0 20px 14px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <div id="topo">
   <h1>Base da Estacao</h1>
+  <button class="aba on" data-aba="sessoes">Sessoes</button>
+  <button class="aba" data-aba="planos">Planejar area</button>
   <span class="pilula"><span class="dot"></span>base no ar</span>
   <span class="pilula"><span id="t_sess">0 sessoes</span></span>
   <span style="margin-left:auto;font-size:11px;color:var(--txt2)" id="relogio"></span>
@@ -225,6 +266,49 @@ PAGINA = r"""<!DOCTYPE html>
       <div style="text-align:center;margin-top:4px">°C</div>
     </div>
     <div id="resumo" style="display:none"></div>
+  </div>
+</div>
+
+<div id="corpo_planos">
+  <div id="lista">
+    <div class="cab">Areas planejadas</div>
+    <div id="painel_novo">
+      <button class="btn primario" id="btn_novo_plano" style="width:100%">+ Nova area</button>
+    </div>
+    <div id="planos"></div>
+    <div id="vazio_planos" style="display:none;padding:0 16px 16px;font-size:12.5px;
+         color:var(--txt2);line-height:1.6">
+      Nenhuma area planejada ainda.<br><br>
+      Toque <b>+ Nova area</b>, escolha o tamanho do pincel e arraste no mapa
+      para pintar onde o usuario deve medir.
+    </div>
+  </div>
+  <div id="direita">
+    <div id="barra_pincel">
+      <label>pincel</label>
+      <input type="range" id="raio_pincel" min="3" max="60" value="15">
+      <span id="raio_val">15 m</span>
+      <label style="margin-left:10px">estacao</label>
+      <input type="text" id="dev_plano" value="esp32-01">
+      <button class="btn primario" id="btn_modo_pintar">Pincel</button>
+      <button class="btn" id="btn_modo_apagar">Borracha</button>
+      <button class="btn" id="btn_desfazer">Desfazer</button>
+      <button class="btn" id="btn_limpar">Limpar</button>
+      <button class="btn primario" id="btn_salvar_plano">Salvar</button>
+      <button class="btn" id="btn_cancelar_plano">Cancelar</button>
+    </div>
+    <div id="placeholder_planos" style="flex:1;display:flex;align-items:center;justify-content:center;
+         color:var(--txt2);font-size:13px;text-align:center;padding:30px">
+      Selecione uma area a esquerda, ou toque <b>+ Nova area</b> para pintar uma nova.
+    </div>
+    <div id="mapa_planos" style="display:none;flex:1;background:#0a0e13;margin:14px;
+         border-radius:12px;border:1px solid var(--borda)"></div>
+    <div id="resumo_plano"></div>
+    <div id="acoes_plano">
+      <button class="btn primario" id="btn_ativar_plano" style="display:none">Ativar para o medidor</button>
+      <button class="btn" id="btn_editar_plano" style="display:none">Editar desenho</button>
+      <button class="btn perigo" id="btn_apagar_plano" style="display:none">Apagar area</button>
+    </div>
   </div>
 </div>
 <script>
@@ -349,10 +433,352 @@ function desenhar(){
   } else esc2.style.display='none';
 }
 
-window.addEventListener('resize', () => { if(mapa) mapa.invalidateSize(); });
+window.addEventListener('resize', () => { if(mapa) mapa.invalidateSize(); if(mapaP) mapaP.invalidateSize(); });
 setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 carregarSessoes();
 setInterval(carregarSessoes, 5000);
+
+// =============================================================================
+// PLANEJAMENTO: PINTAR uma area no mapa (pincel) e salvar - so isso, o
+// PRE-processamento. Nao gera nem mostra nenhum ponto-alvo aqui: o usuario
+// sai e mede do jeito que sempre mediu, sem nenhum passo especial. Quando
+// esta tela reabre um plano, o POS-processamento roda na hora (GET
+// /plano/pontos) - cruza a area contra as amostras que ja existem no banco
+// (planejamento.pontos_do_plano) e monta o Voronoi com o raio de
+// abrangencia que o usuario escolher NAQUELE MOMENTO, nao gravado.
+//
+// Da pra ter VARIOS planos por medidor; "Ativar para o medidor" so marca
+// qual deles fica disponivel para aquele `dev` (o app busca isso em
+// GET /plano/ativo?dev= - fase seguinte, fora desta rodada, mas o dado ja
+// fica pronto).
+// =============================================================================
+let ultimoDev = 'esp32-01';
+
+document.querySelectorAll('.aba').forEach(b => b.onclick = () => mudarAba(b.dataset.aba));
+function mudarAba(aba){
+  document.querySelectorAll('.aba').forEach(b => b.classList.toggle('on', b.dataset.aba===aba));
+  $('#corpo').style.display = aba==='sessoes' ? 'flex' : 'none';
+  $('#corpo_planos').style.display = aba==='planos' ? 'flex' : 'none';
+  if(aba==='planos'){
+    if(mapaP) mapaP.invalidateSize();
+    carregarPlanos();
+  }
+}
+
+let mapaP=null, camadaPintura=null, camadaPontos=null, cursorPincel=null;
+let pintando=false, arrastando=false, tracoAtual=null, tracosNovo=[];
+let planoSelId=null, planoSel=null, ultimaAmostra=null;
+let modo='pintar';  // 'pintar' ou 'apagar'
+
+function iniciarMapaPlanos(centro){
+  mapaP = L.map('mapa_planos', {zoomControl:true}).setView(centro, 17);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(mapaP);
+
+  // Pane propria para a pintura, entre os tiles (z~200) e os overlays normais
+  // (z~400, onde ficam os pontos calculados). A transparencia vai NELA, nao
+  // em cada disco: os discos sao pintados OPACOS (ver aplicarPincel) e so a
+  // pane inteira fica translucida por cima do mapa. Se a transparencia fosse
+  // por disco, dois discos sobrepostos ficariam mais escuros que um so - a
+  // pincelada sairia com manchas mais fortes onde o gesto se cruzou, o
+  // oposto de "tinta continua".
+  mapaP.createPane('pinturaPane');
+  mapaP.getPane('pinturaPane').style.zIndex = 350;
+  mapaP.getPane('pinturaPane').style.opacity = 0.45;
+  mapaP.getPane('pinturaPane').style.pointerEvents = 'none';
+
+  // Pane separada para o desenho de um plano JA SALVO (desenharPlano) -
+  // opacidade 100% (mancha bem solida, nao um verde lavado), mas com
+  // mix-blend-mode:multiply em vez de so opacity: opacity sozinha clareia
+  // tudo por baixo (ruas, predios, rotulos somem debaixo do verde); multiply
+  // MULTIPLICA a cor por cima do que ja esta no tile, entao o traco escuro
+  // de uma rua ou contorno de predio continua aparecendo, so tingido de
+  // verde - a area fica evidente sem apagar o mapa por baixo.
+  mapaP.createPane('planoPane');
+  mapaP.getPane('planoPane').style.zIndex = 350;
+  mapaP.getPane('planoPane').style.opacity = 1;
+  mapaP.getPane('planoPane').style.mixBlendMode = 'multiply';
+  mapaP.getPane('planoPane').style.pointerEvents = 'none';
+
+  camadaPintura = L.layerGroup().addTo(mapaP);
+  camadaPontos = L.layerGroup().addTo(mapaP);
+
+  // So o botao ESQUERDO pinta/apaga. Qualquer outro botao (o do meio, ex.)
+  // nao mexe em `dragging` e cai no comportamento padrao do Leaflet - que e
+  // mover o mapa. E assim que da pra navegar sem sair do modo de desenho.
+  mapaP.on('mousedown', ev => {
+    if(!pintando || ev.originalEvent.button !== 0) return;
+    arrastando = true; ultimaAmostra = null;
+    mapaP.dragging.disable();
+    if(modo==='pintar') tracoAtual = {raio_m: Number($('#raio_pincel').value), pontos:[]};
+    aplicarPincel(ev.latlng);
+  });
+  mapaP.on('mousemove', ev => {
+    moverCursorPincel(ev.latlng);
+    if(pintando && arrastando) aplicarPincel(ev.latlng);
+  });
+  const soltarPincel = () => {
+    if(!pintando || !arrastando) return;
+    arrastando = false;
+    mapaP.dragging.enable();
+    if(modo==='pintar' && tracoAtual && tracoAtual.pontos.length) tracosNovo.push(tracoAtual);
+    tracoAtual = null;
+  };
+  mapaP.on('mouseup', soltarPincel);
+  // Rede de seguranca: se o botao for solto fora do mapa, o mouseup do
+  // Leaflet as vezes nao dispara - sem isto a pincelada ficaria "presa".
+  window.addEventListener('mouseup', soltarPincel);
+  mapaP.on('mouseout', () => { if(cursorPincel) mapaP.removeLayer(cursorPincel); cursorPincel=null; });
+}
+
+// Circulo fantasma seguindo o cursor, do tamanho real do pincel - para o
+// usuario ver ANTES de clicar o quanto ele vai pintar (ou apagar).
+function moverCursorPincel(latlng){
+  if(!pintando) return;
+  const raio = Number($('#raio_pincel').value);
+  const cor = modo==='apagar' ? '#f85149' : '#3fb950';
+  if(!cursorPincel){
+    cursorPincel = L.circle(latlng, {radius:raio, color:cor, weight:2, dashArray:'4,4',
+      fill:false, interactive:false}).addTo(mapaP);
+  } else {
+    cursorPincel.setLatLng(latlng).setRadius(raio).setStyle({color:cor});
+  }
+}
+
+function aplicarPincel(latlng){
+  const raio = Number($('#raio_pincel').value);
+  // Amostra mais junta que antes (raio*0.28 em vez de *0.5): com o circulo
+  // SEM borda, sao os discos se sobrepondo bastante que dao a leitura de
+  // tinta continua - amostra rala deixava "furos" entre as bolinhas.
+  if(ultimaAmostra && mapaP.distance(ultimaAmostra, latlng) < raio*0.28) return;
+  ultimaAmostra = latlng;
+  if(modo==='pintar'){
+    tracoAtual.pontos.push([latlng.lat, latlng.lng]);
+    // Disco OPACO (fillOpacity:1) e sem contorno, na pinturaPane - a
+    // transparencia e da pane inteira (ver iniciarMapaPlanos), entao discos
+    // que se sobrepoem continuam com a MESMA cor solida, sem escurecer onde
+    // o gesto se cruzou. E o que da a leitura de tinta continua.
+    L.circle(latlng, {radius:raio, weight:0, stroke:false, pane:'pinturaPane',
+      fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+  } else {
+    apagarPerto(latlng, raio);
+  }
+}
+
+// Borracha: remove, das pinceladas AINDA NAO SALVAS desta sessao de edicao,
+// qualquer amostra dentro do raio do cursor. So opera em tracosNovo - editar
+// uma area ja salva e outra funcionalidade, fora desta rodada.
+function apagarPerto(latlng, raio){
+  let mudou = false;
+  tracosNovo = tracosNovo
+    .map(t => {
+      const pontos = t.pontos.filter(([lat,lon]) => {
+        const manter = mapaP.distance(latlng, [lat,lon]) > raio;
+        if(!manter) mudou = true;
+        return manter;
+      });
+      return {raio_m: t.raio_m, pontos};
+    })
+    .filter(t => t.pontos.length > 0);
+  if(mudou) redesenharPintura();
+}
+
+// Redesenha a camada de pintura do zero, cada pincelada com o RAIO QUE ELA
+// TINHA quando foi pintada - mexer no slider depois nao muda o que ja esta
+// no mapa, so vale para a proxima pincelada.
+function redesenharPintura(){
+  camadaPintura.clearLayers();
+  for(const t of tracosNovo) for(const [lat,lon] of t.pontos)
+    L.circle([lat,lon], {radius:t.raio_m, weight:0, stroke:false, pane:'pinturaPane',
+      fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+}
+
+$('#raio_pincel').addEventListener('input', () => {
+  $('#raio_val').textContent = $('#raio_pincel').value + ' m';
+  // O circulo fantasma acompanha o slider na hora, mesmo sem mover o mouse.
+  if(cursorPincel) cursorPincel.setRadius(Number($('#raio_pincel').value));
+});
+
+function setModo(m){
+  modo = m;
+  $('#btn_modo_pintar').classList.toggle('primario', m==='pintar');
+  $('#btn_modo_apagar').classList.toggle('primario', m==='apagar');
+}
+$('#btn_modo_pintar').onclick = () => setModo('pintar');
+$('#btn_modo_apagar').onclick = () => setModo('apagar');
+
+// `editandoId`: null quando pintando uma area NOVA; o id do plano quando
+// "Editar desenho" foi tocado num plano ja salvo - e o que faz "Salvar"
+// decidir entre criar (POST /plano) ou atualizar (POST /plano/atualizar)
+// o desenho por cima do que ja existia, sem virar um plano duplicado.
+let editandoId = null;
+
+$('#btn_novo_plano').onclick = () => {
+  planoSelId = null; planoSel = null; editandoId = null;
+  tracosNovo = []; tracoAtual = null;
+  setModo('pintar');
+  $('#placeholder_planos').style.display = 'none';
+  $('#mapa_planos').style.display = 'block';
+  if(!mapaP) iniciarMapaPlanos(ultimoCentro());
+  mapaP.invalidateSize();
+  camadaPintura.clearLayers(); camadaPontos.clearLayers();
+  pintando = true;
+  $('#dev_plano').value = ultimoDev;
+  $('#barra_pincel').style.display = 'flex';
+  $('#resumo_plano').style.display = 'none';
+  $('#btn_apagar_plano').style.display = 'none';
+  $('#btn_ativar_plano').style.display = 'none';
+  $('#btn_editar_plano').style.display = 'none';
+  document.querySelectorAll('#planos .sessao').forEach(el => el.classList.remove('sel'));
+};
+
+$('#btn_editar_plano').onclick = () => {
+  if(!planoSelId || !planoSel) return;
+  editandoId = planoSelId;
+  // Clona os tracos existentes para tracosNovo - dá pra continuar pintando
+  // ou apagar pedacos com a borracha, igual numa area nova.
+  tracosNovo = JSON.parse(JSON.stringify(planoSel.tracos || []));
+  tracoAtual = null;
+  setModo('pintar');
+  redesenharPintura();
+  camadaPontos.clearLayers();
+  pintando = true;
+  $('#dev_plano').value = planoSel.dev;
+  $('#barra_pincel').style.display = 'flex';
+};
+
+// Desfazer so cobre PINCELADAS (o que a borracha tira nao entra num
+// historico - "Limpar" e o reset confiavel se a borracha passar do ponto).
+$('#btn_desfazer').onclick = () => { tracosNovo.pop(); redesenharPintura(); };
+$('#btn_limpar').onclick = () => { tracosNovo=[]; redesenharPintura(); };
+$('#btn_cancelar_plano').onclick = () => {
+  pintando = false;
+  editandoId = null;
+  $('#barra_pincel').style.display = 'none';
+  if(cursorPincel){ mapaP.removeLayer(cursorPincel); cursorPincel=null; }
+  camadaPintura.clearLayers(); camadaPontos.clearLayers();
+  if(planoSelId) selecionarPlano(planoSelId);
+  else { $('#mapa_planos').style.display='none'; $('#placeholder_planos').style.display='flex'; }
+};
+$('#btn_salvar_plano').onclick = async () => {
+  if(!tracosNovo.length){ alert('Pinte pelo menos uma area antes de salvar.'); return; }
+  let r;
+  if(editandoId){
+    r = await (await fetch('/plano/atualizar', {method:'POST',
+      body: JSON.stringify({id: editandoId, tracos:tracosNovo})})).json();
+  } else {
+    const nome = prompt('Nome desta area:');
+    if(!nome) return;
+    const dev = $('#dev_plano').value.trim() || 'esp32-01';
+    r = await (await fetch('/plano', {method:'POST',
+      body: JSON.stringify({nome, dev, tracos:tracosNovo})})).json();
+  }
+  if(!r.ok){ alert('Erro ao salvar: ' + r.erro); return; }
+  const idFinal = editandoId || r.id;
+  pintando = false;
+  editandoId = null;
+  $('#barra_pincel').style.display = 'none';
+  if(cursorPincel){ mapaP.removeLayer(cursorPincel); cursorPincel=null; }
+  await carregarPlanos();
+  selecionarPlano(idFinal);
+};
+$('#btn_apagar_plano').onclick = async () => {
+  if(!planoSelId) return;
+  if(!confirm('Apagar esta area planejada?')) return;
+  await fetch('/plano/apagar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  planoSelId = null; planoSel = null;
+  camadaPontos.clearLayers(); camadaPintura.clearLayers();
+  $('#resumo_plano').style.display = 'none';
+  $('#btn_apagar_plano').style.display = 'none';
+  $('#btn_ativar_plano').style.display = 'none';
+  $('#btn_editar_plano').style.display = 'none';
+  $('#mapa_planos').style.display = 'none';
+  $('#placeholder_planos').style.display = 'flex';
+  carregarPlanos();
+};
+$('#btn_ativar_plano').onclick = async () => {
+  if(!planoSelId) return;
+  if(planoSel.ativo){
+    await fetch('/plano/desativar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  } else {
+    await fetch('/plano/ativar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  }
+  planoSel = await (await fetch('/plano?id='+planoSelId, {cache:'no-store'})).json();
+  atualizarBotaoAtivar();
+  carregarPlanos();
+};
+function atualizarBotaoAtivar(){
+  const btn = $('#btn_ativar_plano');
+  btn.textContent = planoSel.ativo ? 'Ativo para o medidor ✓' : 'Ativar para o medidor';
+  btn.classList.toggle('primario', !planoSel.ativo);
+}
+
+function ultimoCentro(){
+  if(planoSel && planoSel.tracos && planoSel.tracos.length && planoSel.tracos[0].pontos.length)
+    return planoSel.tracos[0].pontos[0];
+  if(traj && traj.cru && traj.cru.length) return traj.cru[0];
+  return [-21.2257, -44.9774];
+}
+
+async function carregarPlanos(){
+  let r;
+  try{ r = await (await fetch('/planos', {cache:'no-store'})).json(); }
+  catch(e){ return; }
+  if(r.length) ultimoDev = r[0].dev;
+  $('#vazio_planos').style.display = r.length ? 'none' : 'block';
+  const box = $('#planos');
+  box.innerHTML = r.map(p => `
+    <div class="sessao ${p.id===planoSelId?'sel':''}" data-id="${p.id}">
+      <div class="nome">${p.nome} ${p.ativo?'<span style="color:var(--verde)">&#9679; ativo</span>':''}</div>
+      <div class="sub">${p.dev} &middot; ${fmtData(p.criado_em)}</div>
+    </div>`).join('');
+  box.querySelectorAll('.sessao').forEach(el =>
+    el.onclick = () => selecionarPlano(Number(el.dataset.id)));
+}
+
+async function selecionarPlano(id){
+  pintando = false;
+  $('#barra_pincel').style.display = 'none';
+  planoSelId = id;
+  document.querySelectorAll('#planos .sessao').forEach(el =>
+    el.classList.toggle('sel', Number(el.dataset.id)===id));
+  planoSel = await (await fetch('/plano?id='+id, {cache:'no-store'})).json();
+  desenharPlano();
+}
+
+function desenharPlano(){
+  if(!planoSel || !planoSel.tracos) return;
+  $('#placeholder_planos').style.display = 'none';
+  $('#mapa_planos').style.display = 'block';
+  if(!mapaP) iniciarMapaPlanos(ultimoCentro());
+  mapaP.invalidateSize();
+
+  camadaPintura.clearLayers();
+
+  // A area pintada - e so isso que o plano guarda nesta fase (so
+  // planejamento de rota/area, sem nada de cobertura/Voronoi ainda - isso
+  // fica para depois, quando decidirmos o tamanho da area de abrangencia).
+  // Opaca (fillOpacity:1) na planoPane (tambem opacidade 1, ver
+  // iniciarMapaPlanos) para ficar uma mancha solida e bem visivel, nao um
+  // fundo apagado.
+  const todosLatLng = [];
+  for(const t of planoSel.tracos)
+    for(const [lat,lon] of t.pontos){
+      todosLatLng.push([lat,lon]);
+      L.circle([lat,lon], {radius: t.raio_m, weight:0, stroke:false,
+        pane:'planoPane', fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+    }
+  if(todosLatLng.length)
+    mapaP.fitBounds(L.latLngBounds(todosLatLng), {padding:[30,30], maxZoom:19});
+
+  $('#resumo_plano').style.display = 'block';
+  $('#resumo_plano').innerHTML = `<b>${planoSel.nome}</b> &mdash; ${planoSel.dev}`;
+  $('#btn_apagar_plano').style.display = 'inline-block';
+  $('#btn_ativar_plano').style.display = 'inline-block';
+  $('#btn_editar_plano').style.display = 'inline-block';
+  atualizarBotaoAtivar();
+}
 </script>
 </body>
 </html>
@@ -375,11 +801,27 @@ class Manipulador(BaseHTTPRequestHandler):
         self.wfile.write(corpo)
 
     def do_POST(self):
-        # Recepcao das coletas do celular. Manifesto por nome de arquivo: se a
-        # sessao ja chegou, nao regrava (evita duplicata quando o envio repete).
+        if self.path == "/plano":
+            self._post_plano()
+            return
+        if self.path == "/plano/atualizar":
+            self._post_plano_atualizar()
+            return
+        if self.path == "/plano/apagar":
+            self._post_plano_apagar()
+            return
+        if self.path == "/plano/ativar":
+            self._post_plano_ativar()
+            return
+        if self.path == "/plano/desativar":
+            self._post_plano_desativar()
+            return
         if self.path != "/sync":
             self.send_error(404)
             return
+
+        # Recepcao das coletas do celular. Manifesto por nome de arquivo: se a
+        # sessao ja chegou, nao regrava (evita duplicata quando o envio repete).
         dev = self.headers.get("X-Dev", "desconhecido")
         sessao = os.path.basename(self.headers.get("X-Sessao", ""))
         if not sessao or "/" in sessao or "\\" in sessao:
@@ -418,7 +860,9 @@ class Manipulador(BaseHTTPRequestHandler):
         print(f"\nsync: recebida {dev}/{sessao} - {linhas} registros")
 
         # Processa na chegada. Uma falha aqui NAO perde a coleta - o cru ja esta
-        # salvo, a sessao pode ser reprocessada depois.
+        # salvo, a sessao pode ser reprocessada depois. Planos NAO entram
+        # aqui mais - o cruzamento com a area pintada e pos-processamento sob
+        # demanda (planejamento.pontos_do_plano), nao um passo do /sync.
         n_deriv, erro = 0, None
         try:
             n_deriv = processar_sessao(destino, _caminho_banco())
@@ -430,6 +874,92 @@ class Manipulador(BaseHTTPRequestHandler):
         self._json(200, {"ok": True, "ja_tinha": False, "linhas": linhas,
                          "derivados": n_deriv, "erro_processamento": erro})
 
+    def _corpo_json(self):
+        corpo = _ler_corpo(self)
+        return json.loads(corpo.decode("utf-8")) if corpo else {}
+
+    def _post_plano(self):
+        try:
+            j = self._corpo_json()
+        except (ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo invalido: {e}"})
+            return
+        nome = str(j.get("nome") or "").strip()
+        dev = str(j.get("dev") or "").strip()
+        tracos = j.get("tracos")
+        if not nome or not dev:
+            self._json(400, {"ok": False, "erro": "esperado {nome, dev, tracos}"})
+            return
+        erro = _validar_tracos(tracos)
+        if erro:
+            self._json(400, {"ok": False, "erro": erro})
+            return
+        plano_id = planejamento.criar_plano(_caminho_banco(), nome, dev, tracos)
+        p = planejamento.obter_plano(_caminho_banco(), plano_id)
+        print(f"\nplano: criado '{nome}' ({dev})")
+        self._json(200, {"ok": True, "id": plano_id, "plano": p})
+
+    def _post_plano_atualizar(self):
+        """Reedita o desenho de um plano ja salvo (substitui os tracos) -
+        nome/dev/ativo continuam os mesmos, so a area pintada muda."""
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id, tracos}}: {e}"})
+            return
+        tracos = j.get("tracos")
+        erro = _validar_tracos(tracos)
+        if erro:
+            self._json(400, {"ok": False, "erro": erro})
+            return
+        ok = planejamento.atualizar_plano(_caminho_banco(), plano_id, tracos)
+        if not ok:
+            self._json(404, {"ok": False, "erro": "plano nao encontrado"})
+            return
+        p = planejamento.obter_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True, "plano": p})
+
+    def _post_plano_apagar(self):
+        try:
+            j = self._corpo_json()
+        except (ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo invalido: {e}"})
+            return
+        try:
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError):
+            self._json(400, {"ok": False, "erro": "esperado {id}"})
+            return
+        planejamento.apagar_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True})
+
+    def _post_plano_ativar(self):
+        """Marca um plano como o ativo do seu medidor - so guarda o dado.
+        Quem vai LER isto (GET /plano/ativo?dev=) e o app, fase seguinte;
+        nesta rodada so deixamos a base pronta para quando isso acontecer."""
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id}}: {e}"})
+            return
+        ok = planejamento.ativar_plano(_caminho_banco(), plano_id)
+        if not ok:
+            self._json(404, {"ok": False, "erro": "plano nao encontrado"})
+            return
+        self._json(200, {"ok": True})
+
+    def _post_plano_desativar(self):
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id}}: {e}"})
+            return
+        planejamento.desativar_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True})
+
     def do_GET(self):
         if self.path == "/":
             corpo, tipo = PAGINA.encode(), "text/html; charset=utf-8"
@@ -439,6 +969,40 @@ class Manipulador(BaseHTTPRequestHandler):
             q = parse_qs(urlparse(self.path).query)
             nome = (q.get("nome") or [""])[0]
             corpo, tipo = json.dumps(_trajeto_sessao(nome)).encode(), "application/json"
+        elif self.path.startswith("/planos"):
+            corpo = json.dumps(
+                planejamento.listar_planos(_caminho_banco())).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano/ativo"):
+            # Endpoint pronto para o APP consumir (fase seguinte, fora desta
+            # rodada) - devolve o plano ativo daquele medidor, ou {} se
+            # nenhum plano estiver marcado ativo para ele.
+            q = parse_qs(urlparse(self.path).query)
+            dev = (q.get("dev") or [""])[0]
+            p = planejamento.plano_ativo(_caminho_banco(), dev)
+            corpo = json.dumps(p if p else {}).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano/pontos"):
+            # POS-processamento sob demanda: cruza a area do plano contra as
+            # amostras que ja existem no banco, na hora - nada pre-calculado
+            # (ver planejamento.pontos_do_plano).
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                plano_id = int((q.get("id") or ["0"])[0])
+            except ValueError:
+                plano_id = 0
+            corpo = json.dumps(
+                planejamento.pontos_do_plano(_caminho_banco(), plano_id)).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano"):
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                plano_id = int((q.get("id") or ["0"])[0])
+            except ValueError:
+                plano_id = 0
+            p = planejamento.obter_plano(_caminho_banco(), plano_id)
+            corpo = json.dumps(p if p else {}).encode()
+            tipo = "application/json"
         else:
             self.send_error(404)
             return
