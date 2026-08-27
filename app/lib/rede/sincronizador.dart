@@ -56,6 +56,11 @@ class Sincronizador {
       req.headers.set('X-Dev', dev);
       req.headers.set('X-Sessao', nome);
       req.headers.contentType = ContentType('application', 'x-ndjson');
+      // ESSENCIAL: sem definir contentLength, o HttpClient manda o corpo em
+      // "chunked" (sem cabecalho Content-Length), e a base - que le exatamente
+      // Content-Length - recebia 0 bytes e gravava um arquivo vazio. Era este o
+      // bug de "chega 0 dados" apesar de o arquivo no telefone ter os pontos.
+      req.contentLength = corpo.length;
       req.add(corpo);
       final resp = await req.close().timeout(const Duration(seconds: 30));
       final texto = await utf8.decodeStream(resp);

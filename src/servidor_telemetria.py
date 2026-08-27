@@ -66,6 +66,38 @@ def _contar_linhas(caminho):
         return 0
 
 
+def _ler_corpo(handler):
+    """Le o corpo do POST aceitando as DUAS formas de envio.
+
+    O HttpClient do Dart, quando o Content-Length nao e definido, manda o corpo
+    em "chunked" (Transfer-Encoding), sem Content-Length. A leitura antiga so
+    olhava Content-Length e recebia 0 bytes - era o bug de "chega 0 dados"
+    apesar de o arquivo no telefone ter tudo. Agora: se ha Content-Length, le
+    n bytes; senao, se for chunked, decodifica os pedacos ate o de tamanho 0.
+    """
+    cl = handler.headers.get("Content-Length")
+    if cl is not None:
+        n = int(cl)
+        return handler.rfile.read(n) if n > 0 else b""
+
+    te = (handler.headers.get("Transfer-Encoding") or "").lower()
+    if "chunked" in te:
+        partes = []
+        while True:
+            linha = handler.rfile.readline().strip()
+            if not linha:
+                continue
+            tamanho = int(linha.split(b";")[0], 16)
+            if tamanho == 0:
+                handler.rfile.readline()   # consome o CRLF final
+                break
+            partes.append(handler.rfile.read(tamanho))
+            handler.rfile.readline()        # CRLF apos cada pedaco
+        return b"".join(partes)
+
+    return b""
+
+
 def _listar_sessoes():
     db = _caminho_banco()
     if not os.path.exists(db):
@@ -352,8 +384,7 @@ class Manipulador(BaseHTTPRequestHandler):
             self._json(400, {"ok": False, "erro": "cabecalho X-Sessao invalido"})
             return
         try:
-            n = int(self.headers.get("Content-Length", 0))
-            corpo = self.rfile.read(n) if n > 0 else b""
+            corpo = _ler_corpo(self)
         except (ValueError, OSError) as e:
             self._json(400, {"ok": False, "erro": f"corpo ilegivel: {e}"})
             return
