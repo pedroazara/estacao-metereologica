@@ -155,6 +155,8 @@ PAGINA = r"""<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Base da Estacao</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--borda:#232d38;--txt:#e6edf3;--txt2:#8b949e;
         --verde:#3fb950;--azul:#58a6ff}
@@ -162,7 +164,7 @@ PAGINA = r"""<!DOCTYPE html>
   html,body{height:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
             background:var(--bg);color:var(--txt)}
   #topo{height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;
-        background:var(--card);border-bottom:1px solid var(--borda)}
+        background:var(--card);border-bottom:1px solid var(--borda);position:relative;z-index:1100}
   #topo h1{font-size:15px;font-weight:600}
   .pilula{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);
           background:#0d1117;border:1px solid var(--borda);border-radius:999px;padding:5px 11px}
@@ -177,12 +179,10 @@ PAGINA = r"""<!DOCTYPE html>
   .sessao .sub{font-size:11px;color:var(--txt2);margin-top:3px}
   #vazio{padding:24px 16px;font-size:12.5px;color:var(--txt2);line-height:1.6}
   #direita{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
-  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda);cursor:crosshair}
-  #tip{position:absolute;pointer-events:none;display:none;z-index:5;
-       background:#0d1117ee;border:1px solid var(--borda);border-radius:8px;
-       padding:8px 10px;font-size:12px;font-family:ui-monospace,monospace;white-space:nowrap}
-  #tip b{color:#ff7a5e}
-  #escala{position:absolute;top:24px;right:26px;z-index:4;background:#0d1117cc;
+  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda);z-index:0}
+  .leaflet-container{background:#0a0e13;font:inherit}
+  @media (prefers-color-scheme: dark){.leaflet-tile{filter:brightness(.8) contrast(1.05)}}
+  #escala{position:absolute;top:24px;right:26px;z-index:1000;background:#0d1117cc;
           border:1px solid var(--borda);border-radius:8px;padding:8px 10px;font-size:10px;color:var(--txt2)}
   #escala .barra{width:14px;height:90px;border-radius:3px;margin:4px auto;
        background:linear-gradient(to top,#58a6ff,#3fb950,#d29922,#f85149)}
@@ -191,6 +191,11 @@ PAGINA = r"""<!DOCTYPE html>
   .n .r{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
   #placeholder{flex:1;display:flex;align-items:center;justify-content:center;
                color:var(--txt2);font-size:13px;text-align:center;padding:30px}
+  .pontotemp{border-radius:50%;border:1.5px solid rgba(13,17,23,.85)}
+  .leaflet-popup-content-wrapper{background:#161b22;color:var(--txt);border-radius:8px}
+  .leaflet-popup-tip{background:#161b22}
+  .leaflet-popup-content{font-family:ui-monospace,monospace;font-size:12px;margin:8px 10px}
+  .leaflet-popup-content b{color:#ff7a5e}
 </style>
 </head>
 <body>
@@ -207,13 +212,12 @@ PAGINA = r"""<!DOCTYPE html>
     <div id="vazio" style="display:none">
       Nenhuma coleta ainda.<br><br>
       No app do celular, aba <b>Sessoes</b>, envie uma coleta para esta base.
-      Ela chega aqui ja processada pelo Kalman.
+      Ela chega aqui ja processada.
     </div>
   </div>
   <div id="direita">
     <div id="placeholder">Selecione uma coleta a esquerda para ver o trajeto.</div>
-    <canvas id="mapa" style="display:none"></canvas>
-    <div id="tip"></div>
+    <div id="mapa" style="display:none"></div>
     <div id="escala" style="display:none">
       <div style="text-align:center" id="esc_max">--</div>
       <div class="barra"></div>
@@ -262,61 +266,19 @@ async function selecionar(nome){
   desenhar();
 }
 
-function desenhar(){
-  const c = $('#mapa'), ctx = c.getContext('2d');
-  const rect = c.getBoundingClientRect(); c.width = rect.width; c.height = rect.height;
-  ctx.clearRect(0,0,c.width,c.height);
-  if(!traj || !traj.cru.length){
-    ctx.fillStyle='#8b949e'; ctx.font='13px system-ui'; ctx.textAlign='center';
-    ctx.fillText('Esta coleta nao tem pontos de posicao.', c.width/2, c.height/2); return;
-  }
-  const lat0 = traj.cru[0][0], lon0 = traj.cru[0][1];
-  const cosLat = Math.cos(lat0*Math.PI/180);
-  const m = p => [ (p[1]-lon0)*111320*cosLat, -(p[0]-lat0)*111320 ];
-  const todos = traj.cru.concat(traj.kf).map(m);
-  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
-  for(const [x,y] of todos){ minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }
-  const mg=12; minX-=mg;maxX+=mg;minY-=mg;maxY+=mg;
-  // Piso de escala: parado, o GPS oscila poucos metros; sem minimo o ajuste
-  // amplia o ruido ate encher a tela.
-  const SPAN_MIN = 50;
-  const esc = Math.min(c.width/Math.max(maxX-minX,SPAN_MIN), c.height/Math.max(maxY-minY,SPAN_MIN));
-  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
-  const T = ([x,y]) => [ c.width/2+(x-cx)*esc, c.height/2+(y-cy)*esc ];
-  const linha = (pts,cor,larg) => {
-    if(pts.length<2) return;
-    ctx.strokeStyle=cor; ctx.lineWidth=larg; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath();
-    pts.forEach((p,i)=>{ const [x,y]=T(m(p)); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
-  };
-  // O trajeto filtrado como linha fina de fundo; a temperatura vem nos pontos.
-  linha(traj.kf.length>1?traj.kf:traj.cru, 'rgba(63,185,80,.5)', 2.5);
+// --- Mapa (Leaflet + tiles do OpenStreetMap, buscados pelo NAVEGADOR de quem
+// abre o painel - nao pelo Pi, que so serve esta pagina). Igual ao mapa do
+// app, para o pesquisador ver a mesma coisa nos dois lugares.
+let mapa = null, trilha = null;
+let marcadores = [];
 
-  // Pontos coloridos pela temperatura. Escala sequencial azul->verde->amarelo->
-  // vermelho, mapeada na faixa da propria sessao (senao uma variacao de 0,5 C
-  // ficaria toda de uma cor). Guarda a posicao de tela para o hover achar.
-  const r = traj.resumo||{};
-  const tmin = r.temp_min, tmax = r.temp_max;
-  const faixa = (tmax!=null && tmax> tmin) ? tmax - tmin : 1;
-  pontosTela = [];
-  for(const p of (traj.pontos||[])){
-    const [x,y] = T(m([p.lat,p.lon]));
-    pontosTela.push({x,y,p});
-    ctx.beginPath(); ctx.arc(x,y,5,0,7);
-    ctx.fillStyle = p.temp==null ? '#7d8794' : corTemp((p.temp-tmin)/faixa);
-    ctx.fill();
-    ctx.strokeStyle='rgba(13,17,23,.8)'; ctx.lineWidth=1; ctx.stroke();
-  }
-  // Marca o inicio e o fim do percurso.
-  if(pontosTela.length){
-    const A=pontosTela[0], B=pontosTela[pontosTela.length-1];
-    ctx.font='10px ui-monospace'; ctx.fillStyle='#e6edf3'; ctx.textAlign='center';
-    ctx.fillText('inicio', A.x, A.y-9); ctx.fillText('fim', B.x, B.y-9);
-  }
-  // Legenda da escala de temperatura.
-  const esc2=$('#escala');
-  if(tmin!=null){ esc2.style.display='block';
-    $('#esc_max').textContent=tmax.toFixed(1); $('#esc_min').textContent=tmin.toFixed(1);
-  } else esc2.style.display='none';
+function iniciarMapa(centro){
+  mapa = L.map('mapa', {zoomControl:true}).setView(centro, 17);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(mapa);
+  trilha = L.polyline([], {color:'#3fb950', weight:4, opacity:.85}).addTo(mapa);
 }
 
 // Sequencial azul->verde->amarelo->vermelho para t em [0,1].
@@ -328,26 +290,66 @@ function corTemp(t){
   return `rgb(${a[0]+(b[0]-a[0])*k|0},${a[1]+(b[1]-a[1])*k|0},${a[2]+(b[2]-a[2])*k|0})`;
 }
 
-// Hover: acha o ponto mais proximo e mostra temperatura/umidade/velocidade.
-let pontosTela = [];
-$('#mapa').addEventListener('mousemove', ev => {
-  const c=$('#mapa'), rect=c.getBoundingClientRect();
-  const mx=ev.clientX-rect.left, my=ev.clientY-rect.top;
-  let perto=null, dmin=14*14;
-  for(const pt of pontosTela){ const dx=pt.x-mx, dy=pt.y-my, d=dx*dx+dy*dy; if(d<dmin){dmin=d;perto=pt;} }
-  const tip=$('#tip');
-  if(!perto){ tip.style.display='none'; return; }
-  const p=perto.p;
-  tip.innerHTML = `<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'temp --'}</b>`
-    + `  ·  ${p.umid!=null?p.umid.toFixed(0)+' %':'--'}`
-    + `<br>${(p.vel||0).toFixed(1)} km/h`;
-  tip.style.display='block';
-  tip.style.left=Math.min(perto.x+12, rect.width-140)+'px';
-  tip.style.top=(perto.y+12)+'px';
-});
-$('#mapa').addEventListener('mouseleave', ()=>{ $('#tip').style.display='none'; });
+function desenhar(){
+  if(!traj || !traj.cru.length){
+    if(mapa){ mapa.remove(); mapa=null; }
+    $('#mapa').innerHTML = '';
+    $('#escala').style.display = 'none';
+    const p = document.createElement('div');
+    p.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:#8b949e;font-size:13px';
+    p.textContent = 'Esta coleta nao tem pontos de posicao.';
+    $('#mapa').appendChild(p);
+    return;
+  }
 
-window.addEventListener('resize', desenhar);
+  const pontos = (traj.pontos&&traj.pontos.length) ? traj.pontos
+               : traj.cru.map(([la,lo])=>({lat:la,lon:lo,temp:null,umid:null,vel:null}));
+  const linhaPts = (traj.kf&&traj.kf.length>1 ? traj.kf : traj.cru).map(([la,lo])=>[la,lo]);
+
+  if(!mapa){
+    iniciarMapa([pontos[0].lat, pontos[0].lon]);
+  } else {
+    marcadores.forEach(m => mapa.removeLayer(m));
+  }
+  marcadores = [];
+  trilha.setLatLngs(linhaPts);
+
+  const r = traj.resumo||{};
+  const tmin = r.temp_min, tmax = r.temp_max;
+  const faixa = (tmax!=null && tmax>tmin) ? tmax-tmin : 1;
+
+  for(const p of pontos){
+    const cor = p.temp==null ? '#7d8794' : corTemp((p.temp-tmin)/faixa);
+    const marcador = L.circleMarker([p.lat, p.lon], {
+      radius: 6, className: 'pontotemp', color: 'rgba(13,17,23,.85)',
+      weight: 1.5, fillColor: cor, fillOpacity: .95,
+    }).addTo(mapa);
+    marcador.bindPopup(
+      `<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'temp --'}</b>`
+      + `  ·  ${p.umid!=null?p.umid.toFixed(0)+' %':'--'}<br>`
+      + `${(p.vel||0).toFixed(1)} km/h`);
+    marcadores.push(marcador);
+  }
+  // Marcadores de inicio/fim, por cima dos pontos de temperatura.
+  const ini = L.circleMarker([pontos[0].lat, pontos[0].lon],
+    {radius:9, color:'#fff', weight:2, fillColor:'#58a6ff', fillOpacity:1}).addTo(mapa);
+  ini.bindTooltip('inicio', {permanent:false});
+  const fim = L.circleMarker([pontos[pontos.length-1].lat, pontos[pontos.length-1].lon],
+    {radius:9, color:'#fff', weight:2, fillColor:'#f85149', fillOpacity:1}).addTo(mapa);
+  fim.bindTooltip('fim', {permanent:false});
+  marcadores.push(ini, fim);
+
+  mapa.invalidateSize();
+  mapa.fitBounds(L.latLngBounds(linhaPts.length>1?linhaPts:pontos.map(p=>[p.lat,p.lon])),
+    {padding:[30,30], maxZoom:19});
+
+  const esc2=$('#escala');
+  if(tmin!=null){ esc2.style.display='block';
+    $('#esc_max').textContent=tmax.toFixed(1); $('#esc_min').textContent=tmin.toFixed(1);
+  } else esc2.style.display='none';
+}
+
+window.addEventListener('resize', () => { if(mapa) mapa.invalidateSize(); });
 setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 carregarSessoes();
 setInterval(carregarSessoes, 5000);
