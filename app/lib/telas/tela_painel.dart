@@ -204,6 +204,23 @@ class _CartaoGravacao extends StatelessWidget {
                 ),
               ]),
             ),
+          // Enquanto grava: se o GPS parar de mandar fix por mais de 5 s, avisa
+          // na hora - em vez do usuario so descobrir depois, olhando o arquivo.
+          if (g.gravando && (ble.segundosSemFix ?? 99) > 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Row(children: [
+                const Icon(Icons.gps_off, size: 16, color: Color(0xFFE04B4B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'GPS sem resposta ha ${ble.segundosSemFix}s — a trajetoria '
+                    'parou de avancar.',
+                    style: const TextStyle(fontSize: 11, color: Color(0xFFE04B4B)),
+                  ),
+                ),
+              ]),
+            ),
         ]),
       ),
     );

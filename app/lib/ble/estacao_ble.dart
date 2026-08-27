@@ -42,7 +42,8 @@ class EstacaoBle extends ChangeNotifier {
   final _assinaturas = <StreamSubscription<dynamic>>[];
   StreamSubscription<dynamic>? _assEstado;
   Timer? _autoTimer;
-  Timer? _timerGrava;
+  Timer? _relogioParado;
+  DateTime? _ultimoFix;
 
   bool get conectado => estado == EstadoLigacao.ligado;
 
@@ -54,12 +55,26 @@ class EstacaoBle extends ChangeNotifier {
     await gps.iniciar();
   }
 
+  /// Cada posicao REAL vira ponto na hora - sem isso, dois problemas: perder
+  /// fixes entre amostragens (trajetoria com poucos pontos) e, pior, gravar o
+  /// mesmo ponto em cache varias vezes achando que sao novos (foi o que uma
+  /// correcao anterior errada fazia: um timer de 1s relendo a ultima posicao
+  /// conhecida, que o GpsTelefone so atualiza a cada ~1s de verdade agora -
+  /// ver gps_telefone.dart). Aqui grava exatamente o que o GPS mediu, quando
+  /// mediu, e nada mais.
   void _gpsDoTelefone(
       double lat, double lon, double precisaoM, double velKmh, double rumo) {
-    // So mantem a posicao atual viva (para o ponto no mapa). A GRAVACAO nao
-    // acontece aqui: e um timer de 1 s que le a posicao atual e grava, para nao
-    // depender do ritmo dos eventos do stream de GPS - que pode espacar ou
-    // pausar, e era isso que deixava a coleta vazia.
+    _ultimoFix = DateTime.now();
+    if (gravador.gravando) {
+      gravador.anexar('gps', {
+        'lat': lat, 'lon': lon, 'precisao': precisaoM,
+        'vel': velKmh, 'rumo': rumo,
+      });
+      if (trilha.isEmpty || trilha.last[0] != lat || trilha.last[1] != lon) {
+        trilha.add([lat, lon]);
+        if (trilha.length > 5000) trilha.removeAt(0);
+      }
+    }
     notifyListeners();
   }
 
@@ -67,36 +82,35 @@ class EstacaoBle extends ChangeNotifier {
   Future<void> iniciarGravacao() async {
     trilha.clear();
     await gravador.iniciar(status?.dev ?? 'estacao');
-    _registrarPosicao();          // grava o primeiro ponto ja, se houver fix
-    _timerGrava?.cancel();
-    // 1 Hz, garantido enquanto houver posicao. Parado, grava o mesmo ponto -
-    // uma trajetoria parada, que e a verdade. Movendo, grava o ponto novo.
-    _timerGrava =
-        Timer.periodic(const Duration(seconds: 1), (_) => _registrarPosicao());
-    notifyListeners();
-  }
-
-  void _registrarPosicao() {
-    if (!gravador.gravando) return;
+    // Primeiro ponto imediato, se ja houver fix - nao espera o proximo evento
+    // do stream para a trajetoria comecar a existir.
     final la = gps.lat, lo = gps.lon;
-    if (la == null || lo == null) return; // sem fix ainda: nada a gravar
-    gravador.anexar('gps', {
-      'lat': la, 'lon': lo, 'precisao': gps.precisaoM ?? 0.0,
-      'vel': gps.velKmh ?? 0.0, 'rumo': gps.rumo ?? 0.0,
-    });
-    if (trilha.isEmpty || trilha.last[0] != la || trilha.last[1] != lo) {
+    if (la != null && lo != null) {
+      gravador.anexar('gps', {
+        'lat': la, 'lon': lo, 'precisao': gps.precisaoM ?? 0.0,
+        'vel': gps.velKmh ?? 0.0, 'rumo': gps.rumo ?? 0.0,
+      });
       trilha.add([la, lo]);
-      if (trilha.length > 5000) trilha.removeAt(0);
     }
+    // So para redesenhar o "sem fix ha Ns" na tela em tempo real - nao grava
+    // nada por conta propria. A gravacao de verdade e so em _gpsDoTelefone.
+    _relogioParado?.cancel();
+    _relogioParado =
+        Timer.periodic(const Duration(seconds: 1), (_) => notifyListeners());
     notifyListeners();
   }
 
   Future<void> pararGravacao() async {
-    _timerGrava?.cancel();
-    _timerGrava = null;
+    _relogioParado?.cancel();
+    _relogioParado = null;
     await gravador.encerrar();
     notifyListeners();
   }
+
+  /// Segundos desde o ultimo fix real recebido - a UI usa isto para avisar se
+  /// o GPS parou de responder (em vez de fingir que continua atualizando).
+  int? get segundosSemFix =>
+      _ultimoFix == null ? null : DateTime.now().difference(_ultimoFix!).inSeconds;
 
   // ------------------------------------------------------------ Auto-conexao
   void iniciarAutoConexao() {
@@ -277,7 +291,7 @@ class EstacaoBle extends ChangeNotifier {
   void dispose() {
     _vivo = false;
     _autoTimer?.cancel();
-    _timerGrava?.cancel();
+    _relogioParado?.cancel();
     _limparAssinaturas();
     _assEstado?.cancel();
     gps.removeListener(notifyListeners);

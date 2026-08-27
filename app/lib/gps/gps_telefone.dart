@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
+// AndroidSettings vem reexportado por este pacote - nao precisa importar
+// geolocator_android separado.
 import 'package:geolocator/geolocator.dart';
 
 /// GPS do proprio telefone — a fonte de posicao atual do projeto.
@@ -40,10 +43,23 @@ class GpsTelefone extends ChangeNotifier {
     mensagem = 'GPS do telefone ligado';
 
     // distanceFilter 0: queremos toda atualizacao, inclusive parado, para o
-    // Kalman ver o jitter e o ZUPT poder agir. accuracy best: e a fonte de
-    // posicao, vale o custo de bateria enquanto o app esta aberto.
-    const cfg = LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0);
+    // ZUPT (deteccao de repouso) e o traçado terem o jitter real. accuracy
+    // best: e a fonte de posicao, vale o custo de bateria enquanto o app
+    // esta aberto.
+    //
+    // intervalDuration EXPLICITO: sem isso, o proprio pacote geolocator_android
+    // documenta que aplica 5000ms de intervalo por padrao. Era essa a causa da
+    // "atualizacao lenta" e da trajetoria com poucos pontos — o GPS so avisava
+    // a cada 5 s, entao andando a pe (~1,4 m/s) cada ponto ficava a uns 7 m do
+    // anterior, e a linha saia em degraus em vez de acompanhar a rua.
+    final cfg = Platform.isAndroid
+        ? AndroidSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 0,
+            intervalDuration: const Duration(milliseconds: 1000),
+          )
+        : const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0);
     _sub = Geolocator.getPositionStream(locationSettings: cfg).listen((p) {
       lat = p.latitude;
       lon = p.longitude;
