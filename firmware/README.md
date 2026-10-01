@@ -1,62 +1,83 @@
 # Firmware ESP32 — Estação Meteorológica Móvel
 
-O **lado de campo** do projeto: o ESP32 lê o **WitMotion WTGAHRS3-485** e o
-sensor ambiental direto pelo barramento RS485.
+## Configuração vigente (01/10/2026)
 
-As duas áreas não são implementações rivais — cada uma faz uma parte (decidido
-em 17/08/2026, ver [../docs/04-telemetria.md](../docs/04-telemetria.md)):
+O ESP32 fica responsável por **três sensores externos**: **GY-302/BH1750**
+(luminosidade), **KY-028** (temperatura auxiliar) e **sensor ambiental RS485**
+(temperatura e umidade). **GPS, movimento/IMU e som serão obtidos pelo telefone
+da pessoa que realizar a medição.**
 
-> O ESP32 é um **sensor honesto**: lê, carimba (`seq`, `ts`, `ms`), grava tudo
-> no cartão SD e serve um painel de conferência com o dado **cru**. Ele não
-> interpreta nada. Toda interpretação numérica — filtro de Kalman, banco
-> histórico, análise — roda na **base**, um Raspberry Pi ligado na tomada
-> (ver [../docs/05-base-raspberry-pi.md](../docs/05-base-raspberry-pi.md)).
+O **WTGAHRS3-485**, o **KY-038** e o **KY-013** saíram da montagem prevista.
+Os testes, drivers e estudos desses módulos permanecem como histórico.
 
-Consequência prática para quem mexe aqui: **o porte do filtro de Kalman para
-C++ foi cancelado.** Não por falta de CPU — matrizes 4×4 a 10 Hz é bem menos de
-1% do chip —, mas porque processar em lote na base mantém a coleta
-reprocessável e elimina o `dt` contaminado por rede. A prioridade do firmware,
-nesta ordem: **não perder amostra**, **carimbar certo**, **gravar no SD**. Rede
-vem depois.
+**Estado da implementação:** esta decisão atualiza a especificação. O
+[`painel_wifi.ino`](painel_wifi/painel_wifi.ino) ainda contém a implementação
+anterior, com os seis módulos, consultas ao WTGAHRS3 e leituras do KY-038 e do
+KY-013. A retirada dessas rotinas, dos campos de telemetria e das telas
+correspondentes ainda precisa ser feita. A coleta de movimento pelo telefone
+é parte da arquitetura prevista e ainda precisa ser implementada no app;
+ver o [estado do aplicativo](../app/README.md).
 
-O lado Python continua servindo de bancada de estudo e validação numérica no
-PC, além de ser o código que roda na base.
+### Hardware e conexões previstos
+
+| Item | Função / ligação ao ESP32 |
+|---|---|
+| ESP32 DevKit (WROOM-32) | controlador dos três sensores externos |
+| GY-302 / BH1750 | 3V3 e GND; SDA → GPIO21; SCL → GPIO22; ADDR → GND (I²C `0x23`) |
+| KY-028 | 3V3 e GND; AO → GPIO35; DO sem ligação |
+| Sensor ambiental RS485 | A/B → conversor RS485/TTL; endereço Modbus `0x01`, 9600 baud, 8N1 |
+| Conversor RS485 / TTL V2 automático | entrada TXD ← GPIO17; saída RXD → GPIO16; alimentação de 5 V e GND comum, conforme o [módulo documentado](../hardware/skylog/conversor-rs485.md) |
+
+```text
+GY-302         ESP32                 KY-028
+ VCC ───────── 3V3 ────────────────── VCC
+ GND ───────── GND ────────────────── GND
+ SDA ───────── GPIO21         GPIO35 ─ AO
+ SCL ───────── GPIO22                  DO (sem ligação)
+ ADDR ──────── GND
+
+Sensor ambiental       Conversor RS485/TTL automático       ESP32
+ A ─────────────────── A
+ B ─────────────────── B
+                       RXD (saída) ──────────────────────── GPIO16 (RX2)
+                       TXD (entrada) ────────────────────── GPIO17 (TX2)
+                       +5V / GND ────────────────────────── 5 V / GND
+ VCC ───────────────── fonte do sensor, conforme sua especificação
+ GND ───────────────── terra comum
+```
+
+O conversor automático documentado não expõe DE/RE: a configuração esperada
+é **`PINO_DE = -1`**. O firmware ainda traz **`PINO_DE = 4`**, próprio da
+configuração anterior com controle manual, e precisa ser alinhado ao módulo
+usado. A compatibilidade elétrica do exemplar físico do conversor continua
+sujeita às verificações registradas na sua documentação.
+
+Os sensores ficam fora da placa. Seus footprints na PCB representam **somente
+os conectores**: GY-302 com 5 pinos, KY-028 com 4 pinos e sensor ambiental
+com 4 pinos, com passo de 2,54 mm. O conector do KY-028 preserva DO mesmo
+sem uso no firmware.
+
+O divisor externo de **10 kΩ / 10 kΩ** pertencia à entrada do KY-038 e **não é
+necessário na nova montagem**, pois esse módulo foi retirado. A configuração
+vigente não especifica divisor externo para GY-302 ou KY-028, alimentados em
+3,3 V. Isso não remove os resistores presentes nos próprios módulos: a
+terminação e a polarização do conversor RS485 devem ser consideradas conforme
+a [documentação do conversor](../hardware/skylog/conversor-rs485.md).
+
+### Coleta e processamento
+
+Permanece a separação entre coleta e processamento: o ESP32 fornece os dados
+ambientais e o telefone fornece posição, movimento e som; a análise pode
+rodar na base. A gravação no cartão SD do ESP32 pertence ao planejamento
+histórico e não foi implementada; não é um requisito da coleta vigente,
+cuja gravação fica a cargo do telefone.
+
+O porte do filtro de Kalman para C++ foi cancelado na arquitetura anterior
+([telemetria](../docs/04-telemetria.md)). A mudança da origem dos dados de
+movimento para o telefone ainda exige adaptar e validar o fluxo de coleta e
+processamento. O lado Python permanece como bancada de estudo e validação.
 
 ---
-
-## Hardware
-
-| Item | Observação |
-|---|---|
-| ESP32 DevKit (WROOM-32) | qualquer variante com UART2 livre |
-| WTGAHRS3-485 | GPS/BeiDou + IMU 6 eixos, Modbus RTU 9600 8N1, endereço 0x50 |
-| Transceptor RS485 | **preferir 3,3 V** (MAX3485, SP3485, MAX13487) |
-
-> **Atenção ao nível lógico.** Os módulos MAX485 vendidos em kit são de 5 V: o
-> pino RO devolve 5 V e os GPIO do ESP32 são 3,3 V *não tolerantes*. Ou usa um
-> transceptor 3,3 V, ou coloca um divisor resistivo / conversor de nível na
-> linha RO → RX.
-
-> **Alimentação do sensor.** O WTGAHRS3-485 não é alimentado pelo 3V3 do ESP32.
-> Confirmar a faixa de tensão e o consumo no datasheet em
-> [../docs/datasheets/](../docs/datasheets/) antes de ligar.
-
-### Ligação
-
-```
-WTGAHRS3        Transceptor RS485        ESP32
-   A  ─────────── A
-   B  ─────────── B
-                  RO ──────────────────── GPIO16 (RX2)
-                  DI ──────────────────── GPIO17 (TX2)
-                  DE ┐
-                  RE ┴─────────────────── GPIO4   (-1 se o módulo for automático)
-                  VCC/GND ─────────────── 3V3 / GND
-   VCC/GND ─── fonte externa (ver datasheet) — GND comum com o ESP32
-```
-
-Os pinos são constantes no topo de
-[`estacao_esp32/estacao_esp32.ino`](estacao_esp32/estacao_esp32.ino).
 
 ## Sketches
 
@@ -64,10 +85,18 @@ Os pinos são constantes no topo de
 |---|---|
 | [`teste_sensor_ambiental/`](teste_sensor_ambiental/) | **diagnóstico** do sensor ambiental RS485: varre baud e endereço, despeja registradores e mostra todas as escalas possíveis |
 | [`varredura_registradores/`](varredura_registradores/) | varredura larga (`0x0000`–`0x01FF`, funções `0x03` e `0x04`) para caçar grandezas escondidas |
-| [`painel_wifi/`](painel_wifi/) | **ESP32 vira ponto de acesso** e serve uma página com temperatura e umidade ao vivo |
-| [`estacao_esp32/`](estacao_esp32/) | leitura do WTGAHRS3-485 (GPS + IMU) e do sensor ambiental (T/UR), no mesmo barramento RS485 |
+| [`painel_wifi/`](painel_wifi/) | firmware principal com portal Wi-Fi, painel e telemetria; ainda contém os seis módulos da configuração anterior, pendente de adaptação |
+| [`estacao_esp32/`](estacao_esp32/) | **legado**: leitura do WTGAHRS3-485 (GPS + IMU) e do sensor ambiental (T/UR), no mesmo barramento RS485 |
+| [`teste_sensores_baratos/`](teste_sensores_baratos/) | bancada histórica com KY-013, KY-028, KY-038 e GY-302; inclui módulos retirados da montagem vigente |
+| [`teste_gy302/`](teste_gy302/) | nome de pasta preservado, mas o sketch atual controla motor com AccelStepper; o teste do sensor precisa ser restaurado. A aquisição BH1750 está em [`painel_wifi.ino`](painel_wifi/painel_wifi.ino) |
+| [`teste_ky028/`](teste_ky028/) | teste individual e calibração da temperatura auxiliar mantida no projeto |
+| [`teste_ky013/`](teste_ky013/), [`teste_ky038/`](teste_ky038/) | **legado**: testes individuais dos módulos retirados |
 
-### Painel Wi-Fi
+### Painel Wi-Fi — implementação existente
+
+As funções abaixo descrevem o código atual, ainda anterior à retirada dos
+módulos. O GPS mostrado pelo painel e as rotinas de GPS/IMU continuam ligados
+ao WTGAHRS3; isso ainda não representa a coleta pelo telefone.
 
 O ESP32 conecta na sua rede (roteador ou hotspot do celular) e serve o painel
 nela. Na primeira vez — ou se a rede salva não for encontrada — ele sobe um
@@ -116,7 +145,12 @@ O sketch de diagnóstico compila tanto em **ESP32** (usa `Serial2`, pinos 16/17)
 quanto em **Arduino Uno/Nano** (usa `SoftwareSerial` nos pinos 10/11) — ele
 detecta a placa sozinho pelo `#if defined(ESP32)`.
 
-### Dois sensores no mesmo barramento: o que quebra e por quê
+### Histórico: dois sensores no mesmo barramento
+
+Esta seção registra a bancada e o escalonador da configuração com WTGAHRS3 e
+sensor ambiental. Na montagem vigente, **somente o sensor ambiental permanece
+no RS485**; o escalonador e as consultas de GPS/IMU abaixo ainda existem no
+código e deverão ser removidos ou adaptados.
 
 Ao pôr o WTGAHRS3 (`0x50`) e o sensor ambiental (`0x01`) no mesmo par A/B, o
 GPS continuou perfeito e **o ambiental parou de responder quase sempre** —
@@ -174,7 +208,7 @@ alternando entre 8 e 9 amostras por segundo.
 > taxa, o caminho não é apertar o escalonador e sim subir o baud do barramento —
 > o WTGAHRS3 aceita até 230400 no registrador `0x04`.
 
-### Sensor ambiental RS485 (T / UR / pressão / TVOC / eCO2)
+### Sensor ambiental RS485: temperatura e umidade confirmadas
 
 O anúncio não publica o mapa de registradores e o produto vem em 4 variantes
 ("Type 1–4") com conjuntos de sensores diferentes, então o sketch **descobre**
@@ -229,10 +263,10 @@ configuração não. `0x0064 = 1` e `0x0065 = 3` casam com endereço Modbus 1 e 
 > TVOC nem eCO2 em lugar nenhum do espaço de endereços. O anúncio lista as cinco
 > grandezas para a família; o "Type 2" é a variante de dois sensores.
 >
-> **Consequência para o projeto:** a pressão atmosférica continua descoberta —
-> o WTGAHRS3 também não mede (`0x45` lê 0 Pa). Segue valendo o **BME280** do
-> TODO do README principal, que resolve pressão e ainda dá um segundo par
-> temperatura/umidade para conferência cruzada.
+> **Consequência para o projeto:** a pressão atmosférica continua descoberta.
+> O **BME280** foi uma possibilidade de expansão estudada; não integra a
+> configuração vigente de três sensores. O WTGAHRS3 retirado também não
+> fornecia essa medição (`0x45` lia 0 Pa).
 
 ## Como abrir
 
@@ -269,35 +303,34 @@ Pela linha de comando:
 arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app firmware/painel_wifi
 ```
 
-## Estado atual
+## Estado atual e adaptação pendente
 
-- [x] Driver Modbus RTU do WTGAHRS3 (posição, IMU, ambiente)
-- [x] Sketch de leitura contínua imprimindo no monitor serial
-- [x] Sketch de diagnóstico do sensor ambiental RS485
-- [x] Mapa de registradores do sensor ambiental confirmado na bancada
-- [x] Pressão atmosférica descartada nesse sensor (varredura `0x0000`–`0x01FF`)
-- [x] Driver definitivo do sensor ambiental (`ambiente_rs485.h/.cpp`), separado
-      do sketch de diagnóstico
-- [x] WTGAHRS3 e sensor ambiental no mesmo barramento RS485 (endereços Modbus
-      `0x50` e `0x01`, mesma UART e mesmo pino DE) — implementado em
-      `estacao_esp32.ino` e `painel_wifi.ino`
-- [x] Painel Wi-Fi: temperatura, umidade e posição GPS (com rastro relativo)
-      ao vivo, **não validado em hardware ainda**
-- [x] Portal de configuração Wi-Fi: ESP32 conecta na rede do usuário
-      (roteador/hotspot) em vez de ficar preso como AP isolado; credencial
-      salva em `Preferences`, com fallback automático para o portal se a
-      conexão falhar — **não validado em hardware ainda**
-- [ ] **BME280** para cobrir a pressão que falta
-- [ ] Gravar histórico (cartão SD ou SPIFFS) — hoje o gráfico vive só no
-      navegador e some ao recarregar a página
-- [ ] Definir o que o ESP32 faz com os dados: cartão SD? Wi-Fi/MQTT? display?
-- [ ] Portar o filtro de Kalman de [`../src/filtro_kalman.py`](../src/filtro_kalman.py)
+- [x] Configuração definida: GY-302, KY-028 e ambiental RS485 no ESP32;
+      GPS, movimento/IMU e som ficam a cargo do telefone.
+- [x] Sketch de diagnóstico e mapa do sensor ambiental confirmados na bancada.
+- [x] Driver do sensor ambiental (`ambiente_rs485.h/.cpp`), separado do
+      diagnóstico; esta unidade fornece somente temperatura e umidade.
+- [x] Aquisição de GY-302 e KY-028 em `painel_wifi`; teste individual do
+      KY-028 disponível. A pasta `teste_gy302` contém atualmente código de motor.
+- [x] Portal de configuração Wi-Fi com credenciais em `Preferences` e
+      retorno ao portal quando a conexão falha.
+- [ ] Adaptar `painel_wifi` para os três sensores mantidos: retirar consultas ao
+      WTGAHRS3 e leituras de KY-038/KY-013, revisar escalonador, painel e
+      telemetria, e validar o funcionamento sem os módulos retirados.
+- [ ] Alinhar `PINO_DE` ao conversor automático (`-1`) e validar a ligação real.
+- [ ] Implementar a coleta de movimento pelo telefone e integrar/validar os
+      dados do telefone com as leituras ambientais do ESP32.
+- [ ] Validar a nova montagem e o firmware adaptado em bancada.
 
-Ambos os sketches foram verificados com `arduino-cli compile` para
-`esp32:esp32:esp32` e, no caso do diagnóstico, também para `arduino:avr:uno`.
-Nenhum foi testado contra o hardware ainda.
+A integração anterior com WTGAHRS3 e ambiental no mesmo barramento, o painel
+com GPS e os testes dos módulos retirados permanecem como histórico. As
+verificações anteriores de compilação com `arduino-cli` não validam a nova
+configuração. Esta atualização é apenas documental e não altera os sketches.
 
-## Conhecimento herdado do lado Python
+## Histórico: conhecimento herdado do lado Python
+
+As notas abaixo se aplicam ao driver legado do WTGAHRS3, preservado para
+consulta; não definem o formato das posições fornecidas pelo telefone.
 
 O mapa de registradores e as fórmulas de conversão vieram de
 [`../docs/02-protocolo-modbus-wtgahrs3.md`](../docs/02-protocolo-modbus-wtgahrs3.md)

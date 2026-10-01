@@ -134,7 +134,7 @@ class _Item extends StatelessWidget {
       required this.onEnviar});
 
   Future<void> _verConteudo(BuildContext context) async {
-    int linhas = 0, gps = 0, amb = 0;
+    int linhas = 0, gps = 0, amb = 0, som = 0;
     String trecho = '';
     try {
       final texto = await arquivo.readAsString();
@@ -142,6 +142,7 @@ class _Item extends StatelessWidget {
       linhas = ls.length;
       gps = ls.where((l) => l.contains('"gps"')).length;
       amb = ls.where((l) => l.contains('"amb"')).length;
+      som = ls.where((l) => l.contains('"som_celular"')).length;
       trecho = ls.take(6).join('\n');
     } catch (_) {}
     if (!context.mounted) return;
@@ -157,7 +158,7 @@ class _Item extends StatelessWidget {
               children: [
                 Text(linhas == 0
                     ? 'ARQUIVO VAZIO — nada foi gravado nesta sessao.'
-                    : '$linhas linhas  ·  $gps pontos de GPS  ·  $amb leituras de ambiente'),
+                    : '$linhas registros  ·  $gps pontos de GPS  ·  $amb leituras da estação  ·  $som níveis sonoros do celular'),
                 if (linhas == 0)
                   const Padding(
                     padding: EdgeInsets.only(top: 8),

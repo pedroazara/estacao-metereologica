@@ -39,16 +39,30 @@ class Ambiente {
   final int seq;
   final double temperatura, umidade;
 
+  /// Ruido (dB, Leq do ciclo - KY-038), temperaturas auxiliares pro Kalman
+  /// (KY-028/KY-013, ainda sem fusao no app) e luminosidade (lux - GY-302).
+  /// -1 em `luminosidade` significa sensor ausente ou sem leitura valida
+  /// naquele ciclo (ver publicarAmbiente() em painel_wifi.ino).
+  final double ruidoDb, temperaturaAux28, temperaturaAux13, luminosidade;
+
   const Ambiente({
     required this.seq,
     required this.temperatura,
     required this.umidade,
+    required this.ruidoDb,
+    required this.temperaturaAux28,
+    required this.temperaturaAux13,
+    required this.luminosidade,
   });
 
   factory Ambiente.doJson(Map<String, dynamic> j) => Ambiente(
         seq: (j['seq'] ?? 0) as int,
         temperatura: _d(j['temp']),
         umidade: _d(j['umid']),
+        ruidoDb: _d(j['db']),
+        temperaturaAux28: _d(j['t28']),
+        temperaturaAux13: _d(j['t13']),
+        luminosidade: j.containsKey('lux') ? _d(j['lux']) : -1.0,
       );
 }
 

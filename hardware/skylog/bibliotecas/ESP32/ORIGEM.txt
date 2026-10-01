@@ -1,0 +1,23 @@
+Biblioteca local do ESP32-DevKitC — portabilidade do projeto Skylog
+Preparada em 2026-10-01 para uso com KiCad 10.
+
+Símbolo: Espressif.kicad_sym
+Extraído de lib_symbols/Espressif:ESP32-DevKitC no arquivo
+hardware/skylog/skylog.kicad_sch deste repositório. Mantém os pinos,
+nomes, tipos elétricos e desenho da cópia incorporada ao esquema.
+Somente o nome da biblioteca foi retirado do nome interno do símbolo
+e o footprint padrão foi ajustado para ESP32:ESP32-DevKitC.
+O símbolo não foi substituído pela versão da biblioteca PCM instalada.
+Referência do fabricante registrada no símbolo:
+https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html
+
+Footprint: ESP32.pretty/ESP32-DevKitC.kicad_mod
+Cópia integral, sem alteração de geometria, do arquivo usado no Linux:
+/home/pedro-henrique/Documentos/KiCad/ESP32.pretty/ESP32-DevKitC.kicad_mod
+Essa origem é apenas histórica; o projeto usa agora a cópia local.
+O arquivo original não inclui modelo 3D associado.
+
+As tabelas locais sym-lib-table e fp-lib-table registram estas cópias
+com caminhos relativos a ${KIPRJMOD}. Não é necessário recriar os
+caminhos Linux no Windows. Nenhum componente ou footprint já colocado
+no esquema ou na placa foi reassociado por esta inclusão da biblioteca.

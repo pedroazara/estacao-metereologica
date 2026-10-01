@@ -1,306 +1,332 @@
 import 'package:flutter/material.dart';
 
-import '../ble/estacao_ble.dart';
-import '../rede/base_status.dart';
+import '../coleta/central_sensores.dart';
+import '../modelo/sensores.dart';
 
-/// Painel de campo, simples. Responde: estou gravando? o GPS pegou posicao? a
-/// estacao esta conectada (para o ambiente)? Analise fina e da base.
+/// O início organiza a coleta; a conferência dos valores fica em Sensores.
 class TelaPainel extends StatelessWidget {
-  final EstacaoBle ble;
-  final BaseStatus base;
-  const TelaPainel({super.key, required this.ble, required this.base});
+  final CentralSensores central;
+  final VoidCallback abrirSensores;
+  final VoidCallback abrirSessoes;
+  final VoidCallback abrirMapa;
+
+  const TelaPainel({
+    super.key,
+    required this.central,
+    required this.abrirSensores,
+    required this.abrirSessoes,
+    required this.abrirMapa,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([ble, base]),
-      builder: (context, _) {
-        final fraco = Theme.of(context).colorScheme.outline;
-        final a = ble.ambiente;
-        final g = ble.gravador;
-        final temGps = ble.telLat != null;
-
-        return ListView(padding: const EdgeInsets.all(16), children: [
-          Row(children: [
-            Expanded(
-              child: Text('Estacao Movel',
-                  style: Theme.of(context).textTheme.titleMedium),
-            ),
-            _ChipBase(base: base),
-          ]),
-          const SizedBox(height: 4),
-          Text(
-            ble.conectado
-                ? 'estacao conectada (${ble.status?.dev ?? "esp32"})'
-                : 'estacao desconectada — procurando...',
-            style: TextStyle(fontSize: 12, color: fraco),
-          ),
-          const SizedBox(height: 14),
-
-          // Gravar: a acao central. So o que estiver dentro da gravacao entra
-          // na coleta e vira trajetoria.
-          _CartaoGravacao(ble: ble),
-          const SizedBox(height: 12),
-
-          Row(children: [
-            Expanded(
-                child: _Numero(
-                    rotulo: 'Temperatura',
-                    valor: a == null ? '--' : a.temperatura.toStringAsFixed(1),
-                    unidade: '°C',
-                    cor: const Color(0xFFFF7A5E))),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _Numero(
-                    rotulo: 'Umidade',
-                    valor: a == null ? '--' : a.umidade.toStringAsFixed(1),
-                    unidade: '%',
-                    cor: const Color(0xFF63AEF5))),
-          ]),
-          if (!ble.conectado)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Temperatura e umidade vem da estacao por Bluetooth. '
-                'Conecte para ve-las.',
-                style: TextStyle(fontSize: 12, color: fraco),
-              ),
-            ),
-          const SizedBox(height: 12),
-
-          // GPS do telefone: a fonte de posicao.
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: central,
+    builder: (context, _) {
+      final tema = Theme.of(context);
+      final cores = tema.colorScheme;
+      final escolhidos = SensorId.values
+          .where((id) => central.conferir(id).selecionado)
+          .toList();
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        children: [
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 780),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('POSICAO (GPS DO TELEFONE)',
-                        style: TextStyle(
-                            fontSize: 10, letterSpacing: 1.1, color: fraco)),
-                    const SizedBox(height: 10),
-                    if (!temGps)
-                      Text(ble.gps.mensagem, style: TextStyle(color: fraco))
-                    else
-                      Row(children: [
-                        Expanded(
-                          child: SelectableText(
-                            '${ble.telLat!.toStringAsFixed(6)}, '
-                            '${ble.telLon!.toStringAsFixed(6)}',
-                            style: const TextStyle(
-                                fontFamily: 'monospace', fontSize: 14),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cores.primaryContainer,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Icon(
+                          Icons.landscape_outlined,
+                          color: cores.onPrimaryContainer,
+                          size: 30,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Skylog',
+                              style: tema.textTheme.headlineMedium,
+                            ),
+                            Text(
+                              'Suas medições em campo',
+                              style: tema.textTheme.bodyMedium?.copyWith(
+                                color: cores.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Card.filled(
+                    margin: EdgeInsets.zero,
+                    color: central.gravando
+                        ? cores.primaryContainer
+                        : cores.surfaceContainerHigh,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                central.gravando
+                                    ? Icons.radio_button_checked
+                                    : Icons.explore_outlined,
+                                color: central.gravando
+                                    ? cores.onPrimaryContainer
+                                    : cores.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  central.gravando
+                                      ? 'Coleta em andamento'
+                                      : 'Prepare sua coleta',
+                                  style: tema.textTheme.titleLarge,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            central.gravando
+                                ? 'Acompanhe os sensores durante a coleta. '
+                                      'Ao encerrar, os registros ficam salvos no celular.'
+                                : 'Escolha o que deseja medir e confira os sensores '
+                                      'antes de começar a registrar.',
+                            style: tema.textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 24),
+                          Wrap(
+                            spacing: 32,
+                            runSpacing: 16,
+                            children: central.gravando
+                                ? [
+                                    _Indicador(
+                                      valor: _duracao(central.duracao),
+                                      rotulo: 'Tempo de coleta',
+                                    ),
+                                    _Indicador(
+                                      valor: '${central.registros}',
+                                      rotulo: 'Registros salvos',
+                                    ),
+                                  ]
+                                : [
+                                    _Indicador(
+                                      valor: '${central.selecionados}',
+                                      rotulo: central.selecionados == 1
+                                          ? 'Sensor selecionado'
+                                          : 'Sensores selecionados',
+                                    ),
+                                    _Indicador(
+                                      valor:
+                                          '${central.prontos}/${central.selecionados}',
+                                      rotulo: 'Prontos para medir',
+                                    ),
+                                  ],
+                          ),
+                          if (escolhidos.isNotEmpty) ...[
+                            const SizedBox(height: 18),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                for (final id in escolhidos)
+                                  Chip(
+                                    avatar: Icon(
+                                      central.conferir(id).pronto
+                                          ? Icons.check_circle_outline
+                                          : Icons.schedule,
+                                      size: 18,
+                                    ),
+                                    label: Text(id.titulo),
+                                  ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          if (central.gravando) ...[
+                            FilledButton.icon(
+                              onPressed: central.ocupado
+                                  ? null
+                                  : () => _executar(
+                                      context,
+                                      central.encerrarColeta,
+                                    ),
+                              icon: const Icon(Icons.stop_rounded),
+                              label: Text(
+                                central.ocupado
+                                    ? 'Salvando…'
+                                    : 'Encerrar coleta',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: abrirSensores,
+                              icon: const Icon(Icons.sensors),
+                              label: const Text('Abrir sensores'),
+                            ),
+                          ] else ...[
+                            FilledButton.icon(
+                              onPressed: abrirSensores,
+                              icon: const Icon(Icons.tune_rounded),
+                              label: const Text('Selecionar sensores'),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: central.podeIniciar
+                                  ? () => _executar(
+                                      context,
+                                      central.iniciarColeta,
+                                    )
+                                  : null,
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: Text(
+                                central.ocupado
+                                    ? 'Preparando…'
+                                    : 'Iniciar coleta',
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              central.selecao.carregando
+                                  ? 'Carregando sua seleção de sensores…'
+                                  : central.selecionados == 0
+                                  ? 'Selecione pelo menos um sensor para começar.'
+                                  : central.prontos < central.selecionados
+                                  ? 'Confira os sensores selecionados: ainda há '
+                                        'leituras indisponíveis.'
+                                  : 'Os sensores selecionados estão prontos para a coleta.',
+                              style: tema.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (central.mensagem != null) ...[
+                    const SizedBox(height: 16),
+                    Semantics(
+                      liveRegion: true,
+                      child: Card.filled(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.info_outline, size: 22),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(central.mensagem!)),
+                            ],
                           ),
                         ),
-                        Text(
-                          ble.precisaoM == null
-                              ? ''
-                              : '±${ble.precisaoM!.toStringAsFixed(0)} m',
-                          style: TextStyle(fontSize: 12, color: fraco),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  Text('Seu trabalho', style: tema.textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  Card.outlined(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 6,
+                          ),
+                          leading: const Icon(Icons.folder_outlined),
+                          title: const Text('Minhas coletas'),
+                          subtitle: const Text(
+                            'Consulte os registros salvos no celular',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: abrirSessoes,
                         ),
-                      ]),
-                  ]),
+                        const Divider(height: 1, indent: 20, endIndent: 20),
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 6,
+                          ),
+                          leading: const Icon(Icons.map_outlined),
+                          title: const Text('Mapa'),
+                          subtitle: const Text(
+                            'Veja sua posição e o percurso da coleta',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: abrirMapa,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-
-          if (ble.conectado) ...[
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () async {
-                if (g.gravando) {
-                  final ok = await _confirmar(context, 'Encerrar a gravacao?',
-                      'A sessao sera fechada e salva.');
-                  if (!ok) return;
-                }
-                await ble.desconectar();
-              },
-              icon: const Icon(Icons.link_off),
-              label: const Text('Desconectar'),
-            ),
-          ],
-        ]);
-      },
-    );
-  }
-}
-
-Future<bool> _confirmar(BuildContext c, String titulo, String texto) async {
-  final r = await showDialog<bool>(
-    context: c,
-    builder: (_) => AlertDialog(
-      title: Text(titulo),
-      content: Text(texto),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('Cancelar')),
-        FilledButton(
-            onPressed: () => Navigator.pop(c, true), child: const Text('Sim')),
-      ],
-    ),
+        ],
+      );
+    },
   );
-  return r ?? false;
 }
 
-class _CartaoGravacao extends StatelessWidget {
-  final EstacaoBle ble;
-  const _CartaoGravacao({required this.ble});
+class _Indicador extends StatelessWidget {
+  final String valor;
+  final String rotulo;
+  const _Indicador({required this.valor, required this.rotulo});
 
   @override
-  Widget build(BuildContext context) {
-    final g = ble.gravador;
-    final semGps = ble.telLat == null;
-    final cor = g.gravando ? const Color(0xFFE04B4B) : null;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          Row(children: [
-            Icon(g.gravando ? Icons.fiber_manual_record : Icons.play_circle_outline,
-                color: cor, size: 28),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(g.gravando ? 'Gravando medicao' : 'Pronto para medir',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600, color: cor)),
-                    Text(
-                      g.gravando
-                          ? '${ble.trilha.length} pontos de trajetoria'
-                          : 'toque para comecar a registrar a trajetoria',
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.outline),
-                    ),
-                  ]),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (g.gravando) {
-                  await ble.pararGravacao();
-                } else {
-                  await ble.iniciarGravacao();
-                }
-              },
-              child: Text(g.gravando ? 'Parar' : 'Gravar'),
-            ),
-          ]),
-          // Aviso honesto: gravar sem GPS registra so o ambiente, sem trajeto.
-          if (!g.gravando && semGps)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Row(children: [
-                const Icon(Icons.warning_amber, size: 16, color: Color(0xFFD29922)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Sem posicao do GPS ainda — a trajetoria so comeca quando o '
-                    'telefone pegar sinal.',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.outline),
-                  ),
-                ),
-              ]),
-            ),
-          // Enquanto grava: se o GPS parar de mandar fix por mais de 5 s, avisa
-          // na hora - em vez do usuario so descobrir depois, olhando o arquivo.
-          if (g.gravando && (ble.segundosSemFix ?? 99) > 5)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Row(children: [
-                const Icon(Icons.gps_off, size: 16, color: Color(0xFFE04B4B)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'GPS sem resposta ha ${ble.segundosSemFix}s — a trajetoria '
-                    'parou de avancar.',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFFE04B4B)),
-                  ),
-                ),
-              ]),
-            ),
-        ]),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        valor,
+        style: Theme.of(context).textTheme.headlineMedium
+            ?.copyWith(fontWeight: FontWeight.w600),
       ),
-    );
-  }
+      const SizedBox(height: 4),
+      Text(rotulo, style: Theme.of(context).textTheme.bodyMedium),
+    ],
+  );
 }
 
-class _Numero extends StatelessWidget {
-  final String rotulo, valor, unidade;
-  final Color cor;
-  const _Numero(
-      {required this.rotulo,
-      required this.valor,
-      required this.unidade,
-      required this.cor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(rotulo,
-              style: TextStyle(
-                  fontSize: 11, color: Theme.of(context).colorScheme.outline)),
-          const SizedBox(height: 6),
-          Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(valor,
-                    style: TextStyle(
-                        fontSize: 30, fontWeight: FontWeight.w700, color: cor)),
-                const SizedBox(width: 4),
-                Text(unidade,
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.outline)),
-              ]),
-        ]),
-      ),
-    );
-  }
+String _duracao(Duration tempo) {
+  final horas = tempo.inHours.toString().padLeft(2, '0');
+  final minutos = tempo.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final segundos = tempo.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return '$horas:$minutos:$segundos';
 }
 
-/// Chip de alcance da base: em campo (gravando) fica pausado; parado, mostra se
-/// da para sincronizar.
-class _ChipBase extends StatelessWidget {
-  final BaseStatus base;
-  const _ChipBase({required this.base});
-
-  @override
-  Widget build(BuildContext context) {
-    final IconData icone;
-    final String texto;
-    final Color cor;
-    if (base.pausado) {
-      icone = Icons.hiking;
-      texto = 'em campo';
-      cor = const Color(0xFFD29922);
-    } else if (base.alcancavel) {
-      icone = Icons.cloud_done;
-      texto = 'base ao alcance';
-      cor = const Color(0xFF3FB950);
-    } else {
-      icone = Icons.cloud_off;
-      texto = 'base fora de alcance';
-      cor = const Color(0xFF7D8794);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0E13),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF232D38)),
+Future<void> _executar(
+  BuildContext context,
+  Future<void> Function() acao,
+) async {
+  try {
+    await acao();
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Não foi possível concluir a ação. Confira os sensores e tente novamente.',
+        ),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icone, size: 14, color: cor),
-        const SizedBox(width: 6),
-        Text(texto, style: TextStyle(fontSize: 11, color: cor)),
-      ]),
     );
   }
 }

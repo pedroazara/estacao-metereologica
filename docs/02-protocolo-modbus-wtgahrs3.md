@@ -1,4 +1,12 @@
-# Protocolo Modbus do WTGAHRS3-485 — referência offline
+# Protocolo Modbus do WTGAHRS3-485 — referência offline (legado)
+
+> **Referência histórica — arquitetura revisada em 01/10/2026.** O WTGAHRS3
+> foi retirado do conjunto de sensores previsto para a estação. Seu protocolo
+> permanece documentado para interpretar dados e manter ferramentas antigas;
+> não é o contrato dos sensores do celular nem do sensor ambiental RS485.
+> O ESP32 passa a atender apenas GY-302, KY-028 e o ambiental RS485. GPS,
+> movimento e som ficam no celular; a captura de movimento ainda precisa ser
+> implementada. Ver [arquitetura atual](04-telemetria.md).
 
 Transcrito da documentação oficial da WitMotion
 ([WIT Standard Modbus Protocol](https://wit-motion.gitbook.io/witmotion-sdk/wit-standard-modbus-protocol/modbus-communication-protocol)).

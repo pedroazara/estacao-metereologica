@@ -1,0 +1,65 @@
+Biblioteca Sensores_Modulos — instalada em 01/10/2026 para KiCad 10
+
+COMO USAR
+No editor de esquemas: Adicionar simbolo (A); pesquisar GY302, GY-302,
+BH1750, KY028 ou KY-028. Os dois simbolos ja tem footprint associado.
+A biblioteca foi registrada globalmente no KiCad 10 e no projeto Skylog.
+Os sensores ficam EXTERNOS: todos os footprints de sensores representam
+somente os conectores na placa principal, com passo de 2,54 mm.
+GY-302: 1x05; KY-028: 1x04. O sensor ambiental RS485 da biblioteca
+skylog ja usa um conector 1x04. Os modelos 3D ativos sao dos conectores.
+Na instalacao inicial da biblioteca, nenhum componente foi inserido.
+O projeto principal atual ja contem os tres conectores externos.
+
+ESCOPO DA ESTACAO — DECISAO DE 01/10/2026
+A estacao usa somente GY-302/BH1750, KY-028 e sensor ambiental RS485.
+GPS, movimento e som ficam a cargo do telefone de quem faz a medicao.
+WTGAHRS3-485, KY-038 e KY-013 foram retirados da montagem prevista.
+O divisor externo 10k/10k do antigo KY-038 nao integra a placa atual.
+O firmware e o app ainda precisam ser alinhados integralmente a essa decisao;
+a captura de movimento do telefone continua pendente.
+
+GY-302 / BH1750
+Simbolo: Sensores_Modulos:GY-302_BH1750
+Footprint: Sensores_Modulos:GY-302_Conector_1x05_P2.54mm
+Simbolo importado de https://github.com/usini/usini_kicad_sensors
+Commit: e2d03afffcb95ee2b2ff4183b6573658f2684229
+Original: usini_sensors.lib. Licenca declarada para o simbolo: CC0.
+Pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC.
+SDA bidirecional; VCC/GND power_in.
+O footprint representa SOMENTE um conector femea vertical 1x05,
+passo 2,54 mm, pads de 1,7 mm, furos de 1,0 mm e pad 1 retangular.
+Sem contorno, area reservada, furos ou modelo 3D da placa do sensor.
+Base: biblioteca oficial KiCad 10,
+Connector_PinSocket_2.54mm:PinSocket_1x05_P2.54mm_Vertical,
+com nomes dos sinais adicionados. Modelo 3D: somente o conector.
+Licenca da base: CC-BY-SA-4.0 com excecao para projetos eletronicos.
+Os arquivos do modulo baixado anteriormente foram preservados apenas
+em originais/gy302; nao sao footprints ativos da biblioteca.
+O readme original conserva atribuicoes e termos do modelo BH1750
+arquivado, de Jonathan Griggs:
+https://grabcad.com/library/bh1750-sensor-board-1
+
+KY-028
+Simbolo: Sensores_Modulos:KY-028
+Footprint: Sensores_Modulos:KY-028_Conector_1x04_P2.54mm
+Nao foi encontrada biblioteca KiCad pronta confiavel para o modulo.
+O simbolo foi criado localmente conforme a documentacao e foto Joy-IT:
+https://sensorkit.joy-it.net/en/sensors/ky-028
+https://sensorkit.joy-it.net/files/files/sensors/KY-028/KY-028.png
+Numeracao adotada: 1 AO, 2 GND, 3 VCC (+), 4 DO.
+O footprint representa SOMENTE o conector de quatro pinos de 2,54 mm,
+sem dimensoes, furos de fixacao ou modelo 3D da placa completa do KY-028.
+Base: biblioteca oficial KiCad 10,
+Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical,
+com nomes dos sinais adicionados. O modelo 3D representa apenas o conector.
+Licenca da base KiCad: CC-BY-SA-4.0 com excecao para projetos eletronicos:
+https://www.kicad.org/libraries/license/
+
+VERIFICACAO
+Biblioteca de simbolos e ambos os footprints carregados e exportados
+pelo KiCad 10.0.6. Pinagem e vinculos conferidos. Previews em verificacao/.
+A correspondencia fisica com os modulos do usuario nao foi medida;
+confira a ordem impressa nos pinos antes de fabricar ou conectar.
+Os caminhos 3D ativos usam ${KIPRJMOD} e os modelos incluidos no projeto,
+permitindo abrir a mesma pasta no Linux e no Windows.

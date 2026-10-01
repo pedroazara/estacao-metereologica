@@ -4,6 +4,7 @@
 // monta com as abas certas. Nao checa o botao "Conectar" porque o app agora
 // AUTO-CONECTA na partida - o botao ja aparece como "procurando...".
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:estacao_movel/main.dart';
@@ -12,10 +13,16 @@ void main() {
   testWidgets('sobe e mostra a navegacao', (tester) async {
     await tester.pumpWidget(const AppEstacao());
 
-    // As quatro abas da navegacao inferior - estaveis, sem depender de conexao.
-    expect(find.text('Painel'), findsOneWidget);
-    expect(find.text('Mapa'), findsOneWidget);
-    expect(find.text('Estacao'), findsOneWidget);
-    expect(find.text('Sessoes'), findsOneWidget);
+    // As cinco abas da navegacao inferior - estaveis, sem depender de conexao.
+    for (final aba in ['Início', 'Sensores', 'Mapa', 'Planos', 'Coletas']) {
+      expect(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(aba),
+        ),
+        findsOneWidget,
+      );
+    }
+    await tester.pumpWidget(const SizedBox());
   });
 }

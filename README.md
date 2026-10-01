@@ -1,46 +1,92 @@
-# Estação Meteorológica Móvel
+# Estação Meteorológica Móvel — Skylog
 
-Estação portátil para coleta de temperatura, umidade, pressão e posição.
+Estação portátil para medir temperatura, umidade e luminosidade, associadas
+à localização, ao movimento e ao som coletados pelo telefone da pessoa que
+realiza a medição.
 
-**Fase atual:** aquisição de posição via sensor WitMotion **WTGAHRS3-485**
-(GPS/BeiDou + IMU de 6 eixos), lido por Modbus RTU sobre um adaptador
-RS485-USB.
+## Configuração vigente — 01/10/2026
 
-## Duas áreas, papéis distintos
-
-O projeto tem duas áreas. Elas **não** são implementações rivais do mesmo
-sistema — cada uma faz uma parte (decidido em 17/08/2026, ver
-[docs/04](docs/04-telemetria.md)):
-
-| Área | Onde | Papel |
+| Origem | Sensor ou recurso | Responsabilidade |
 |---|---|---|
-| **ESP32 — campo** | [`firmware/`](firmware/) | lê os sensores no RS485, carimba, grava tudo no cartão SD, serve um painel de conferência com o dado **cru**. Não interpreta nada. |
-| **Python — base** | raiz (`src/`, `docs/`, `tests/`) | recebe, roda o filtro de Kalman em lote, persiste, analisa. Roda num **Raspberry Pi** ligado na tomada; o PC continua servindo de bancada. |
+| ESP32 | Sensor ambiental RS485 | Temperatura e umidade |
+| ESP32 | KY-028 | Temperatura auxiliar |
+| ESP32 | GY-302 / BH1750 | Luminosidade |
+| Telefone | GPS / localização | Posição e percurso da coleta |
+| Telefone | Sensores de movimento | Movimento / dados inerciais |
+| Telefone | Microfone | Níveis sonoros, sem gravação de áudio |
 
-O objetivo final é um **produto**: uma base com tela touch para o pesquisador
-analisar a coleta.
+**WTGAHRS3-485, KY-038 e KY-013 deixam de fazer parte da montagem.** GPS e
+movimento deixam de depender do módulo WitMotion; o som passa a vir do
+microfone do telefone. O KY-013 não será substituído por outro termistor:
+a temperatura auxiliar fica somente com o KY-028.
 
-Este README cobre a área Python. A do ESP32 tem o seu próprio:
-[firmware/README.md](firmware/README.md).
+Os três sensores ligados ao ESP32 ficam **externos à placa principal**.
+No KiCad, seus footprints representam apenas os conectores: GY-302 com
+cinco contatos, KY-028 com quatro e sensor ambiental RS485 com quatro,
+todos com passo de 2,54 mm. O divisor de dois resistores de 10 kΩ previsto
+para o antigo KY-038 deixa de ser necessário nessa montagem.
+A pressão atmosférica não está confirmada no conjunto atual de sensores.
 
----
+## Responsabilidades no sistema
+
+| Parte | Onde | Papel |
+|---|---|---|
+| **ESP32** | [firmware/](firmware/) | Ler os três sensores externos e enviar suas leituras ao aplicativo. |
+| **Telefone** | [app/](app/) | Fornecer localização, movimento e som; reunir as leituras ambientais recebidas por Bluetooth e gravar a coleta localmente. |
+| **Base Python / Raspberry Pi** | [src/](src/) e [docs/05](docs/05-base-raspberry-pi.md) | Receber as coletas sincronizadas, armazenar, processar e apresentar os resultados. |
+| **Placa de interface** | [hardware/skylog/](hardware/skylog/) | Reunir ESP32, conversor RS485 e conexões dos sensores externos. |
+
+Essa é a configuração aprovada; a migração do código ainda precisa ser
+concluída. O aplicativo já usa GPS e microfone do telefone e grava dados
+ambientais via Bluetooth. A captura de movimento pelo telefone ainda não
+foi implementada. O firmware ainda contém rotinas de WTGAHRS3, KY-038 e
+KY-013, e o aplicativo ainda oferece KY-013/KY-038 na seleção de sensores.
+Essas referências descrevem a implementação anterior, não a lista de
+componentes da montagem vigente.
+
+## Próximas adequações
+
+- [ ] Ajustar o firmware para ler somente o sensor ambiental RS485, o KY-028
+  e o GY-302, retirando a aquisição de GPS/IMU, KY-038 e KY-013 do ESP32.
+- [ ] Retirar KY-013/KY-038 das opções de novas coletas no aplicativo,
+  preservando a leitura de sessões antigas.
+- [ ] Implementar a coleta de movimento pelos sensores do telefone e
+  definir seu formato de registro, unidades e horários de amostragem.
+- [ ] Alinhar o processamento na base às origens de GPS, movimento e som do
+  telefone; manter compatibilidade com os arquivos já coletados.
+- [ ] Revisar alimentação, terra comum e UART do conversor no esquema KiCad
+  e sincronizar a PCB com o esquema antes de rotear.
+- [ ] Concentrar os três conectores externos em uma borda e verificar a
+  viabilidade de rotear em uma única camada de cobre. Retomar no Windows.
+- [ ] Validar uma coleta completa com os sensores ambientais e o telefone.
 
 ## Comece por aqui
 
-1. **[docs/01-guia-conexao-linux.md](docs/01-guia-conexao-linux.md)** — do zero
-   até ler coordenadas no terminal. Fiação, driver, permissões, primeiro fix.
-2. **[docs/02-protocolo-modbus-wtgahrs3.md](docs/02-protocolo-modbus-wtgahrs3.md)** —
-   mapa completo de registradores e fórmulas de conversão.
-3. **[docs/03-filtro-kalman.md](docs/03-filtro-kalman.md)** — teoria, derivação
-   e as decisões de projeto do filtro de fusão GPS + acelerômetro.
-4. **[docs/04-telemetria.md](docs/04-telemetria.md)** — **a arquitetura do
-   sistema**: divisão de papéis, contrato de dados, cartão SD, roadmap e o
-   histórico das decisões. Comece por aqui se a dúvida for "por que assim?".
-5. **[docs/05-base-raspberry-pi.md](docs/05-base-raspberry-pi.md)** — preparar o
-   Raspberry Pi da base do zero: sistema, broker, `systemd`, e o teste ponta a
-   ponta sem hardware nenhum.
+1. [Aplicativo](app/README.md): preparar o telefone, selecionar sensores,
+   gravar e sincronizar a coleta.
+2. [Firmware](firmware/README.md): pinagem dos três sensores mantidos e
+   diferenças entre a montagem vigente e os sketches antigos.
+3. [Arquitetura e telemetria](docs/04-telemetria.md): divisão de
+   responsabilidades, dados atuais e contratos históricos.
+4. [Base Raspberry Pi](docs/05-base-raspberry-pi.md): preparação e operação
+   da base; exemplos de GPS/IMU externo são históricos.
+5. [Filtro de Kalman](docs/03-filtro-kalman.md): implementação existente;
+   a entrada de movimento do telefone ainda precisa de integração.
+6. [Projeto KiCad no Windows ou Linux](hardware/skylog/README.md): bibliotecas
+   incluídas, arquivo para abrir e pendências de conexão e roteamento.
 
-## Instalação
+Os guias de [conexão Linux](docs/01-guia-conexao-linux.md) e
+[protocolo WTGAHRS3](docs/02-protocolo-modbus-wtgahrs3.md) continuam
+preservados como referência da bancada anterior.
+
+## Referência histórica: bancada com WTGAHRS3
+
+As instruções, características do sensor e registros de desenvolvimento
+abaixo pertencem à montagem anterior. Não são requisitos de compra,
+montagem ou coleta da configuração vigente. Os drivers e dados antigos
+continuam no repositório para consulta e reprodução de experimentos.
+
+### Instalação das ferramentas históricas
 
 ```bash
 python3 -m venv .venv
@@ -49,7 +95,7 @@ pip install -r requirements.txt
 sudo usermod -aG dialout $USER   # depois faça logout/login
 ```
 
-## Uso
+### Uso histórico com WTGAHRS3
 
 ```bash
 cd src
@@ -70,7 +116,7 @@ python3 painel.py --porta /dev/ttyUSB0
 python3 ler_posicao.py --porta /dev/ttyUSB0 --completo --hz 5
 ```
 
-### Painel
+### Painel histórico de bancada
 
 Abre sozinho em `http://localhost:8770`, com duas abas:
 
@@ -94,7 +140,7 @@ python3 painel.py --simular
 
 A versão só do mapa continua disponível em `mapa_ao_vivo.py` (porta 8765).
 
-## Estrutura
+## Estrutura e ferramentas preservadas
 
 ```
 estacao-metereologica/
@@ -106,7 +152,7 @@ estacao-metereologica/
 │   ├── 05-base-raspberry-pi.md       preparar a base do zero
 │   └── datasheets/                   PDFs oficiais da WitMotion
 ├── src/
-│   ├── wtgahrs3.py                   driver Modbus do sensor
+│   ├── wtgahrs3.py                   driver Modbus histórico do WTGAHRS3
 │   ├── filtro_kalman.py              fusão GPS + acelerômetro
 │   ├── scan_barramento.py            descoberta automática de porta/baud/endereço
 │   ├── calibrar.py                   calibração do acelerômetro
@@ -121,6 +167,8 @@ estacao-metereologica/
 │   └── kalman/                       lições numeradas, do zero ao filtro final
 ├── servidor/
 │   └── mosquitto-estacao.conf        config do broker (não é opcional — ver doc 04)
+├── app/                              aplicativo de coleta no telefone
+├── hardware/skylog/                  projeto KiCad e conectores externos
 ├── firmware/                         ← área do ESP32 (Arduino IDE)
 │   ├── README.md                     fiação, níveis lógicos e roteiro
 │   ├── teste_sensor_ambiental/       diagnóstico do sensor RS485 de T/UR/pressão
@@ -135,7 +183,7 @@ estacao-metereologica/
 └── requirements.txt
 ```
 
-## O que o WTGAHRS3 cobre — e o que falta
+## Referência histórica: medições do WTGAHRS3
 
 | Grandeza | WTGAHRS3 | Observação |
 |---|---|---|
@@ -166,11 +214,12 @@ estacao-metereologica/
 > GPS (registrador `0x4E`), que só é válido em movimento. Não existe calibração
 > de bússola neste modelo.
 
-Ou seja: **as três grandezas meteorológicas do projeto (temperatura, umidade,
-pressão) precisam de um sensor dedicado.** O WTGAHRS3 entra como módulo de
-posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
+Na etapa anterior, essas limitações motivaram a avaliação de um BME280.
+Essa proposta não integra a montagem vigente: temperatura e umidade vêm
+do sensor ambiental RS485, temperatura auxiliar do KY-028 e luminosidade
+do GY-302; posição e movimento passam a ser responsabilidade do telefone.
 
-## Ficha rápida do sensor
+## Ficha histórica do WTGAHRS3
 
 | Item | Valor |
 |---|---|
@@ -193,7 +242,12 @@ posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
 > é boilerplate copiado e contradiz a tabela do próprio documento. 5 V funciona
 > normalmente; a faixa maior é útil se você for alimentar por bateria de 12 V.
 
-## TODO
+## Registro histórico de pendências
+
+Esta lista registra o planejamento anterior à decisão de 01/10/2026.
+Itens como bancada WitMotion, antena GNSS, BME280 e cartão SD no ESP32
+não são requisitos da montagem vigente. As adequações atuais estão em
+[Próximas adequações](#próximas-adequações).
 
 ### Pendências abertas
 
@@ -269,7 +323,7 @@ posição e movimento. Um **BME280** (I²C, ~R$ 25) resolve as três de uma vez.
 - [ ] Testar o comportamento em movimento real de veículo: vibração,
   perda de sinal em túnel e sob vegetação, taxa de amostragem adequada.
 
-## Fontes
+## Fontes da referência histórica
 
 - [Protocolo Modbus oficial da WitMotion](https://wit-motion.gitbook.io/witmotion-sdk/wit-standard-modbus-protocol/modbus-communication-protocol)
 - [Página do produto WTGAHRS3 (links dos PDFs)](https://witmotion-sensor.com/products/industry-grade-beidou-wtgahrs3-6-axis-gps-imu-accelerometer)

@@ -1,0 +1,11 @@
+{
+  "symbol_pins_match_footprint": true,
+  "integration_nets_match": true,
+  "original_schematic_preserved": true,
+  "original_project_preserved": true,
+  "erc": {
+    "errors": 41,
+    "warnings": 2,
+    "u3_specific_findings": 0
+  }
+}

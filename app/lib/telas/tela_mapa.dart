@@ -3,14 +3,21 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../ble/estacao_ble.dart';
+import '../rede/plano_atual.dart';
+import 'widgets/area_plano.dart';
 
 /// Mapa de verdade (OpenStreetMap) com a sua posicao e a trajetoria da medicao.
 ///
 /// A trajetoria so aparece quando voce esta GRAVANDO - e o caminho da medida,
 /// nao do trajeto ate comecar. A posicao vem do GPS do proprio telefone.
+///
+/// Quando ha um plano ATIVO (aba Planos), a area pintada dele aparece por
+/// baixo do trajeto - guia visual de "e aqui que preciso andar", mesmo dado
+/// que o painel da base mostra, so que no proprio mapa de quem esta em campo.
 class TelaMapa extends StatefulWidget {
   final EstacaoBle ble;
-  const TelaMapa({super.key, required this.ble});
+  final PlanoAtual? planos;
+  const TelaMapa({super.key, required this.ble, this.planos});
 
   @override
   State<TelaMapa> createState() => _TelaMapaState();
@@ -24,11 +31,13 @@ class _TelaMapaState extends State<TelaMapa> {
   void initState() {
     super.initState();
     widget.ble.addListener(_aoAtualizar);
+    widget.planos?.addListener(_aoAtualizar);
   }
 
   @override
   void dispose() {
     widget.ble.removeListener(_aoAtualizar);
+    widget.planos?.removeListener(_aoAtualizar);
     super.dispose();
   }
 
@@ -90,6 +99,10 @@ class _TelaMapaState extends State<TelaMapa> {
             userAgentPackageName: 'br.estacao.estacao_movel',
             maxNativeZoom: 19,
           ),
+          // Area do plano ativo, se tiver - por baixo da trilha e da posicao,
+          // so um guia de fundo ("e por aqui").
+          if (widget.planos?.selecionado != null)
+            AreaPlanoOverlay(tracos: widget.planos!.selecionado!.tracos),
           if (trilha.length > 1)
             PolylineLayer(polylines: [
               Polyline(points: trilha, strokeWidth: 4, color: const Color(0xFF3FB950)),

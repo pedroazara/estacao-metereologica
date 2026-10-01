@@ -11,3 +11,33 @@ docs/datasheets/*.pdf
 
 # binários exportados pela Arduino IDE
 firmware/**/build/
+
+# Estado local, caches e backups do KiCad (preservados no computador)
+hardware/**/.history/
+hardware/recuperacao/
+hardware/skylog/backups/
+hardware/skylog/skylog-backups/
+hardware/skylog/_restore_backup_*/
+hardware/**/*.bak
+hardware/**/*.kicad_prl
+hardware/**/fp-info-cache
+hardware/**/~*.lck
+# Arquivo de download duplicado pelos modelos extraidos ao lado
+hardware/skylog/modelos/*.snapshot.*.zip
+
+# Saidas de compilacao e preferencias locais do SDK historico WitMotion
+WitStandardModbus_WT901C485/**/.idea/
+WitStandardModbus_WT901C485/**/.vs/
+WitStandardModbus_WT901C485/**/Debug/
+WitStandardModbus_WT901C485/**/Release/
+WitStandardModbus_WT901C485/**/bin/
+WitStandardModbus_WT901C485/**/obj/
+WitStandardModbus_WT901C485/**/*.exe
+WitStandardModbus_WT901C485/**/*.obj
+WitStandardModbus_WT901C485/**/*.pdb
+WitStandardModbus_WT901C485/**/*.sdf
+WitStandardModbus_WT901C485/**/*.suo
+WitStandardModbus_WT901C485/**/*.tlog
+WitStandardModbus_WT901C485/**/*.ilk
+WitStandardModbus_WT901C485/**/*.ipch
+WitStandardModbus_WT901C485/**/*.pyc

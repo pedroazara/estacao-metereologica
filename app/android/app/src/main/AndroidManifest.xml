@@ -25,6 +25,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Solicitada somente ao iniciar o decibelimetro. O audio e processado
+         em memoria; o app nao grava conversas nem envia audio. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- O app so faz sentido com BLE; required=true tira do caminho um celular
          que nao tem o radio, em vez de instalar e falhar na primeira tela. -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />

@@ -1,0 +1,21 @@
+{
+  "kicad": "10.0.6",
+  "library": "Sensores_Modulos",
+  "table_backups": "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/backups/bibliotecas-antes-sensores-20261001-123043.zip",
+  "unchanged_design_sha256": {
+    "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/skylog.kicad_sch": "b91a2ed0c1e3b53efa97324112945f89379f756fd3e64b6a2f569edd84eca144",
+    "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/skylog.kicad_pcb": "7829957e7338e332a94dc7033609c47f00a6f41b9c34c8ad4c085579b7a6338f",
+    "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/skylog.kicad_sym": "accd857210702c6a95216ad3eddebf04fc67a019e8dee4c7758c630cbc03f02d"
+  },
+  "registered_tables": [
+    "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/sym-lib-table",
+    "/home/pedro-henrique/Documentos/projetos/estacao-metereologica/hardware/skylog/fp-lib-table",
+    "/home/pedro-henrique/.config/kicad/10.0/sym-lib-table",
+    "/home/pedro-henrique/.config/kicad/10.0/fp-lib-table"
+  ],
+  "external_sensor_connectors": {
+    "GY-302": "1x05 P2.54mm",
+    "KY-028": "1x04 P2.54mm",
+    "sensor_TempUmid_RS485": "1x04 P2.54mm"
+  }
+}

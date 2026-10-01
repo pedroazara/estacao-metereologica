@@ -28,7 +28,10 @@
  *
  *     estacao/<dev>/pos      1 Hz     posicao GPS
  *     estacao/<dev>/imu      1 Hz     lote de 10 amostras do IMU (10 Hz)
- *     estacao/<dev>/amb      0.5 Hz   temperatura e umidade
+ *     estacao/<dev>/amb      0.5 Hz   temp/umidade RS485, ruido (dB, Leq), as
+ *                                     duas temperaturas auxiliares (KY-028/KY-013,
+ *                                     pra deteccao de variacao - ver docs do Kalman)
+ *                                     e luminosidade (lux, GY-302/BH1750)
  *     estacao/<dev>/status   retained + LWT
  *
  * Ajuste MQTT_HOST para o nome mDNS da base. Deixe "" para desligar o envio e usar
@@ -47,6 +50,21 @@
  *   ambiental RS485 endereco 0x01   temperatura/umidade
  *
  * Ligacao: RO->GPIO16, DI->GPIO17, DE+RE->GPIO4.
+ *
+ * KY-038 (microfone, ruido ambiente): AO->GPIO32 atraves de um divisor
+ * resistivo 10k/10k (o modulo e alimentado em 5V para ter ganho decente, mas
+ * o ADC do ESP32 nao aguenta mais que 3,3V - ver firmware/teste_ky038/).
+ *
+ * KY-028 e KY-013 (termistores NTC, temperatura auxiliar pro Kalman):
+ * AO->GPIO35 e AO->GPIO39 respectivamente (GPIO33 e GPIO34 nao responderam
+ * nesta placa - fiacao, nao os pinos; evite tambem GPIO26/outro ADC2, que
+ * conflita com o Wi-Fi), 3V3, calibrados contra o RS485 (ver
+ * src/calibrar_ky028.py e firmware/teste_ky028/, firmware/teste_ky013/).
+ *
+ * GY-302 (chip BH1750, luminosidade): SDA->GPIO21, SCL->GPIO22, 3V3,
+ * ADDR->GND (endereco 0x23). Digital via I2C, ja calibrado de fabrica em
+ * lux - sem divisor resistivo nem calibracao contra referencia, ao contrario
+ * dos NTCs (ver firmware/teste_gy302/).
  */
 
 #include <WiFi.h>
@@ -55,6 +73,7 @@
 #include <Preferences.h>
 #include <ESPmDNS.h>
 #include <PubSubClient.h>
+#include <Wire.h>
 #include <math.h>
 
 #include "wtgahrs3.h"
@@ -74,6 +93,34 @@ static const int8_t PINO_TX = 17;   // DI do transceptor
 static const int8_t PINO_DE = 4;    // DE+RE; -1 se o modulo for automatico
 
 static const uint32_t BAUD_SENSOR = 9600;
+
+// -- KY-038 (microfone) -------------------------------------------------------
+static const uint8_t  PINO_KY038_AO    = 32;  // AO, apos o divisor 10k/10k
+static const uint16_t SOM_SUBJANELA_MS = 20;  // janela curta pra pegar a amplitude do audio
+// Coeficientes da calibracao (ver src/calibrar_ky038.py): dB = a*log10(amplitude) + b.
+// Dependem do ganho fixado no potenciometro do modulo - recalibrar se ele for
+// reajustado.
+static const float SOM_COEF_A = 26.475f;
+static const float SOM_COEF_B = 21.926f;
+
+// -- KY-028 / KY-013 (termistores NTC) -----------------------------------------
+// Leitura instantanea, sem janela - ao contrario do som, a temperatura nao
+// oscila rapido, um analogRead() por ciclo de publicacao basta.
+static const uint8_t PINO_KY028_AO = 35;
+static const uint8_t PINO_KY013_AO = 39;  // GPIO33 e GPIO34 nao responderam nessa placa (fiacao) - 39 e "SN"/"VN" na serigrafia
+
+// Coeficientes de src/calibrar_ky028.py (mesma equacao pros dois termistores,
+// so os coeficientes mudam): 1/T = a*ln((1-x)/x) + b, x = adc/4095.
+static const float KY028_CAL_A = -0.000196f;
+static const float KY028_CAL_B = 0.003763f;
+static const float KY013_CAL_A = -0.000289f;
+static const float KY013_CAL_B = 0.004235f;
+
+// -- GY-302 / BH1750 (luminosidade, I2C) --------------------------------------
+static const uint8_t PINO_SDA = 21;
+static const uint8_t PINO_SCL = 22;
+static const uint8_t BH1750_ENDERECO = 0x23;        // ADDR em GND; 0x5C se ADDR em VCC
+static const uint8_t BH1750_CONTINUO_H_RES = 0x10;  // 1 lx/contagem, ~120 ms de conversao
 
 static const uint16_t INTERVALO_PUBLICACAO_MS = 1000;
 
@@ -142,6 +189,17 @@ float    umidade       = 0.0f;
 bool     leituraValida = false;
 uint32_t totalLeituras = 0;
 uint32_t totalFalhas   = 0;
+
+// Acumulador do Leq (nivel medio de ruido) desde a ultima publicacao. So a
+// media sai no "amb" - o dB instantaneo de cada subjanela nao e guardado,
+// entao a integracao tem que ser feita aqui, aos poucos, sem bloquear o
+// loop() (ver amostrarSom()).
+uint16_t somMinSubjanela     = 4095, somMaxSubjanela = 0;
+uint32_t somProximaSubjanela = 0;
+double   somSomaPotencia     = 0.0;  // soma de 10^(dB/10) das subjanelas do ciclo
+uint32_t somAmostras         = 0;
+
+bool bh1750Disponivel = false;  // false = segue publicando os outros sensores sem lux
 
 // Diagnostico do barramento: os tres sensores dividem a mesma UART, entao uma
 // leitura que da timeout (200 ms) atrasa todas as outras. Estes contadores
@@ -409,11 +467,89 @@ bool conectarMqtt() {
 // detalhe de ordem: em campo o cenario normal e nao haver Wi-Fi nenhum, e era
 // o `return` por MQTT desconectado que deixaria o app do celular sem dado
 // exatamente quando ele e a unica janela para a estacao.
+// Chamada a cada passagem do loop() - so um analogRead() e algumas comparacoes,
+// custa quase nada. So faz conta pesada (log10/pow) quando uma subjanela de
+// SOM_SUBJANELA_MS fecha, e so entao acumula na soma de potencia do ciclo.
+//
+// POR QUE NAO BLOQUEAR feito o sketch de teste (while(millis()<fim)): esse
+// loop() tem o escalonador do RS485 e o BleEstacao::manter() rodando na mesma
+// volta, ambos com timing proprio. Um bloqueio de 20 ms aqui atrasaria os dois.
+void amostrarSom() {
+  uint16_t v = analogRead(PINO_KY038_AO);
+  if (v < somMinSubjanela) somMinSubjanela = v;
+  if (v > somMaxSubjanela) somMaxSubjanela = v;
+
+  if (millis() < somProximaSubjanela) return;
+  somProximaSubjanela = millis() + SOM_SUBJANELA_MS;
+
+  uint16_t amplitude = somMaxSubjanela - somMinSubjanela;
+  if (amplitude < 1) amplitude = 1;  // log10(0) nao existe
+  float db = SOM_COEF_A * log10f(amplitude) + SOM_COEF_B;
+  if (db < 0) db = 0;
+
+  somSomaPotencia += pow(10.0, db / 10.0);
+  somAmostras++;
+
+  somMinSubjanela = 4095;
+  somMaxSubjanela = 0;
+}
+
+// Fecha o Leq do ciclo (media de POTENCIA, nao do dB direto - ver
+// src/media_ruido_ky038.py) e zera o acumulador para o proximo.
+float fecharLeq() {
+  float leq = somAmostras > 0 ? 10.0f * log10f(somSomaPotencia / somAmostras) : 0.0f;
+  somSomaPotencia = 0.0;
+  somAmostras     = 0;
+  return leq;
+}
+
+// Le um termistor NTC calibrado (KY-028 ou KY-013) - so um analogRead(), sem
+// janela, ao contrario do som: temperatura nao oscila rapido o bastante pra
+// precisar de envelope.
+float lerTemperaturaNTC(uint8_t pino, float calA, float calB) {
+  uint16_t adc = analogRead(pino);
+  float x = adc / 4095.0f;
+  x = constrain(x, 0.0001f, 0.9999f);
+  float ratio = (1.0f - x) / x;
+  float tempK = 1.0f / (calA * logf(ratio) + calB);
+  return tempK - 273.15f;
+}
+
+// GY-302 / BH1750: driver minimo por I2C, sem biblioteca externa (ver
+// firmware/teste_gy302/). iniciarBh1750() e chamado uma vez no setup().
+bool iniciarBh1750() {
+  Wire.begin(PINO_SDA, PINO_SCL);
+
+  Wire.beginTransmission(BH1750_ENDERECO);
+  Wire.write(0x01);  // power on
+  if (Wire.endTransmission() != 0) return false;
+
+  Wire.beginTransmission(BH1750_ENDERECO);
+  Wire.write(BH1750_CONTINUO_H_RES);
+  if (Wire.endTransmission() != 0) return false;
+
+  delay(180);  // primeira conversao no modo H-res
+  return true;
+}
+
+bool lerBh1750(float &luxSaida) {
+  if (Wire.requestFrom((int)BH1750_ENDERECO, 2) != 2) return false;
+  uint16_t bruto = (uint16_t)Wire.read() << 8 | Wire.read();
+  luxSaida = bruto / 1.2f;  // fator fixo do datasheet no modo H-res
+  return true;
+}
+
 void publicarAmbiente() {
   if (!leituraValida) return;
-  char json[96];
-  snprintf(json, sizeof(json), "{\"seq\":%lu,\"temp\":%.1f,\"umid\":%.1f}",
-           (unsigned long)seqAmb++, temperatura, umidade);
+  float dB   = fecharLeq();
+  float t028 = lerTemperaturaNTC(PINO_KY028_AO, KY028_CAL_A, KY028_CAL_B);
+  float t013 = lerTemperaturaNTC(PINO_KY013_AO, KY013_CAL_A, KY013_CAL_B);
+  float lux  = -1.0f;  // -1 = sem leitura valida (sensor ausente ou falha)
+  if (bh1750Disponivel) lerBh1750(lux);
+  char json[224];
+  snprintf(json, sizeof(json),
+           "{\"seq\":%lu,\"temp\":%.1f,\"umid\":%.1f,\"db\":%.1f,\"t28\":%.1f,\"t13\":%.1f,\"lux\":%.1f}",
+           (unsigned long)seqAmb++, temperatura, umidade, dB, t028, t013, lux);
   BleEstacao::publicarAmb(json);
   if (!mqtt.connected()) return;
   if (mqtt.publish(topico("amb").c_str(), json)) publicadas++;
@@ -1070,6 +1206,10 @@ void setup() {
   BleEstacao::iniciar(DEVICE_ID);
   BleEstacao::publicarCfg(configJson());
 
+  Serial.println(F("GY-302: iniciando BH1750..."));
+  bh1750Disponivel = iniciarBh1750();
+  Serial.println(bh1750Disponivel ? F("  respondeu.") : F("  sem resposta - seguindo sem lux."));
+
   prefs.begin("wifi", false);
   String ssidSalvo  = prefs.getString("ssid", "");
   String senhaSalva = prefs.getString("senha", "");
@@ -1102,6 +1242,7 @@ void loop() {
   }
 
   servidor.handleClient();
+  amostrarSom();  // barato (1 analogRead por volta) - ver o comentario na definicao
 
   // Reconexao do MQTT sem bloquear a leitura dos sensores: tenta a cada 5 s.
   if (mqttLigado()) {

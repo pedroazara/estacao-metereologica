@@ -101,12 +101,20 @@ def atualizar_plano(caminho_db, plano_id, tracos):
     return ok
 
 
-def listar_planos(caminho_db):
+def listar_planos(caminho_db, dev=None):
+    """`dev=None` lista de todos os medidores (usado pelo painel da base);
+    `dev="esp32-01"` filtra so os planos daquele medidor (usado pelo app,
+    que so precisa ver os planos da estacao conectada)."""
     con = _abrir(caminho_db)
     try:
-        linhas = con.execute(
-            "SELECT id, nome, dev, criado_em, ativo FROM planos "
-            "ORDER BY criado_em DESC").fetchall()
+        if dev:
+            linhas = con.execute(
+                "SELECT id, nome, dev, criado_em, ativo FROM planos "
+                "WHERE dev = ? ORDER BY criado_em DESC", (dev,)).fetchall()
+        else:
+            linhas = con.execute(
+                "SELECT id, nome, dev, criado_em, ativo FROM planos "
+                "ORDER BY criado_em DESC").fetchall()
     finally:
         con.close()
     return [{"id": i, "nome": n, "dev": d, "criado_em": c, "ativo": bool(a)}
@@ -181,7 +189,43 @@ def plano_ativo(caminho_db, dev):
         return None
     plano_id, nome, rota, criado_em = p
     return {"id": plano_id, "nome": nome, "tracos": json.loads(rota),
-            "criado_em": criado_em}
+            "criado_em": criado_em, "ativo": True}
+
+
+def _segmentos_dos_tracos(tracos, lat0, lon0):
+    """Tracos (ja filtrados/validos) em segmentos de metros locais, cada um
+    com o raio da sua propria pincelada - a mesma conversao usada tanto para
+    achar amostras dentro de um plano quanto para saber se um ponto de
+    sessao caiu dentro dele."""
+    segmentos = []  # (ax, ay, bx, by, raio_m)
+    for t in tracos:
+        raio = t["raio_m"]
+        m = [_para_metros(p[0], p[1], lat0, lon0) for p in t["pontos"]]
+        if len(m) == 1:
+            segmentos.append((m[0][0], m[0][1], m[0][0], m[0][1], raio))
+        else:
+            for i in range(len(m) - 1):
+                segmentos.append(
+                    (m[i][0], m[i][1], m[i + 1][0], m[i + 1][1], raio))
+    return segmentos
+
+
+def _ponto_dentro(lat, lon, segmentos, lat0, lon0):
+    ax, ay = _para_metros(lat, lon, lat0, lon0)
+    return any(
+        _dist_ponto_segmento(ax, ay, sx1, sy1, sx2, sy2) <= raio
+        for (sx1, sy1, sx2, sy2, raio) in segmentos)
+
+
+def _tracos_validos(rota_json):
+    tracos = [t for t in json.loads(rota_json)
+              if t.get("pontos") and t.get("raio_m", 0) > 0]
+    if not tracos:
+        return None, None, None
+    todos_pontos = [p for t in tracos for p in t["pontos"]]
+    lat0 = sum(p[0] for p in todos_pontos) / len(todos_pontos)
+    lon0 = sum(p[1] for p in todos_pontos) / len(todos_pontos)
+    return tracos, lat0, lon0
 
 
 def pontos_do_plano(caminho_db, plano_id):
@@ -198,9 +242,8 @@ def pontos_do_plano(caminho_db, plano_id):
         if p is None:
             return []
         dev, rota = p
-        tracos = [t for t in json.loads(rota)
-                  if t.get("pontos") and t.get("raio_m", 0) > 0]
-        if not tracos:
+        tracos, lat0, lon0 = _tracos_validos(rota)
+        if tracos is None:
             return []
         try:
             amostras = con.execute(
@@ -213,28 +256,44 @@ def pontos_do_plano(caminho_db, plano_id):
     if not amostras:
         return []
 
-    todos_pontos = [p for t in tracos for p in t["pontos"]]
-    lat0 = sum(p[0] for p in todos_pontos) / len(todos_pontos)
-    lon0 = sum(p[1] for p in todos_pontos) / len(todos_pontos)
-
-    segmentos = []  # (ax, ay, bx, by, raio_m)
-    for t in tracos:
-        raio = t["raio_m"]
-        m = [_para_metros(p[0], p[1], lat0, lon0) for p in t["pontos"]]
-        if len(m) == 1:
-            segmentos.append((m[0][0], m[0][1], m[0][0], m[0][1], raio))
-        else:
-            for i in range(len(m) - 1):
-                segmentos.append(
-                    (m[i][0], m[i][1], m[i + 1][0], m[i + 1][1], raio))
-
+    segmentos = _segmentos_dos_tracos(tracos, lat0, lon0)
     resultado = []
     for (alat, alon, temp, umid, sessao) in amostras:
-        ax, ay = _para_metros(alat, alon, lat0, lon0)
-        dentro = any(
-            _dist_ponto_segmento(ax, ay, sx1, sy1, sx2, sy2) <= raio
-            for (sx1, sy1, sx2, sy2, raio) in segmentos)
-        if dentro:
+        if _ponto_dentro(alat, alon, segmentos, lat0, lon0):
             resultado.append({"lat": alat, "lon": alon, "temp": temp,
                                "umid": umid, "sessao": sessao})
     return resultado
+
+
+def cobertura_sessao(caminho_db, dev, sessao):
+    """Para a aba Sessoes: cruza os pontos de UMA sessao especifica contra o
+    plano ATIVO daquele medidor (se tiver um) - responde "quais pontos desta
+    caminhada cairam dentro da area planejada". Cada ponto vem com
+    `dentro: bool`; `None` se o dev nao tem plano ativo."""
+    con = _abrir(caminho_db)
+    try:
+        p = con.execute(
+            "SELECT id, nome, rota FROM planos WHERE dev = ? AND ativo = 1",
+            (dev,)).fetchone()
+        if p is None:
+            return None
+        plano_id, nome, rota = p
+        tracos, lat0, lon0 = _tracos_validos(rota)
+        try:
+            amostras = con.execute(
+                "SELECT lat, lon, temp, umid FROM derivado "
+                "WHERE dev = ? AND sessao = ? ORDER BY ts", (dev, sessao)
+            ).fetchall()
+        except sqlite3.Error:
+            amostras = []
+    finally:
+        con.close()
+
+    segmentos = _segmentos_dos_tracos(tracos, lat0, lon0) if tracos else []
+    pontos = [
+        {"lat": la, "lon": lo, "temp": t, "umid": u,
+         "dentro": bool(segmentos) and _ponto_dentro(la, lo, segmentos, lat0, lon0)}
+        for (la, lo, t, u) in amostras
+    ]
+    return {"plano_id": plano_id, "plano_nome": nome,
+            "tracos": tracos or [], "pontos": pontos}

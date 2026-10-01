@@ -1,5 +1,121 @@
 # Telemetria — arquitetura do sistema
 
+## Arquitetura aprovada em 01/10/2026
+
+O ESP32 fica responsável por **três sensores externos**: luminosidade GY-302,
+temperatura auxiliar KY-028 e temperatura/umidade do sensor ambiental RS485.
+O **celular fornece GPS, movimento e som**. WTGAHRS3 (GPS + IMU), KY-038 e
+KY-013 saem do conjunto previsto para a estação. Esta decisão não acrescenta
+outros sensores à placa.
+
+| Origem | Medida | Interface prevista |
+|---|---|---|
+| ESP32 · GY-302/BH1750 | Luminosidade | I²C: SDA GPIO21, SCL GPIO22; endereço `0x23` |
+| ESP32 · KY-028 | Temperatura auxiliar | AO no GPIO35; DO não utilizado pelo firmware principal |
+| ESP32 · ambiental RS485 | Temperatura e umidade | Conversor RS485 ↔ UART2: RX GPIO16, TX GPIO17; Modbus `0x01`, 9600 8N1 |
+| Celular · GPS | Localização e percurso | Serviço de localização do aplicativo |
+| Celular · sensores de movimento | Movimento | Coleta ainda pendente de implementação e validação |
+| Celular · microfone | Níveis sonoros | Captura e processamento no aplicativo, sem guardar áudio |
+
+O GY-302 e o KY-028 usam 3,3 V na configuração documentada do firmware.
+A tensão de alimentação do sensor ambiental depende do módulo utilizado;
+RS485 define a comunicação, não essa tensão. As conexões da placa devem ser
+conferidas com [a documentação do firmware](../firmware/README.md) e os
+arquivos de hardware do projeto.
+
+```text
+GY-302 ── I²C ──────────┐
+KY-028 ── analógico ────┼── ESP32 ── BLE ──┐
+ambiental ── RS485 ─────┘                 │
+                                         ▼
+                            aplicativo no celular
+                          + GPS e níveis sonoros
+                          + movimento (pendente)
+                                         │
+                              sessão local no celular
+                                         │
+                           envio HTTP para a base
+                                         ▼
+                         Raspberry Pi: guarda e análise
+```
+
+A base continua responsável por receber sessões, manter o histórico e apoiar
+as análises. O filtro descrito em [03-filtro-kalman.md](03-filtro-kalman.md)
+e as ferramentas WTG permanecem como referência histórica. A integração com
+movimento medido pelo telefone ainda precisa ser definida e validada.
+
+## Estado implementado e pendências
+
+A decisão de hardware acima é o destino da migração; **o código ainda contém
+partes da arquitetura anterior**.
+
+- O aplicativo já obtém o GPS do telefone e grava registros `gps`. A recepção
+  por BLE usada pelo app inclui os dados ambientais da estação; posição e IMU
+  enviados pelo ESP32 são ignorados nesse fluxo.
+- A coleta já pode gravar níveis sonoros como `som_celular`. O áudio é
+  processado no telefone, sem ser salvo ou enviado. A captura atual ocorre
+  com o app em primeiro plano; ao ser interrompida, a coleta que a utiliza é
+  encerrada e salva. dB SPL estimado depende de calibração; dBFS é nível
+  relativo à captura.
+- Não há coleta implementada dos sensores de movimento do telefone nos
+  arquivos inspecionados do app. GPS com velocidade e rumo não equivale a
+  uma série de acelerômetro/giroscópio. Ainda faltam definição de medidas,
+  unidades, frequência, carimbo e contrato, além da implementação.
+- O firmware principal ainda possui aquisição e configuração do WTGAHRS3,
+  KY-038 e KY-013. O app também mantém opções e campos desses módulos. Sua
+  remoção ou isolamento como legado exige uma alteração de código posterior;
+  esta revisão de documentação não a executa.
+- O cartão SD no ESP32 continua sendo um plano antigo, não a custódia atual
+  da coleta. Hoje as sessões são gravadas no telefone e podem ser enviadas à
+  base por HTTP. O envio marca a sessão como enviada e preserva o arquivo
+  local.
+
+## Registros e transporte existentes
+
+A implementação em [gravador.dart](../app/lib/armazenamento/gravador.dart)
+grava JSONL com `src`, `ts_app` e `m`. `ts_app` é o horário registrado pelo
+telefone ao anexar o dado; para os dados recebidos da estação, não representa
+um carimbo de aquisição gerado no ESP32.
+
+Os registros de GPS já incluem latitude, longitude, precisão, velocidade e
+rumo em `m`. Os de som já incluem nível em dBFS, nível em dB SPL estimado
+quando calibrado, estado de calibração, janela e indicadores de saturação ou
+ausência de sinal. As fontes são, respectivamente,
+[estacao_ble.dart](../app/lib/ble/estacao_ble.dart) e
+[central_sensores.dart](../app/lib/coleta/central_sensores.dart).
+Nenhum novo formato de movimento é definido por este documento.
+
+O [sincronizador](../app/lib/rede/sincronizador.dart) envia o arquivo para
+`POST /sync` na base, como `application/x-ndjson`, e preserva a cópia local.
+BLE recebe as leituras da estação durante a coleta; HTTP envia a sessão
+salva para a base. O MQTT e os contratos de posição/IMU do ESP32 ainda
+presentes no repositório pertencem ao caminho anterior e precisam ser
+considerados ao migrar firmware, testes e base.
+
+## Próximas etapas da migração
+
+1. Alinhar firmware, opções do aplicativo e documentação de montagem aos três
+   sensores externos aprovados, mantendo a leitura ambiental independente do
+   WTGAHRS3.
+2. Implementar e validar a coleta de movimento no telefone, incluindo os
+   critérios de disponibilidade dos sensores e continuidade da coleta.
+3. Ajustar ingestão, análise e testes ao contrato efetivamente adotado para o
+   telefone. Preservar a leitura das sessões históricas sem atribuir seus
+   dados WTG à nova origem.
+4. Validar uma sessão completa: três sensores da estação, GPS e som do
+   telefone, gravação local e envio para a base. Movimento só entra nessa
+   validação depois de implementado.
+
+## Referência da arquitetura anterior — 17/08/2026
+
+**As seções abaixo preservam o projeto anterior para consulta.** Descrevem
+WTGAHRS3 no ESP32, proposta de cartão SD, envelopes e cálculos de volume de
+GPS/IMU que não definem a montagem atual. Algumas partes foram implementadas;
+outras ficaram como plano. Em especial, as afirmações de que o app nativo
+está adiado, o celular é uma fonte secundária e o ESP32 grava sempre em SD
+não descrevem o estado atual. A arquitetura e as pendências vigentes estão
+nas seções acima.
+
 Documento de referência de como a estação vira um sistema de telemetria.
 Decidido em 17/08/2026 (revisado no mesmo dia, ver
 [Histórico da decisão](#histórico-da-decisão)): o sistema tem **dois lados com
@@ -23,7 +139,7 @@ Este documento é a base; sensores novos entram depois sem mudar a arquitetura
 
 ---
 
-## Visão geral
+### Visão geral
 
 ```
 CAMPO
@@ -67,7 +183,7 @@ ver [Por que o Kalman fica na base](#por-que-o-kalman-fica-na-base).
 
 ---
 
-## Firmware: aquisição, carimbo e custódia
+### Firmware: aquisição, carimbo e custódia
 
 Modbus é uma transação por vez — os dois sensores RS485 (WTGAHRS3 em `0x50`,
 ambiental em `0x01`) dividem o mesmo par A/B e a mesma UART2, então a leitura
@@ -95,7 +211,7 @@ biblioteca nova, só reorganizar o código existente.
 
 ---
 
-## Contrato de dados
+### Contrato de dados
 
 Um envelope único para toda fonte. O ESP32 emite **só medida crua** — o campo
 `kf` é preenchido pela base, nunca pelo firmware:
@@ -143,7 +259,7 @@ depois pela trilha GPX do celular (ver
 
 Um DS3231 (~R$ 10) é o cinto-e-suspensório, se um dia isso incomodar.
 
-## Tópicos MQTT
+### Tópicos MQTT
 
 > **Decisão em aberto: o MQTT pode não ser necessário.** Ele foi desenhado para
 > streaming ao vivo de mensagens pequenas. Com sincronização em lote na base
@@ -176,7 +292,7 @@ amostra de IMU não muda o filtro).
 
 ---
 
-## Cartão SD: custódia, não buffer
+### Cartão SD: custódia, não buffer
 
 O ESP32 grava **sempre** no cartão, não só quando a rede cai. Essa é a mudança
 de conceito: o cartão não é buffer de contingência, é a **custódia do dado
@@ -187,7 +303,7 @@ cair, se o cartão da base queimar, se a sintonia do Kalman estiver errada — o
 dado cru continua no cartão, intacto. Para um instrumento de pesquisa isso é a
 diferença entre "perdi a coleta" e "perdi a visualização da coleta".
 
-### Quanto cabe
+#### Quanto cabe
 
 O CSV de telemetria já gravado em `data/` mede **~195 bytes por amostra** a
 1 Hz. Em envelope JSON, com o IMU a 10 Hz dominando:
@@ -213,7 +329,7 @@ jornada de campo. Com cartão SD (módulo SPI, ~R$ 10–15, pinos separados da
 UART2 do RS485 — sem conflito), a pergunta "quanto tempo aguenta" deixa de
 existir.
 
-### Três cuidados
+#### Três cuidados
 
 1. **Grave compacto, não JSON.** No cartão, CSV ou struct binário — o JSON só
    existe para trafegar. Cai para ~1/5 do tamanho e a serialização fica mais
@@ -223,7 +339,7 @@ existir.
 3. **Nome do arquivo pelo tempo do GPS**, não por contador — nasce
    identificável e casa com o `ts` do envelope.
 
-### Sincronização com a base
+#### Sincronização com a base
 
 Regras que evitam o problema clássico:
 
@@ -239,7 +355,7 @@ Regras que evitam o problema clássico:
 
 ---
 
-## Por que o Kalman fica na base
+### Por que o Kalman fica na base
 
 O porte de `src/filtro_kalman.py` para C++ foi **cancelado** em 17/08/2026.
 
@@ -277,7 +393,7 @@ de especificação.
 
 ---
 
-## Segunda fonte de posição: o celular
+### Segunda fonte de posição: o celular
 
 O celular do pesquisador tem GPS próprio e vale como **verificação cruzada** e
 **âncora de tempo** — não como fonte de verdade. O WTGAHRS3 com antena bem
@@ -300,7 +416,7 @@ base já é a camada de fusão.
 Ganho colateral: se a trilha do celular cobre a sessão, ela reancora no tempo
 absoluto um arquivo do ESP32 que tenha nascido sem nenhum fix de GPS.
 
-### App nativo — adiado, com motivo
+#### App nativo — adiado, com motivo
 
 Um app nativo é melhor como estado final: além do GPS, ele registra em segundo
 plano (uma página web é suspensa quando a tela bloqueia, então só funciona com
@@ -326,12 +442,12 @@ AP Wi-Fi passa a existir só para a sincronização na base.
 
 ---
 
-## Broker MQTT (Mosquitto)
+### Broker MQTT (Mosquitto)
 
 O broker é o servidor que fica no meio: recebe as publicações do ESP32 e
 entrega para quem assinou. Não interpreta o conteúdo — só roteia.
 
-### Instalação
+#### Instalação
 
 ```bash
 sudo apt install mosquitto mosquitto-clients
@@ -365,7 +481,7 @@ e TLS na 8883.
 > (`Start request repeated too quickly`); aí é `sudo systemctl reset-failed
 > mosquitto` antes de tentar de novo.
 
-### Verificar que está no ar
+#### Verificar que está no ar
 
 ```bash
 mosquitto_sub -h localhost -t 'estacao/#' -v
@@ -377,7 +493,7 @@ se não aparece, está no ESP32 ou na rede.
 
 ---
 
-## Base (servidor)
+### Base (servidor)
 
 A máquina é um **Raspberry Pi 3B** — preparação, limites de hardware e
 `systemd` em [05-base-raspberry-pi.md](05-base-raspberry-pi.md).
@@ -406,7 +522,7 @@ A máquina é um **Raspberry Pi 3B** — preparação, limites de hardware e
 
 ---
 
-## Adicionar um sensor novo
+### Adicionar um sensor novo
 
 O contrato foi desenhado para isso. Um sensor novo:
 
@@ -425,7 +541,7 @@ lidam com `src` e `m` genéricos.
 
 ---
 
-## Roadmap
+### Roadmap
 
 | Fase | Entrega | Pronto quando |
 |---|---|---|
@@ -449,7 +565,7 @@ Fora do roadmap, adiado com motivo registrado: **app nativo no celular** (ver
 
 ---
 
-## Riscos conhecidos
+### Riscos conhecidos
 
 - **RS485 compartilhado** entre WTGAHRS3 e sensor ambiental ainda precisa
   estar validado em bancada antes da fase 1 — dois endereços Modbus, mesmo
@@ -478,7 +594,7 @@ Fora do roadmap, adiado com motivo registrado: **app nativo no celular** (ver
 
 ---
 
-## Histórico da decisão
+### Histórico da decisão
 
 Este documento foi escrito e revisado no mesmo dia, **17/08/2026**, e a versão
 final contradiz a inicial em pontos importantes. Registro para que a

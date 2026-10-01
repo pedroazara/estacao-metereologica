@@ -1,0 +1,723 @@
+{
+  "schema": "rs485-ttl-v2-pad-geometry-v1",
+  "source": {
+    "url": "https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2",
+    "download_filename": "PCB_PCB_RS485-To-TTL-Converter-Module_V2_2026-09-29.json",
+    "sha256": "9c9249ee74d1c4a58dfd6d5f31e10e83a872a459262cbfbcae359f15e1746d02",
+    "format": "EasyEDA Standard PCB JSON",
+    "editor_version": "6.5.54"
+  },
+  "footprint": {
+    "library_identifier": "skylog:RS485_TTL_V2_OSHWLab_PadGeometry",
+    "filename": "RS485_TTL_V2_OSHWLab_PadGeometry.kicad_mod",
+    "semantics": "Module PCB solder-pad geometry; not a verified assembled-JST mating footprint",
+    "physical_mounting_verified": false,
+    "mounting_assumption": "Suitable downward pins/leads; the source JST-equipped module normally uses cables. Confirm actual board, holes, headers, clearance and mounting orientation before fabrication."
+  },
+  "transform": {
+    "source_unit": "10 mil",
+    "mm_per_source_unit": 0.254,
+    "origin_source_units": [
+      4046.5,
+      3074.0
+    ],
+    "origin_description": "Top-left vertex of source PCB outline, top view",
+    "x_direction": "right",
+    "y_direction": "down",
+    "coordinate_rule": "(source coordinate - origin) * 0.254",
+    "coordinate_choice": "Primary PAD x/y fields, not redundant trailing center hints. Exact source decimal values used, emitted to 0.000001 mm."
+  },
+  "board": {
+    "width_mm": 53.721,
+    "height_mm": 19.177,
+    "source_outline_id": "gge3000",
+    "source_outline_points": [
+      [
+        4046.5,
+        3149.5
+      ],
+      [
+        4046.5,
+        3074.0
+      ],
+      [
+        4258.0,
+        3074.0
+      ],
+      [
+        4258.0,
+        3149.5
+      ],
+      [
+        4046.5,
+        3149.5
+      ]
+    ],
+    "outline_mm": [
+      [
+        0.0,
+        19.177
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        53.721,
+        0.0
+      ],
+      [
+        53.721,
+        19.177
+      ],
+      [
+        0.0,
+        19.177
+      ]
+    ],
+    "target_layer": "F.Fab",
+    "courtyard_margin_mm": 0.5,
+    "courtyard_bounds_mm": [
+      [
+        -0.5,
+        -0.5
+      ],
+      [
+        54.221,
+        19.677
+      ]
+    ]
+  },
+  "pads": [
+    {
+      "pad": "CN1.1",
+      "connector": "CN1",
+      "connector_pin": "1",
+      "signal": "TXD",
+      "electrical_type": "input",
+      "meaning": "MCU TX -> module TXD",
+      "source_net": "TXD",
+      "source_id": "gge666",
+      "source_shape": "RECT",
+      "source_center_units": [
+        4061.5,
+        3126.264
+      ],
+      "source_size_units": [
+        6.0,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        3.81,
+        13.275056
+      ],
+      "size_local_mm": [
+        1.524,
+        1.5999968
+      ],
+      "rotation_deg": 90.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4061.5,3126.264"
+    },
+    {
+      "pad": "CN1.2",
+      "connector": "CN1",
+      "connector_pin": "2",
+      "signal": "RXD",
+      "electrical_type": "output",
+      "meaning": "module RXD -> MCU RX",
+      "source_net": "RXD",
+      "source_id": "gge651",
+      "source_shape": "ELLIPSE",
+      "source_center_units": [
+        4061.5,
+        3116.421
+      ],
+      "source_size_units": [
+        6.2992,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        3.81,
+        10.774934
+      ],
+      "size_local_mm": [
+        1.5999968,
+        1.5999968
+      ],
+      "rotation_deg": 90.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4061.5,3116.4215"
+    },
+    {
+      "pad": "CN1.3",
+      "connector": "CN1",
+      "connector_pin": "3",
+      "signal": "GND",
+      "electrical_type": "power_in",
+      "meaning": "Ground",
+      "source_net": "GND",
+      "source_id": "gge636",
+      "source_shape": "ELLIPSE",
+      "source_center_units": [
+        4061.5,
+        3106.579
+      ],
+      "source_size_units": [
+        6.2992,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        3.81,
+        8.275066
+      ],
+      "size_local_mm": [
+        1.5999968,
+        1.5999968
+      ],
+      "rotation_deg": 90.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4061.5,3106.579"
+    },
+    {
+      "pad": "CN1.4",
+      "connector": "CN1",
+      "connector_pin": "4",
+      "signal": "+5V",
+      "electrical_type": "power_in",
+      "meaning": "5 V supply",
+      "source_net": "+5V",
+      "source_id": "gge621",
+      "source_shape": "ELLIPSE",
+      "source_center_units": [
+        4061.5,
+        3096.736
+      ],
+      "source_size_units": [
+        6.2992,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        3.81,
+        5.774944
+      ],
+      "size_local_mm": [
+        1.5999968,
+        1.5999968
+      ],
+      "rotation_deg": 90.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4061.5,3096.7365"
+    },
+    {
+      "pad": "CN2.1",
+      "connector": "CN2",
+      "connector_pin": "1",
+      "signal": "B",
+      "electrical_type": "bidirectional",
+      "meaning": "RS485 bus B",
+      "source_net": "F1_1",
+      "source_id": "gge732",
+      "source_shape": "RECT",
+      "source_center_units": [
+        4242.5,
+        3100.658
+      ],
+      "source_size_units": [
+        6.0,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        49.784,
+        6.771132
+      ],
+      "size_local_mm": [
+        1.524,
+        1.5999968
+      ],
+      "rotation_deg": 270.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4242.5,3100.6575"
+    },
+    {
+      "pad": "CN2.2",
+      "connector": "CN2",
+      "connector_pin": "2",
+      "signal": "A",
+      "electrical_type": "bidirectional",
+      "meaning": "RS485 bus A",
+      "source_net": "F2_1",
+      "source_id": "gge747",
+      "source_shape": "ELLIPSE",
+      "source_center_units": [
+        4242.5,
+        3110.501
+      ],
+      "source_size_units": [
+        6.2992,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        49.784,
+        9.271254
+      ],
+      "size_local_mm": [
+        1.5999968,
+        1.5999968
+      ],
+      "rotation_deg": 270.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4242.5,3110.5"
+    },
+    {
+      "pad": "CN2.3",
+      "connector": "CN2",
+      "connector_pin": "3",
+      "signal": "GND",
+      "electrical_type": "power_in",
+      "meaning": "Ground; internally common with CN1.3",
+      "source_net": "GND",
+      "source_id": "gge762",
+      "source_shape": "ELLIPSE",
+      "source_center_units": [
+        4242.5,
+        3120.343
+      ],
+      "source_size_units": [
+        6.2992,
+        6.2992
+      ],
+      "source_hole_radius_units": 2.1654,
+      "center_mm": [
+        49.784,
+        11.771122
+      ],
+      "size_local_mm": [
+        1.5999968,
+        1.5999968
+      ],
+      "rotation_deg": 270.0,
+      "hole_diameter_mm": 1.1000232,
+      "redundant_source_center_hint": "4242.5,3120.3425"
+    }
+  ],
+  "mounting_holes": [
+    {
+      "source_id": "gge3022",
+      "source_center_units": [
+        4251.5,
+        3080.0
+      ],
+      "source_radius_units": 4.0,
+      "center_mm": [
+        52.07,
+        1.524
+      ],
+      "diameter_mm": 2.032
+    },
+    {
+      "source_id": "gge3037",
+      "source_center_units": [
+        4251.5,
+        3143.0
+      ],
+      "source_radius_units": 4.0,
+      "center_mm": [
+        52.07,
+        17.526
+      ],
+      "diameter_mm": 2.032
+    },
+    {
+      "source_id": "gge3052",
+      "source_center_units": [
+        4053.0,
+        3143.0
+      ],
+      "source_radius_units": 4.0,
+      "center_mm": [
+        1.651,
+        17.526
+      ],
+      "diameter_mm": 2.032
+    },
+    {
+      "source_id": "gge3067",
+      "source_center_units": [
+        4053.0,
+        3080.0
+      ],
+      "source_radius_units": 4.0,
+      "center_mm": [
+        1.651,
+        1.524
+      ],
+      "diameter_mm": 2.032
+    }
+  ],
+  "connectors": [
+    {
+      "reference": "CN1",
+      "source_outline_layer": "3 (top silkscreen)",
+      "target_outline_layer": "F.Fab",
+      "outline_paths": [
+        {
+          "source_id": "gge594",
+          "source_points": [
+            [
+              4070.5,
+              3095.5
+            ],
+            [
+              4067.5,
+              3095.5
+            ],
+            [
+              4067.5,
+              3090.0
+            ],
+            [
+              4050.5,
+              3090.0
+            ],
+            [
+              4050.5,
+              3132.0
+            ],
+            [
+              4067.5,
+              3132.0
+            ],
+            [
+              4067.5,
+              3128.0
+            ],
+            [
+              4070.5,
+              3128.0
+            ],
+            [
+              4071.0,
+              3128.0
+            ]
+          ],
+          "points_mm": [
+            [
+              6.096,
+              5.461
+            ],
+            [
+              5.334,
+              5.461
+            ],
+            [
+              5.334,
+              4.064
+            ],
+            [
+              1.016,
+              4.064
+            ],
+            [
+              1.016,
+              14.732
+            ],
+            [
+              5.334,
+              14.732
+            ],
+            [
+              5.334,
+              13.716
+            ],
+            [
+              6.096,
+              13.716
+            ],
+            [
+              6.223,
+              13.716
+            ]
+          ]
+        },
+        {
+          "source_id": "gge597",
+          "source_points": [
+            [
+              4071.0,
+              3121.5
+            ],
+            [
+              4067.5,
+              3121.5
+            ],
+            [
+              4067.5,
+              3101.5
+            ],
+            [
+              4071.0,
+              3101.5
+            ]
+          ],
+          "points_mm": [
+            [
+              6.223,
+              12.065
+            ],
+            [
+              5.334,
+              12.065
+            ],
+            [
+              5.334,
+              6.985
+            ],
+            [
+              6.223,
+              6.985
+            ]
+          ]
+        },
+        {
+          "source_id": "gge600",
+          "source_points": [
+            [
+              4047.5,
+              3136.0
+            ],
+            [
+              4047.5,
+              3087.0
+            ],
+            [
+              4071.0,
+              3087.0
+            ],
+            [
+              4071.0,
+              3136.0
+            ],
+            [
+              4047.5,
+              3136.0
+            ]
+          ],
+          "points_mm": [
+            [
+              0.254,
+              15.748
+            ],
+            [
+              0.254,
+              3.302
+            ],
+            [
+              6.223,
+              3.302
+            ],
+            [
+              6.223,
+              15.748
+            ],
+            [
+              0.254,
+              15.748
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "reference": "CN2",
+      "source_outline_layer": "3 (top silkscreen)",
+      "target_outline_layer": "F.Fab",
+      "outline_paths": [
+        {
+          "source_id": "gge714",
+          "source_points": [
+            [
+              4233.5,
+              3124.5
+            ],
+            [
+              4237.0,
+              3124.5
+            ],
+            [
+              4237.0,
+              3128.0
+            ],
+            [
+              4254.0,
+              3128.0
+            ],
+            [
+              4254.0,
+              3093.5
+            ],
+            [
+              4237.0,
+              3093.5
+            ],
+            [
+              4237.0,
+              3096.5
+            ],
+            [
+              4233.0,
+              3096.5
+            ]
+          ],
+          "points_mm": [
+            [
+              47.498,
+              12.827
+            ],
+            [
+              48.387,
+              12.827
+            ],
+            [
+              48.387,
+              13.716
+            ],
+            [
+              52.705,
+              13.716
+            ],
+            [
+              52.705,
+              4.953
+            ],
+            [
+              48.387,
+              4.953
+            ],
+            [
+              48.387,
+              5.715
+            ],
+            [
+              47.371,
+              5.715
+            ]
+          ]
+        },
+        {
+          "source_id": "gge717",
+          "source_points": [
+            [
+              4233.0,
+              3105.5
+            ],
+            [
+              4237.0,
+              3105.5
+            ],
+            [
+              4237.0,
+              3117.0
+            ],
+            [
+              4233.0,
+              3117.0
+            ]
+          ],
+          "points_mm": [
+            [
+              47.371,
+              8.001
+            ],
+            [
+              48.387,
+              8.001
+            ],
+            [
+              48.387,
+              10.922
+            ],
+            [
+              47.371,
+              10.922
+            ]
+          ]
+        },
+        {
+          "source_id": "gge720",
+          "source_points": [
+            [
+              4256.5,
+              3090.9215
+            ],
+            [
+              4256.5,
+              3130.5005
+            ],
+            [
+              4233.0,
+              3130.5005
+            ],
+            [
+              4233.0,
+              3090.9215
+            ],
+            [
+              4256.5,
+              3090.9215
+            ]
+          ],
+          "points_mm": [
+            [
+              53.34,
+              4.298061
+            ],
+            [
+              53.34,
+              14.351127
+            ],
+            [
+              47.371,
+              14.351127
+            ],
+            [
+              47.371,
+              4.298061
+            ],
+            [
+              53.34,
+              4.298061
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "conversion_notes": [
+    "EasyEDA PAD holeR and HOLE radius fields are radii; KiCad drill values are diameters.",
+    "Distinct pad numbers preserve both physical ground terminals CN1.3 and CN2.3. Both are internally connected in the source module.",
+    "The source coordinate rounding produces adjacent pin pitches of 2.499868 mm or 2.500122 mm (nominal 2.50 mm).",
+    "No module 3D model is attached. No Edge.Cuts are included because this is an add-on module body, not a host-board cutout.",
+    "Mounting-hole radius interpretation verified in the live EasyEDA renderer: source gge3022 produces SVG circle r=4 and ellipse rx=4 ry=4. This resolves a conflicting generic file-format field label."
+  ],
+  "validation": {
+    "date": "2026-09-29",
+    "parser": "pcbnew 9.0.9-9.0.9~ubuntu24.04.1",
+    "parse_success": true,
+    "pth_pad_count": 7,
+    "npth_hole_count": 4,
+    "distinct_pad_numbers_verified": true,
+    "source_pad_centers_sizes_rotations_and_drills_verified": true,
+    "source_mounting_hole_centers_and_drills_verified": true,
+    "maximum_numeric_rounding_error_mm": 2e-07,
+    "attached_3d_models": 0,
+    "physical_mounting_verified": false,
+    "footprint_sha256": "9dc4f4cdb682584c50c2e4e62eb16aa3dd31cd9533107a6380379ddaadaf544e"
+  }
+}

@@ -136,6 +136,21 @@ def _listar_sessoes():
         for (s, d, p, n) in linhas]}
 
 
+def _dev_da_sessao(nome):
+    db = _caminho_banco()
+    if not nome or not os.path.exists(db):
+        return None
+    con = sqlite3.connect(db)
+    try:
+        r = con.execute(
+            "SELECT dev FROM sessoes WHERE sessao = ?", (nome,)).fetchone()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    return r[0] if r else None
+
+
 def _trajeto_sessao(nome):
     nome = os.path.basename(nome or "")
     db = _caminho_banco()
@@ -144,25 +159,37 @@ def _trajeto_sessao(nome):
     con = sqlite3.connect(db)
     try:
         linhas = con.execute(
-            "SELECT ts, lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid "
+            "SELECT ts, lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid, "
+            "ruido_db, temp_aux28, temp_aux13, luminosidade "
             "FROM derivado WHERE sessao = ? ORDER BY ts", (nome,)).fetchall()
     except sqlite3.Error:
         return {"cru": [], "kf": [], "pontos": []}
     finally:
         con.close()
-    cru = [[la, lo] for (_ts, la, lo, _a, _b, _v, _s, _t, _u) in linhas]
-    kf = [[a, b] for (_ts, _la, _lo, a, b, _v, _s, _t, _u) in linhas]
-    # Um ponto por fix, com o que medir nele: e isso que o mapa colore por
-    # temperatura e mostra ao passar o mouse. Usa a posicao filtrada (kf) para
-    # o ponto ficar sobre o trajeto limpo, nao sobre o jitter cru.
-    pontos = [{"lat": a, "lon": b, "temp": t, "umid": u, "vel": v}
-              for (_ts, _la, _lo, a, b, v, _s, t, u) in linhas]
-    temps = [t for (*_, t, _u) in linhas if t is not None]
-    ult = linhas[-1] if linhas else None
-    resumo = {"vel": ult[5], "sigma": ult[6], "temp": ult[7], "umid": ult[8],
-              "n": len(linhas),
-              "temp_min": min(temps) if temps else None,
-              "temp_max": max(temps) if temps else None} if ult else {}
+    cru = [[r[1], r[2]] for r in linhas]
+    kf = [[r[3], r[4]] for r in linhas]
+    # Um ponto por fix, com todas as grandezas medidas nele: e isso que o
+    # seletor de medida no painel usa pra colorir o mapa e mostrar no popup.
+    # Usa a posicao filtrada (kf) para o ponto ficar sobre o trajeto limpo,
+    # nao sobre o jitter cru. -1 e o sentinel do GY-302 pra "sem leitura
+    # valida" naquele ciclo (ver publicarAmbiente() em painel_wifi.ino) - vira
+    # None aqui, igual um sensor que nunca respondeu, pra escala/cor no mapa
+    # nao precisarem de um caso especial.
+    pontos = [{
+        "lat": r[3], "lon": r[4], "vel": r[5],
+        "temp": r[7], "umid": r[8], "db": r[9], "t28": r[10], "t13": r[11],
+        "lux": r[12] if r[12] not in (None, -1) else None,
+    } for r in linhas]
+    MEDIDAS = ("temp", "umid", "db", "t28", "t13", "lux")
+    resumo = {}
+    if pontos:
+        ult = pontos[-1]
+        resumo = {"n": len(pontos), "vel": ult["vel"], "sigma": linhas[-1][6]}
+        for medida in MEDIDAS:
+            vals = [p[medida] for p in pontos if p[medida] is not None]
+            resumo[medida] = ult[medida]
+            resumo[f"{medida}_min"] = min(vals) if vals else None
+            resumo[f"{medida}_max"] = max(vals) if vals else None
     return {"cru": cru, "kf": kf, "pontos": pontos, "resumo": resumo}
 
 
@@ -206,6 +233,9 @@ PAGINA = r"""<!DOCTYPE html>
           border:1px solid var(--borda);border-radius:8px;padding:8px 10px;font-size:10px;color:var(--txt2)}
   #escala .barra{width:14px;height:90px;border-radius:3px;margin:4px auto;
        background:linear-gradient(to top,#58a6ff,#3fb950,#d29922,#f85149)}
+  #escala select{display:block;width:100%;background:#0d1117;color:var(--txt);
+       border:1px solid var(--borda);border-radius:5px;font-size:10px;
+       padding:3px 4px;margin-bottom:7px;font-family:inherit}
   #resumo{display:flex;gap:22px;padding:0 20px 16px;flex-wrap:wrap}
   .n .v{font-size:19px;font-weight:650;font-family:ui-monospace,monospace}
   .n .r{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
@@ -260,12 +290,20 @@ PAGINA = r"""<!DOCTYPE html>
     <div id="placeholder">Selecione uma coleta a esquerda para ver o trajeto.</div>
     <div id="mapa" style="display:none"></div>
     <div id="escala" style="display:none">
-      <div style="text-align:center" id="esc_max">--</div>
-      <div class="barra"></div>
-      <div style="text-align:center" id="esc_min">--</div>
-      <div style="text-align:center;margin-top:4px">°C</div>
+      <select id="sel_medida"></select>
+      <div id="escala_valores">
+        <div style="text-align:center" id="esc_max">--</div>
+        <div class="barra"></div>
+        <div style="text-align:center" id="esc_min">--</div>
+        <div style="text-align:center;margin-top:4px" id="esc_unidade">°C</div>
+      </div>
+      <div id="escala_vazia" style="display:none;text-align:center;padding:4px 0">sem dados</div>
     </div>
     <div id="resumo" style="display:none"></div>
+    <div id="acoes_sessao" style="display:none;padding:0 20px 14px">
+      <button class="btn" id="btn_cobertura">Ver cobertura do plano</button>
+      <span id="cobertura_info" style="font-size:11.5px;color:var(--txt2);margin-left:8px"></span>
+    </div>
   </div>
 </div>
 
@@ -335,6 +373,14 @@ async function carregarSessoes(){
 
 async function selecionar(nome){
   sel = nome;
+  // Trocou de sessao - a visao de cobertura, se estava ligada, era da
+  // sessao anterior; volta pro trajeto normal em vez de mostrar algo errado.
+  if(coberturaAtiva){
+    coberturaAtiva = false;
+    camadaCobertura.clearLayers();
+    $('#btn_cobertura').textContent = 'Ver cobertura do plano';
+    $('#cobertura_info').textContent = '';
+  }
   document.querySelectorAll('.sessao').forEach(el => el.classList.toggle('sel', el.dataset.n===nome));
   traj = await (await fetch('/sessao?nome='+encodeURIComponent(nome),{cache:'no-store'})).json();
   $('#placeholder').style.display='none';
@@ -355,6 +401,63 @@ async function selecionar(nome){
 // app, para o pesquisador ver a mesma coisa nos dois lugares.
 let mapa = null, trilha = null;
 let marcadores = [];
+let camadaCobertura = null, coberturaAtiva = false;
+
+// Visualizacao em camadas: qual grandeza medida colore os pontos no mapa.
+// So os dados de sessoes coletadas depois dos sensores baratos (KY-038/028/013,
+// GY-302) tem db/t28/t13/lux preenchidos - coletas antigas mostram "sem dados"
+// e pontos cinza pra essas medidas, igual o painel ja fazia quando faltava
+// temp/umid.
+const MEDIDAS = [
+  {campo:'temp', rotulo:'Temperatura', unidade:'°C', casas:1},
+  {campo:'umid', rotulo:'Umidade', unidade:'%', casas:0},
+  {campo:'db', rotulo:'Ruido', unidade:'dB', casas:1},
+  {campo:'t28', rotulo:'Temp. auxiliar (KY-028)', unidade:'°C', casas:1},
+  {campo:'t13', rotulo:'Temp. auxiliar (KY-013)', unidade:'°C', casas:1},
+  {campo:'lux', rotulo:'Luminosidade', unidade:'lux', casas:0},
+];
+let medidaAtual = 'temp';
+let pontoMarcadores = [];
+$('#sel_medida').innerHTML = MEDIDAS.map(m =>
+  `<option value="${m.campo}">${m.rotulo}</option>`).join('');
+$('#sel_medida').onchange = () => { medidaAtual = $('#sel_medida').value; atualizarCores(); };
+
+function popupPonto(p){
+  const partes = MEDIDAS.map(m => {
+    const v = p[m.campo];
+    const txt = v!=null ? v.toFixed(m.casas)+' '+m.unidade : '--';
+    return m.campo===medidaAtual ? `<b>${txt}</b>` : txt;
+  });
+  return partes.join(' &middot; ') + `<br>${(p.vel||0).toFixed(1)} km/h`;
+}
+
+// Recolore os marcadores ja desenhados e atualiza a legenda - chamado ao
+// trocar a medida selecionada (sem recalcular o mapa/trajeto) e uma vez no
+// fim de desenhar().
+function atualizarCores(){
+  if(!pontoMarcadores.length){ $('#escala').style.display = 'none'; return; }
+  const r = (traj && traj.resumo) || {};
+  const medida = MEDIDAS.find(m => m.campo===medidaAtual) || MEDIDAS[0];
+  const vmin = r[medida.campo+'_min'], vmax = r[medida.campo+'_max'];
+  const faixa = (vmax!=null && vmax>vmin) ? vmax-vmin : 1;
+  for(const {marcador, ponto} of pontoMarcadores){
+    const val = ponto[medida.campo];
+    const cor = val==null ? '#7d8794' : corTemp((val-vmin)/faixa);
+    marcador.setStyle({fillColor: cor});
+    marcador.setPopupContent(popupPonto(ponto));
+  }
+  $('#escala').style.display = 'block';
+  if(vmin!=null){
+    $('#escala_valores').style.display = 'block';
+    $('#escala_vazia').style.display = 'none';
+    $('#esc_max').textContent = vmax.toFixed(medida.casas);
+    $('#esc_min').textContent = vmin.toFixed(medida.casas);
+    $('#esc_unidade').textContent = medida.unidade;
+  } else {
+    $('#escala_valores').style.display = 'none';
+    $('#escala_vazia').style.display = 'block';
+  }
+}
 
 function iniciarMapa(centro){
   mapa = L.map('mapa', {zoomControl:true}).setView(centro, 17);
@@ -363,6 +466,17 @@ function iniciarMapa(centro){
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(mapa);
   trilha = L.polyline([], {color:'#3fb950', weight:4, opacity:.85}).addTo(mapa);
+
+  // Pane so para o pano de fundo da area planejada, na visao "cobertura do
+  // plano" (ver alternarCobertura). Opaca + mix-blend-mode:multiply, mesma
+  // ideia da planoPane da aba Planejar area: mancha bem visivel sem apagar
+  // ruas/predios do mapa por baixo.
+  mapa.createPane('coberturaPane');
+  mapa.getPane('coberturaPane').style.zIndex = 350;
+  mapa.getPane('coberturaPane').style.opacity = 1;
+  mapa.getPane('coberturaPane').style.mixBlendMode = 'multiply';
+  mapa.getPane('coberturaPane').style.pointerEvents = 'none';
+  camadaCobertura = L.layerGroup().addTo(mapa);
 }
 
 // Sequencial azul->verde->amarelo->vermelho para t em [0,1].
@@ -379,6 +493,8 @@ function desenhar(){
     if(mapa){ mapa.remove(); mapa=null; }
     $('#mapa').innerHTML = '';
     $('#escala').style.display = 'none';
+    $('#acoes_sessao').style.display = 'none';
+    pontoMarcadores = [];
     const p = document.createElement('div');
     p.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:#8b949e;font-size:13px';
     p.textContent = 'Esta coleta nao tem pontos de posicao.';
@@ -397,21 +513,16 @@ function desenhar(){
   }
   marcadores = [];
   trilha.setLatLngs(linhaPts);
+  trilha.addTo(mapa);  // idempotente - garante que volta se a cobertura tinha tirado
 
-  const r = traj.resumo||{};
-  const tmin = r.temp_min, tmax = r.temp_max;
-  const faixa = (tmax!=null && tmax>tmin) ? tmax-tmin : 1;
-
+  pontoMarcadores = [];
   for(const p of pontos){
-    const cor = p.temp==null ? '#7d8794' : corTemp((p.temp-tmin)/faixa);
     const marcador = L.circleMarker([p.lat, p.lon], {
       radius: 6, className: 'pontotemp', color: 'rgba(13,17,23,.85)',
-      weight: 1.5, fillColor: cor, fillOpacity: .95,
+      weight: 1.5, fillColor: '#7d8794', fillOpacity: .95,
     }).addTo(mapa);
-    marcador.bindPopup(
-      `<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'temp --'}</b>`
-      + `  ·  ${p.umid!=null?p.umid.toFixed(0)+' %':'--'}<br>`
-      + `${(p.vel||0).toFixed(1)} km/h`);
+    marcador.bindPopup(popupPonto(p));
+    pontoMarcadores.push({marcador, ponto:p});
     marcadores.push(marcador);
   }
   // Marcadores de inicio/fim, por cima dos pontos de temperatura.
@@ -427,11 +538,65 @@ function desenhar(){
   mapa.fitBounds(L.latLngBounds(linhaPts.length>1?linhaPts:pontos.map(p=>[p.lat,p.lon])),
     {padding:[30,30], maxZoom:19});
 
-  const esc2=$('#escala');
-  if(tmin!=null){ esc2.style.display='block';
-    $('#esc_max').textContent=tmax.toFixed(1); $('#esc_min').textContent=tmin.toFixed(1);
-  } else esc2.style.display='none';
+  atualizarCores();
+
+  $('#acoes_sessao').style.display = 'block';
 }
+
+// "Ver cobertura do plano": botao a parte, alterna entre o trajeto colorido
+// por temperatura (o de sempre) e uma segunda visao - quais pontos desta
+// sessao cairam dentro da area planejada (plano ATIVO do medidor dela).
+// So calcula quando pedido (pos-processamento, ver planejamento.cobertura_sessao).
+async function alternarCobertura(){
+  if(coberturaAtiva){
+    coberturaAtiva = false;
+    camadaCobertura.clearLayers();
+    trilha.addTo(mapa);
+    marcadores.forEach(m => m.addTo(mapa));
+    $('#btn_cobertura').textContent = 'Ver cobertura do plano';
+    $('#cobertura_info').textContent = '';
+    return;
+  }
+  $('#cobertura_info').textContent = 'carregando...';
+  let cov;
+  try{ cov = await (await fetch('/sessao/cobertura?nome='+encodeURIComponent(sel), {cache:'no-store'})).json(); }
+  catch(e){ cov = {}; }
+  if(!cov || !cov.plano_nome){
+    $('#cobertura_info').textContent = 'este medidor nao tem plano ativo';
+    return;
+  }
+
+  coberturaAtiva = true;
+  trilha.remove();
+  marcadores.forEach(m => m.remove());
+  camadaCobertura.clearLayers();
+
+  // A area planejada, de fundo.
+  const todosLatLng = [];
+  for(const t of (cov.tracos||[]))
+    for(const [lat,lon] of t.pontos){
+      todosLatLng.push([lat,lon]);
+      L.circle([lat,lon], {radius:t.raio_m, weight:0, stroke:false,
+        pane:'coberturaPane', fillColor:'#3fb950', fillOpacity:1}).addTo(camadaCobertura);
+    }
+
+  // Os pontos DESTA sessao - verde se cairam dentro da area, cinza apagado
+  // se nao. E a resposta direta de "o que desta caminhada contou".
+  const dentro = cov.pontos.filter(p => p.dentro);
+  for(const p of cov.pontos){
+    todosLatLng.push([p.lat, p.lon]);
+    L.circleMarker([p.lat,p.lon], {radius:6, color:'rgba(13,17,23,.85)', weight:1.5,
+      fillColor: p.dentro ? '#3fb950' : '#7d8794', fillOpacity: p.dentro ? .95 : .5})
+      .addTo(camadaCobertura)
+      .bindPopup(`<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'--'}</b> &middot; ${p.dentro?'dentro da area':'fora da area'}`);
+  }
+  if(todosLatLng.length)
+    mapa.fitBounds(L.latLngBounds(todosLatLng), {padding:[30,30], maxZoom:19});
+
+  $('#btn_cobertura').textContent = 'Ver trajeto';
+  $('#cobertura_info').textContent = `plano "${cov.plano_nome}" · ${dentro.length}/${cov.pontos.length} pontos dentro da area`;
+}
+$('#btn_cobertura').onclick = () => alternarCobertura();
 
 window.addEventListener('resize', () => { if(mapa) mapa.invalidateSize(); if(mapaP) mapaP.invalidateSize(); });
 setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -965,13 +1130,27 @@ class Manipulador(BaseHTTPRequestHandler):
             corpo, tipo = PAGINA.encode(), "text/html; charset=utf-8"
         elif self.path.startswith("/sessoes"):
             corpo, tipo = json.dumps(_listar_sessoes()).encode(), "application/json"
+        elif self.path.startswith("/sessao/cobertura"):
+            # Cruza os pontos DESTA sessao com o plano ATIVO do medidor dela -
+            # "quais pontos desta caminhada cairam dentro da area planejada".
+            q = parse_qs(urlparse(self.path).query)
+            nome = (q.get("nome") or [""])[0]
+            dev = _dev_da_sessao(nome)
+            cov = planejamento.cobertura_sessao(_caminho_banco(), dev, nome) \
+                if dev else None
+            corpo = json.dumps(cov if cov else {}).encode()
+            tipo = "application/json"
         elif self.path.startswith("/sessao"):
             q = parse_qs(urlparse(self.path).query)
             nome = (q.get("nome") or [""])[0]
             corpo, tipo = json.dumps(_trajeto_sessao(nome)).encode(), "application/json"
         elif self.path.startswith("/planos"):
+            # `?dev=` filtra (o app so quer ver os planos da propria estacao);
+            # sem o parametro, lista todos (o painel da base quer ver tudo).
+            q = parse_qs(urlparse(self.path).query)
+            dev = (q.get("dev") or [None])[0]
             corpo = json.dumps(
-                planejamento.listar_planos(_caminho_banco())).encode()
+                planejamento.listar_planos(_caminho_banco(), dev)).encode()
             tipo = "application/json"
         elif self.path.startswith("/plano/ativo"):
             # Endpoint pronto para o APP consumir (fase seguinte, fora desta

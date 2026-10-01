@@ -90,8 +90,11 @@ class Gravador {
     final s = _saida;
     _saida = null;
     if (s == null) return;
-    await s.flush();
-    await s.close();
+    try {
+      await s.flush();
+    } finally {
+      await s.close();
+    }
   }
 
   static Future<List<File>> sessoes() async {
