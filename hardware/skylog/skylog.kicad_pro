@@ -240,7 +240,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": "Pedro Henrique Ázara de Almeida"
+      "sch_revision": ""
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -661,7 +661,7 @@
         "uuid": "350f3427-bcec-49b0-ac2f-a03c28574f3d"
       }
     ],
-    "used_designators": "U1,U3-5",
+    "used_designators": "U1,U3",
     "variants": []
   },
   "sheets": [

@@ -83,6 +83,7 @@ processamento. O lado Python permanece como bancada de estudo e validação.
 
 | Sketch | Para quê |
 |---|---|
+| [`teste_ens160_aht21/`](teste_ens160_aht21/) | teste de bancada do módulo ENS160 + AHT21: varredura I²C, temperatura, umidade, eCO₂ estimado, TVOC e AQI; instruções no início do sketch |
 | [`teste_sensor_ambiental/`](teste_sensor_ambiental/) | **diagnóstico** do sensor ambiental RS485: varre baud e endereço, despeja registradores e mostra todas as escalas possíveis |
 | [`varredura_registradores/`](varredura_registradores/) | varredura larga (`0x0000`–`0x01FF`, funções `0x03` e `0x04`) para caçar grandezas escondidas |
 | [`painel_wifi/`](painel_wifi/) | firmware principal com portal Wi-Fi, painel e telemetria; ainda contém os seis módulos da configuração anterior, pendente de adaptação |

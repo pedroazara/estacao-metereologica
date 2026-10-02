@@ -41,7 +41,7 @@
 					(justify left)
 				)
 			)
-			(property "Footprint" "ESP32:ESP32-DevKitC"
+			(property "Footprint" "PCM_Espressif:ESP32-DevKitC"
 				(at 0 -43.18 0)
 				(show_name no)
 				(do_not_autoplace no)
