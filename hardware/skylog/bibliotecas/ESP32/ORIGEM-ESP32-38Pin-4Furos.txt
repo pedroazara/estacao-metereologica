@@ -1,0 +1,49 @@
+ESP32_NodeMCU_38Pin_4Furos_AConferir
+Adicionado em 2026-10-02 somente à biblioteca ESP32.
+
+STATUS: CANDIDATO MECÂNICO, AINDA NÃO VALIDADO NA PLACA FÍSICA.
+A foto e a confirmação do usuário estabelecem 38 pinos (19 por lado),
+quatro furos e largura informada de 28,1 mm. O comprimento, a distância
+entre os centros dos furos e seus diâmetros não foram confirmados.
+Este arquivo não é uma identificação garantida do modelo da foto.
+
+Fonte comunitária: OlePlay, EasyEDA
+Componente: ESP32-38PIN-WITH-HOLES-PROTOBOARD-LAYOUT
+https://easyeda.com/component/036275a90f144b12b4d0c717e1829248
+Footprint: ESP32-38PIN-WITH-HOLES-PROTOBOARD-READABLE
+UUID: a800f3064bf44ad49b78d06dd3e9a4f3
+https://easyeda.com/api/components/036275a90f144b12b4d0c717e1829248
+
+Geometria convertida do arquivo da fonte (unidades EasyEDA = 0,254 mm):
+- 38 pads, passo de 2,54 mm e distância de 25,4 mm entre fileiras.
+- Corpo desenhado: 28,448 x 54,99989 mm.
+- Pads elétricos de 1,651 mm, furação de 0,9652 mm.
+- Centros dos marcadores de fixação: distância de 25,4 x 51,562 mm.
+- Em relação ao pino 1, os centros são aproximadamente:
+  (0; -2,794), (25,4; -2,794), (0; 48,768), (25,4; 48,768) mm.
+
+ADAPTAÇÃO DOS FUROS:
+A fonte representa os quatro furos somente com círculos na serigrafia;
+ela não contém perfurações mecânicas. Esses marcadores foram convertidos
+em quatro furos NPTH de 2,5 mm, usando o diâmetro central do desenho.
+Esse diâmetro é uma interpretação provisória, não uma especificação do
+fabricante nem uma medida da placa do usuário. Confirmar os centros e o
+diâmetro antes de empregar o footprint em uma PCB a fabricar.
+
+NUMERAÇÃO:
+A fonte numera a partir de GND no canto superior direito. A adaptação
+usa número KiCad = 39 - número original: pino 1 = 3V3 no canto superior
+esquerdo, pino 19 = 5V, pino 20 = CLK e pino 38 = GND no canto superior
+direito, com a antena para cima e o USB para baixo. Conferir a pinagem
+do símbolo antes de uma eventual associação. O símbolo não foi importado.
+
+Outras adaptações: contorno de fabricação, courtyard, identificação de
+pino 1, indicação do USB e nota de conferência. Não foi adicionado modelo
+3D nem keepout de antena, pois não há geometria suficiente confirmada.
+
+Validação feita: carregamento pelo KiCad 10, 38 pads elétricos únicos,
+quatro NPTH, passo e espaçamento. O encaixe físico permanece pendente.
+Os arquivos de projeto, esquemático e PCB não foram modificados.
+
+Documentação do formato de origem:
+https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/index.html

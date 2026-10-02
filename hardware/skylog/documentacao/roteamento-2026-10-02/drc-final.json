@@ -1,0 +1,578 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-02T11:43:12",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.5",
+    "schematic_parity": [],
+    "source": "skylog.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "A placa tem um contorno malformado (nenhuma aresta foi encontrada na camada Edge.Cuts)",
+            "items": [
+                {
+                    "description": "PCI",
+                    "pos": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "uuid": "0ae235b5-a11c-476d-a15e-132d0732f957"
+                }
+            ],
+            "severity": "error",
+            "type": "invalid_outline"
+        },
+        {
+            "description": "A configuração atual não inclui a biblioteca de footprints 'Sensores_Modulos'",
+            "items": [
+                {
+                    "description": "Footprint U3",
+                    "pos": {
+                        "x": 233.0,
+                        "y": 25.5
+                    },
+                    "uuid": "2848ec5c-706c-4cc7-a210-ffe25dfb2bc4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "A configuração atual não inclui a biblioteca de footprints 'ESP32'",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 173.3,
+                        "y": 45.09656
+                    },
+                    "uuid": "43af8285-5887-430a-9441-139fa69cd31d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "A configuração atual não inclui a biblioteca de footprints 'Sensores_Modulos'",
+            "items": [
+                {
+                    "description": "Footprint U4",
+                    "pos": {
+                        "x": 235.12,
+                        "y": 36.5
+                    },
+                    "uuid": "c99601b6-eef7-4ec3-8cff-ca75a771c110"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (VP/GPIO36)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 50.17656
+                    },
+                    "uuid": "e6f65666-2133-4f68-9b4b-a52f407612a8"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (VN/GPIO39)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 52.71656
+                    },
+                    "uuid": "eef3d6f7-d36b-4a8b-9af3-e91c85a6b0b6"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO34)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 55.25656
+                    },
+                    "uuid": "b5a65124-215d-4df6-bec9-ca67ec3f57b7"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO35)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 57.79656
+                    },
+                    "uuid": "d6cfd8fd-3fe6-468f-9170-ad067bdd8729"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO32)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 60.33656
+                    },
+                    "uuid": "242aedf2-c641-4844-afcb-2f283c288619"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO33)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 62.87656
+                    },
+                    "uuid": "84581c2f-5028-443e-8713-031a1ab2bf31"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO25)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 65.41656
+                    },
+                    "uuid": "2c4d8630-3a23-4926-86ef-9a94eb6774d9"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO26)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 67.95656
+                    },
+                    "uuid": "4898c7a5-6a2f-4b13-95e3-42e93e492a09"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO27)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 70.49656
+                    },
+                    "uuid": "e6d6473d-5461-401a-b118-d470acfb6933"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO14/MTMS)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 73.03656
+                    },
+                    "uuid": "250a3108-2614-4205-965c-308f2e97d581"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO12/MTDI)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 75.57656
+                    },
+                    "uuid": "e72d6751-857f-43c1-9378-d3b0a7c16961"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO13/MTCK)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 80.65656
+                    },
+                    "uuid": "719c90ed-40b8-469e-8da0-ce0dd69ec441"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (D2)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 83.19656
+                    },
+                    "uuid": "12da184c-4065-4a90-b167-9b3fe6ea0d1a"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (D3)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 85.73656
+                    },
+                    "uuid": "3e758e56-e906-4b9a-aeeb-0b4febc0a8b1"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (CMD)",
+                    "pos": {
+                        "x": 174.57,
+                        "y": 88.27656
+                    },
+                    "uuid": "096d1785-cec6-4c8f-a44f-5f0fe1cd607a"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO23)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 47.63656
+                    },
+                    "uuid": "a359e4a5-6f04-4499-bee0-40b44c06c338"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO22)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 50.17656
+                    },
+                    "uuid": "b6f1ea3b-3c6f-4d11-8417-534925b3d8c5"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO1/U0TXD)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 52.71656
+                    },
+                    "uuid": "f34e21c7-09f0-45fc-bffc-3327cfce9e74"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO3/U0RXD)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 55.25656
+                    },
+                    "uuid": "462d7fd3-81c9-4bb8-93fc-4ed267d63dc0"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO21)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 57.79656
+                    },
+                    "uuid": "7a6b9c57-1cd8-4b1f-a533-9f7d9ce55638"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO19)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 62.87656
+                    },
+                    "uuid": "d9fd220a-a120-4cc6-8345-ebd51d66ae49"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO18)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 65.41656
+                    },
+                    "uuid": "5793c20a-68e9-403f-9b61-cff13a2977d8"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO5)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 67.95656
+                    },
+                    "uuid": "815533ce-2960-4cbc-abf8-e8babbeb97e3"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO17)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 70.49656
+                    },
+                    "uuid": "fdd59de9-82b0-42ce-9db3-fc444eb12bc2"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO16)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 73.03656
+                    },
+                    "uuid": "97d48795-4312-40cf-aea8-5019b0ba87b4"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO4)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 75.57656
+                    },
+                    "uuid": "3b913f5a-01c5-4ea9-b703-3b1200f78f67"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO0)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 78.11656
+                    },
+                    "uuid": "1cf2e91b-0769-4722-8338-cbf11f38903e"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO2)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 80.65656
+                    },
+                    "uuid": "b4324397-0158-4688-b5ba-eea911493f93"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (GPIO15/MTDO)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 83.19656
+                    },
+                    "uuid": "c0023d0c-eb5e-40fc-a431-6d6aee98e6d0"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (D1)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 85.73656
+                    },
+                    "uuid": "02a3018f-79cd-44e4-be41-34441fe55afe"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (D0)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 88.27656
+                    },
+                    "uuid": "c0a38b2f-8b06-483f-92aa-ec069e60082b"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "A altura do texto está fora do alcance (configuração da restrição da altura da serigrafia do texto da placa altura mín 0,8000 mm; atual 0,7000 mm)",
+            "items": [
+                {
+                    "description": "Texto do footprint de U1 (CLK)",
+                    "pos": {
+                        "x": 197.43,
+                        "y": 90.81656
+                    },
+                    "uuid": "d5a1bd87-9e69-47b3-9bc8-bb37a0515be2"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        }
+    ]
+}

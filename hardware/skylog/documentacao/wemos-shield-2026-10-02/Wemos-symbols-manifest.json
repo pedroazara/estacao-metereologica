@@ -1,0 +1,34 @@
+[
+  {
+    "reference": "J2",
+    "symbol_uuid": "8d87177c-f641-43e9-9adc-a9dc22c07c2a",
+    "pin_uuid": "4b07e6b8-5810-4fc1-bec3-28b3bd322f2b",
+    "lib_id": "skylog:Wire_Pad",
+    "footprint": "skylog:Wire_Pad_D1.2mm",
+    "value": "WEMOS_5V",
+    "description": "Entrada para a saida regulada de 5V do Wemos Battery Shield V3 externo. Nao conectar bateria crua nem 3V3. Conferir polaridade e desconectar o shield durante alimentacao USB do ESP32.",
+    "position": [
+      73.66,
+      170.18
+    ],
+    "nets": {
+      "1": "/VIN_SENSOR"
+    }
+  },
+  {
+    "reference": "J3",
+    "symbol_uuid": "c6ae385a-ea91-4c1e-972f-9dbe5d2d097b",
+    "pin_uuid": "dc1d48b4-de67-4615-9e7a-d43cea3356ee",
+    "lib_id": "skylog:Wire_Pad",
+    "footprint": "skylog:Wire_Pad_D1.2mm",
+    "value": "WEMOS_GND",
+    "description": "Retorno GND do Wemos Battery Shield V3 externo. Conferir polaridade; usar com J2 conectado a saida regulada de 5V. Desconectar o shield durante alimentacao USB do ESP32.",
+    "position": [
+      129.54,
+      170.18
+    ],
+    "nets": {
+      "1": "/GND_SENSOR"
+    }
+  }
+]

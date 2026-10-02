@@ -1,0 +1,147 @@
+{
+  "ground_track_count": 0,
+  "via_count": 0,
+  "pad_shapes_sizes_drills_preserved": true,
+  "ground_pad_count": 11,
+  "ground_pads": [
+    {
+      "reference": "U5",
+      "pad": "CN1.3",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U5",
+      "pad": "CN2.3",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U3",
+      "pad": "2",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U2",
+      "pad": "2",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U1",
+      "pad": "14",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U1",
+      "pad": "32",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U1",
+      "pad": "38",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "J3",
+      "pad": "1",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "J1",
+      "pad": "2",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U4",
+      "pad": "1",
+      "connected_F_Cu": false,
+      "connected_B_Cu": true
+    },
+    {
+      "reference": "U4",
+      "pad": "4",
+      "connected_F_Cu": true,
+      "connected_B_Cu": true
+    }
+  ],
+  "footprint_position_changes": {
+    "U1": {
+      "before_mm": [
+        173.3,
+        45.09656
+      ],
+      "after_mm": [
+        173.3,
+        19.000001
+      ]
+    }
+  },
+  "all_ground_pads_connected_to_back_plane": true,
+  "planes_filled": true,
+  "GND_planes": [
+    {
+      "layer": "F.Cu",
+      "net": "/GND_SENSOR",
+      "clearance_mm": 0.25,
+      "thermal_gap_mm": 0.3,
+      "thermal_spoke_mm": 0.3,
+      "remove_islands": true
+    },
+    {
+      "layer": "B.Cu",
+      "net": "/GND_SENSOR",
+      "clearance_mm": 0.25,
+      "thermal_gap_mm": 0.3,
+      "thermal_spoke_mm": 0.3,
+      "remove_islands": true
+    }
+  ],
+  "thermal_connection_retained": true,
+  "routing_segments": {
+    "F.Cu": 135,
+    "B.Cu": 15
+  },
+  "routing_length_mm": {
+    "F.Cu": 639.872,
+    "B.Cu": 34.901
+  },
+  "drc_errors": 0,
+  "drc_warnings": {},
+  "drc_unconnected": 0,
+  "schematic_parity": 0,
+  "outline_notch_mm": {
+    "left": 176,
+    "right": 196,
+    "top": 17,
+    "bottom": 19
+  },
+  "board_outline_mm": {
+    "left": 158,
+    "top": 17,
+    "right": 244,
+    "bottom": 128,
+    "width": 86,
+    "height": 111
+  },
+  "ESP32_position_mm": [
+    173.3,
+    19
+  ],
+  "antenna_bounds_mm": [
+    177.03012,
+    11.98688,
+    195.01332,
+    17.87968
+  ],
+  "antenna_outside_carrier_substrate": true,
+  "models_exist": true,
+  "RF_reference": "https://docs.espressif.com/projects/esp-hardware-design-guidelines/en/latest/esp32/pcb-layout-design.html#general-principles-of-pcb-layout-for-modules-positioning-a-module-on-a-base-board",
+  "RF_note": "Module antenna moved beyond base-board edge/notch; this is a placement improvement, not an RF-performance certification. Final enclosure and range/throughput tests remain physical validation tasks."
+}

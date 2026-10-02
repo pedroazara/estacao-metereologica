@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>C:\Users\pedro\OneDrive\Documentos\programação\estacao-metereologica\hardware\skylog\versoes\bicamada\skylog-bicamada.kicad_sch</source>
+    <date>2026-10-02T12:45:15</date>
+    <tool>Eeschema 10.0.5</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>Projeto SkyLog - Bicamada</title>
+        <company>Universidade Federal de Lavras</company>
+        <rev>Pedro Henrique Ázara de Almeida</rev>
+        <date/>
+        <source>skylog-bicamada.kicad_sch</source>
+        <comment number="1" value=""/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="J1">
+      <value>ENS160+AHT21</value>
+      <footprint>skylog:ENS160_AHT21_1x04_P2.54mm</footprint>
+      <datasheet>https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21</datasheet>
+      <description>Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo.</description>
+      <fields>
+        <field name="Footprint">skylog:ENS160_AHT21_1x04_P2.54mm</field>
+        <field name="Datasheet">https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21</field>
+        <field name="Description">Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo.</field>
+      </fields>
+      <libsource lib="skylog" part="ENS160_AHT21_Interface" description="Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <property name="ki_keywords" value="ENS160 AHT21 I2C interface conector externo 3V3"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>fb0e3071-73d6-4a05-b199-b7047537637a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>WEMOS_5V</value>
+      <footprint>skylog:Wire_Pad_D1.2mm</footprint>
+      <description>Entrada para a saida regulada de 5V do Wemos Battery Shield V3 externo. Nao conectar bateria crua nem 3V3. Conferir polaridade e desconectar o shield durante alimentacao USB do ESP32.</description>
+      <fields>
+        <field name="Footprint">skylog:Wire_Pad_D1.2mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Entrada para a saida regulada de 5V do Wemos Battery Shield V3 externo. Nao conectar bateria crua nem 3V3. Conferir polaridade e desconectar o shield durante alimentacao USB do ESP32.</field>
+      </fields>
+      <libsource lib="skylog" part="Wire_Pad" description="Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>8d87177c-f641-43e9-9adc-a9dc22c07c2a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J3">
+      <value>WEMOS_GND</value>
+      <footprint>skylog:Wire_Pad_D1.2mm</footprint>
+      <description>Retorno GND do Wemos Battery Shield V3 externo. Conferir polaridade; usar com J2 conectado a saida regulada de 5V. Desconectar o shield durante alimentacao USB do ESP32.</description>
+      <fields>
+        <field name="Footprint">skylog:Wire_Pad_D1.2mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Retorno GND do Wemos Battery Shield V3 externo. Conferir polaridade; usar com J2 conectado a saida regulada de 5V. Desconectar o shield durante alimentacao USB do ESP32.</field>
+      </fields>
+      <libsource lib="skylog" part="Wire_Pad" description="Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c6ae385a-ea91-4c1e-972f-9dbe5d2d097b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>ESP32-DevKitC</value>
+      <footprint>skylog_bicamada:ESP32-DevKitC_BoardEdge</footprint>
+      <datasheet>https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</datasheet>
+      <description>Development Kit</description>
+      <fields>
+        <field name="Footprint">skylog_bicamada:ESP32-DevKitC_BoardEdge</field>
+        <field name="Datasheet">https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</field>
+        <field name="Description">Development Kit</field>
+      </fields>
+      <libsource lib="Espressif" part="ESP32-DevKitC" description="Development Kit"/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <property name="ki_keywords" value="ESP32"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>93221c48-93ce-430b-94ff-24d820058ae5</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="7"/>
+            <pin num="8"/>
+            <pin num="13"/>
+            <pin num="15"/>
+            <pin num="12"/>
+            <pin num="23"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="19"/>
+            <pin num="14"/>
+            <pin num="38"/>
+            <pin num="32"/>
+            <pin num="1"/>
+            <pin num="35"/>
+            <pin num="34"/>
+            <pin num="25"/>
+            <pin num="24"/>
+            <pin num="26"/>
+            <pin num="29"/>
+            <pin num="30"/>
+            <pin num="31"/>
+            <pin num="33"/>
+            <pin num="36"/>
+            <pin num="37"/>
+            <pin num="9"/>
+            <pin num="10"/>
+            <pin num="11"/>
+            <pin num="20"/>
+            <pin num="21"/>
+            <pin num="22"/>
+            <pin num="16"/>
+            <pin num="17"/>
+            <pin num="18"/>
+            <pin num="27"/>
+            <pin num="28"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U2">
+      <value>Sensor_TempUmid_RS485_5V_24V</value>
+      <footprint>skylog:PinSocket_1x04_P2.54mm_Vertical</footprint>
+      <description>Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados.</description>
+      <fields>
+        <field name="Alimentação">5–24 V CC — conforme etiqueta</field>
+        <field name="Comunicacao_testada">Modbus RTU; endereço 1; 9600 baud; 8N1</field>
+        <field name="Temperatura">Registrador 0x0000; int16 com sinal; dividir por 10</field>
+        <field name="Umidade">Registrador 0x0001; dividir por 10</field>
+        <field name="Pressao">Mencionada na etiqueta; não confirmada nos testes</field>
+        <field name="Dados_pendentes">Precisão, consumo e faixa de medição não confirmados</field>
+        <field name="Pinagem">1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto.</field>
+        <field name="Validacao_mecanica">Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física.</field>
+        <field name="Footprint">skylog:PinSocket_1x04_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados.</field>
+      </fields>
+      <libsource lib="skylog" part="Sensor_TempUmid_RS485_5V_24V" description="Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados."/>
+      <property name="Alimentação" value="5–24 V CC — conforme etiqueta"/>
+      <property name="Comunicacao_testada" value="Modbus RTU; endereço 1; 9600 baud; 8N1"/>
+      <property name="Temperatura" value="Registrador 0x0000; int16 com sinal; dividir por 10"/>
+      <property name="Umidade" value="Registrador 0x0001; dividir por 10"/>
+      <property name="Pressao" value="Mencionada na etiqueta; não confirmada nos testes"/>
+      <property name="Dados_pendentes" value="Precisão, consumo e faixa de medição não confirmados"/>
+      <property name="Pinagem" value="1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto."/>
+      <property name="Validacao_mecanica" value="Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>847fd542-db89-4297-b2d5-c671fd8c6ddb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U3">
+      <value>KY-028</value>
+      <footprint>Sensores_Modulos:KY-028_Conector_1x04_P2.54mm</footprint>
+      <datasheet>https://sensorkit.joy-it.net/en/sensors/ky-028</datasheet>
+      <description>Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO.</description>
+      <fields>
+        <field name="Footprint">Sensores_Modulos:KY-028_Conector_1x04_P2.54mm</field>
+        <field name="Datasheet">https://sensorkit.joy-it.net/en/sensors/ky-028</field>
+        <field name="Description">Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO.</field>
+      </fields>
+      <libsource lib="Sensores_Modulos" part="KY-028" description="Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <property name="ki_keywords" value="KY028 KY-028 temperatura termistor NTC LM393 modulo sensor"/>
+      <property name="ki_fp_filters" value="KY-028_Conector_1x04_P2.54mm"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>64677f1b-1f0f-4407-b5d5-9675d7108c0b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="1"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U4">
+      <value>GY-302_BH1750</value>
+      <footprint>Sensores_Modulos:GY-302_Conector_1x05_P2.54mm</footprint>
+      <datasheet>https://github.com/usini/usini_kicad_sensors</datasheet>
+      <description>Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC.</description>
+      <fields>
+        <field name="Footprint">Sensores_Modulos:GY-302_Conector_1x05_P2.54mm</field>
+        <field name="Datasheet">https://github.com/usini/usini_kicad_sensors</field>
+        <field name="Description">Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC.</field>
+      </fields>
+      <libsource lib="Sensores_Modulos" part="GY-302_BH1750" description="Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <property name="ki_keywords" value="GY302 GY-302 BH1750 luz luminosidade sensor"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f82e1865-ebb0-4805-b8b7-bff1aface0dc</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U5">
+      <value>RS485_TTL_V2_OSHWLab</value>
+      <footprint>skylog:RS485_TTL_V2_OSHWLab_PadGeometry</footprint>
+      <datasheet>https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2</datasheet>
+      <description>Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem.</description>
+      <fields>
+        <field name="Pinagem">CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND</field>
+        <field name="Montagem">JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente.</field>
+        <field name="Validacao_eletrica">Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md.</field>
+        <field name="Controle_direcao">Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1.</field>
+        <field name="Footprint">skylog:RS485_TTL_V2_OSHWLab_PadGeometry</field>
+        <field name="Datasheet">https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2</field>
+        <field name="Description">Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem.</field>
+      </fields>
+      <libsource lib="skylog" part="RS485_TTL_V2_OSHWLab" description="Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem."/>
+      <property name="Pinagem" value="CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND"/>
+      <property name="Montagem" value="JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente."/>
+      <property name="Validacao_eletrica" value="Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md."/>
+      <property name="Controle_direcao" value="Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1."/>
+      <property name="Sheetname" value="skylog-bicamada"/>
+      <property name="Sheetfile" value="skylog-bicamada.kicad_sch"/>
+      <property name="ki_keywords" value="RS485 TTL UART automatic module JST 2.50 Virendra"/>
+      <property name="ki_fp_filters" value="RS485_TTL_V2_OSHWLab*"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7e3701c5-c9a7-4853-9a55-e6ec2e707ece</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="CN1.1"/>
+            <pin num="CN1.2"/>
+            <pin num="CN1.3"/>
+            <pin num="CN1.4"/>
+            <pin num="CN2.1"/>
+            <pin num="CN2.2"/>
+            <pin num="CN2.3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="Espressif" part="ESP32-DevKitC">
+      <description>Development Kit</description>
+      <docs>https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">ESP32-DevKitC</field>
+        <field name="Footprint">ESP32:ESP32-DevKitC</field>
+        <field name="Datasheet">https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html</field>
+        <field name="Description">Development Kit</field>
+      </fields>
+      <pins>
+        <pin num="1" name="3V3" type="power_in"/>
+        <pin num="2" name="CHIP_PU" type="input"/>
+        <pin num="3" name="SENSOR_VP/GPIO36/ADC1_CH0" type="input"/>
+        <pin num="4" name="SENSOR_VN/GPIO39/ADC1_CH3" type="input"/>
+        <pin num="5" name="VDET_1/GPIO34/ADC1_CH6" type="input"/>
+        <pin num="6" name="VDET_2/GPIO35/ADC1_CH7" type="input"/>
+        <pin num="7" name="32K_XP/GPIO32/ADC1_CH4" type="bidirectional"/>
+        <pin num="8" name="32K_XN/GPIO33/ADC1_CH5" type="bidirectional"/>
+        <pin num="9" name="DAC_1/ADC2_CH8/GPIO25" type="bidirectional"/>
+        <pin num="10" name="DAC_2/ADC2_CH9/GPIO26" type="bidirectional"/>
+        <pin num="11" name="ADC2_CH7/GPIO27" type="bidirectional"/>
+        <pin num="12" name="MTMS/GPIO14/ADC2_CH6" type="bidirectional"/>
+        <pin num="13" name="MTDI/GPIO12/ADC2_CH5" type="bidirectional"/>
+        <pin num="14" name="GND" type="power_in"/>
+        <pin num="15" name="MTCK/GPIO13/ADC2_CH4" type="bidirectional"/>
+        <pin num="16" name="SD_DATA2/GPIO9" type="bidirectional"/>
+        <pin num="17" name="SD_DATA3/GPIO10" type="bidirectional"/>
+        <pin num="18" name="CMD" type="bidirectional"/>
+        <pin num="19" name="5V" type="power_in"/>
+        <pin num="20" name="SD_CLK/GPIO6" type="bidirectional"/>
+        <pin num="21" name="SD_DATA0/GPIO7" type="bidirectional"/>
+        <pin num="22" name="SD_DATA1/GPIO8" type="bidirectional"/>
+        <pin num="23" name="MTDO/GPIO15/ADC2_CH3" type="bidirectional"/>
+        <pin num="24" name="ADC2_CH2/GPIO2" type="bidirectional"/>
+        <pin num="25" name="GPIO0/BOOT/ADC2_CH1" type="bidirectional"/>
+        <pin num="26" name="ADC2_CH0/GPIO4" type="bidirectional"/>
+        <pin num="27" name="GPIO16" type="bidirectional"/>
+        <pin num="28" name="GPIO17" type="bidirectional"/>
+        <pin num="29" name="GPIO5" type="bidirectional"/>
+        <pin num="30" name="GPIO18" type="bidirectional"/>
+        <pin num="31" name="GPIO19" type="bidirectional"/>
+        <pin num="32" name="GND" type="passive"/>
+        <pin num="33" name="GPIO21" type="bidirectional"/>
+        <pin num="34" name="U0RXD/GPIO3" type="bidirectional"/>
+        <pin num="35" name="U0TXD/GPIO1" type="bidirectional"/>
+        <pin num="36" name="GPIO22" type="bidirectional"/>
+        <pin num="37" name="GPIO23" type="bidirectional"/>
+        <pin num="38" name="GND" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Sensores_Modulos" part="GY-302_BH1750">
+      <description>Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC.</description>
+      <docs>https://github.com/usini/usini_kicad_sensors</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">GY-302_BH1750</field>
+        <field name="Footprint">Sensores_Modulos:GY-302_Conector_1x05_P2.54mm</field>
+        <field name="Datasheet">https://github.com/usini/usini_kicad_sensors</field>
+        <field name="Description">Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="ADDR" type="input"/>
+        <pin num="2" name="SDA" type="bidirectional"/>
+        <pin num="3" name="SCL" type="input"/>
+        <pin num="4" name="GND" type="power_in"/>
+        <pin num="5" name="VCC" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="Sensores_Modulos" part="KY-028">
+      <description>Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO.</description>
+      <docs>https://sensorkit.joy-it.net/en/sensors/ky-028</docs>
+      <footprints>
+        <fp>KY-028_Conector_1x04_P2.54mm</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">KY-028</field>
+        <field name="Footprint">Sensores_Modulos:KY-028_Conector_1x04_P2.54mm</field>
+        <field name="Datasheet">https://sensorkit.joy-it.net/en/sensors/ky-028</field>
+        <field name="Description">Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="AO" type="output"/>
+        <pin num="2" name="GND" type="power_in"/>
+        <pin num="3" name="VCC" type="power_in"/>
+        <pin num="4" name="DO" type="output"/>
+      </pins>
+    </libpart>
+    <libpart lib="skylog" part="ENS160_AHT21_Interface">
+      <description>Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo.</description>
+      <docs>https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21</docs>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">ENS160+AHT21</field>
+        <field name="Footprint">skylog:ENS160_AHT21_1x04_P2.54mm</field>
+        <field name="Datasheet">https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21</field>
+        <field name="Description">Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~" type="passive"/>
+        <pin num="2" name="~" type="passive"/>
+        <pin num="3" name="~" type="passive"/>
+        <pin num="4" name="~" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="skylog" part="RS485_TTL_V2_OSHWLab">
+      <description>Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem.</description>
+      <docs>https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2</docs>
+      <footprints>
+        <fp>RS485_TTL_V2_OSHWLab*</fp>
+      </footprints>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">RS485_TTL_V2_OSHWLab</field>
+        <field name="Footprint">skylog:RS485_TTL_V2_OSHWLab_PadGeometry</field>
+        <field name="Datasheet">https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2</field>
+        <field name="Description">Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem.</field>
+        <field name="Pinagem">CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND</field>
+        <field name="Montagem">JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente.</field>
+        <field name="Validacao_eletrica">Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md.</field>
+        <field name="Controle_direcao">Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1.</field>
+      </fields>
+      <pins>
+        <pin num="CN1.1" name="TXD" type="input"/>
+        <pin num="CN1.2" name="RXD" type="output"/>
+        <pin num="CN1.3" name="GND_TTL" type="power_in"/>
+        <pin num="CN1.4" name="+5V" type="power_in"/>
+        <pin num="CN2.1" name="B" type="bidirectional"/>
+        <pin num="CN2.2" name="A" type="bidirectional"/>
+        <pin num="CN2.3" name="GND_RS485" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="skylog" part="Sensor_TempUmid_RS485_5V_24V">
+      <description>Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados.</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">Sensor_TempUmid_RS485_5V_24V</field>
+        <field name="Footprint">skylog:PinSocket_1x04_P2.54mm_Vertical</field>
+        <field name="Datasheet"/>
+        <field name="Description">Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados.</field>
+        <field name="Alimentação">5–24 V CC — conforme etiqueta</field>
+        <field name="Comunicacao_testada">Modbus RTU; endereço 1; 9600 baud; 8N1</field>
+        <field name="Temperatura">Registrador 0x0000; int16 com sinal; dividir por 10</field>
+        <field name="Umidade">Registrador 0x0001; dividir por 10</field>
+        <field name="Pressao">Mencionada na etiqueta; não confirmada nos testes</field>
+        <field name="Dados_pendentes">Precisão, consumo e faixa de medição não confirmados</field>
+        <field name="Pinagem">1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto.</field>
+        <field name="Validacao_mecanica">Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="VIN" type="power_in"/>
+        <pin num="2" name="GND" type="power_in"/>
+        <pin num="3" name="RS485_A+" type="bidirectional"/>
+        <pin num="4" name="RS485_B-" type="bidirectional"/>
+      </pins>
+    </libpart>
+    <libpart lib="skylog" part="Wire_Pad">
+      <description>Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm.</description>
+      <fields>
+        <field name="Reference">J</field>
+        <field name="Value">Wire_Pad</field>
+        <field name="Footprint">skylog:Wire_Pad_D1.2mm</field>
+        <field name="Datasheet"/>
+        <field name="Description">Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="Espressif">
+      <uri>${KIPRJMOD}/../../bibliotecas/ESP32/Espressif.kicad_sym</uri>
+    </library>
+    <library logical="Sensores_Modulos">
+      <uri>${KIPRJMOD}/../../bibliotecas/Sensores_Modulos/Sensores_Modulos.kicad_sym</uri>
+    </library>
+    <library logical="skylog">
+      <uri>${KIPRJMOD}/../../skylog.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="/GND_SENSOR" class="Default">
+      <node ref="J1" pin="2" pinfunction="~_2" pintype="passive"/>
+      <node ref="J3" pin="1" pinfunction="~_1" pintype="passive"/>
+      <node ref="U1" pin="14" pinfunction="GND_14" pintype="power_in"/>
+      <node ref="U1" pin="32" pinfunction="GND_32" pintype="passive"/>
+      <node ref="U1" pin="38" pinfunction="GND_38" pintype="passive"/>
+      <node ref="U2" pin="2" pinfunction="GND_2" pintype="power_in"/>
+      <node ref="U3" pin="2" pinfunction="GND_2" pintype="power_in"/>
+      <node ref="U4" pin="1" pinfunction="ADDR_1" pintype="input"/>
+      <node ref="U4" pin="4" pinfunction="GND_4" pintype="power_in"/>
+      <node ref="U5" pin="CN1.3" pinfunction="GND_TTL_CN1.3" pintype="power_in"/>
+      <node ref="U5" pin="CN2.3" pinfunction="GND_RS485_CN2.3" pintype="passive"/>
+    </net>
+    <net code="2" name="/RS485_A" class="Default">
+      <node ref="U2" pin="3" pinfunction="RS485_A+_3" pintype="bidirectional"/>
+      <node ref="U5" pin="CN2.2" pinfunction="A_CN2.2" pintype="bidirectional"/>
+    </net>
+    <net code="3" name="/RS485_B" class="Default">
+      <node ref="U2" pin="4" pinfunction="RS485_B-_4" pintype="bidirectional"/>
+      <node ref="U5" pin="CN2.1" pinfunction="B_CN2.1" pintype="bidirectional"/>
+    </net>
+    <net code="4" name="/RS485_RX" class="Default">
+      <node ref="U1" pin="27" pinfunction="GPIO16_27" pintype="bidirectional"/>
+      <node ref="U5" pin="CN1.2" pinfunction="RXD_CN1.2" pintype="output"/>
+    </net>
+    <net code="5" name="/RS485_TX" class="Default">
+      <node ref="U1" pin="28" pinfunction="GPIO17_28" pintype="bidirectional"/>
+      <node ref="U5" pin="CN1.1" pinfunction="TXD_CN1.1" pintype="input"/>
+    </net>
+    <net code="6" name="/VIN_SENSOR" class="Default">
+      <node ref="J2" pin="1" pinfunction="~_1" pintype="passive"/>
+      <node ref="U1" pin="19" pinfunction="5V_19" pintype="power_in"/>
+      <node ref="U2" pin="1" pinfunction="VIN_1" pintype="power_in"/>
+      <node ref="U5" pin="CN1.4" pinfunction="+5V_CN1.4" pintype="power_in"/>
+    </net>
+    <net code="7" name="Net-(U1-3V3)" class="Default">
+      <node ref="J1" pin="1" pinfunction="~_1" pintype="passive"/>
+      <node ref="U1" pin="1" pinfunction="3V3_1" pintype="power_in"/>
+      <node ref="U3" pin="3" pinfunction="VCC_3" pintype="power_in"/>
+      <node ref="U4" pin="5" pinfunction="VCC_5" pintype="power_in"/>
+    </net>
+    <net code="8" name="Net-(U1-GPIO21)" class="Default">
+      <node ref="J1" pin="3" pinfunction="~_3" pintype="passive"/>
+      <node ref="U1" pin="33" pinfunction="GPIO21_33" pintype="bidirectional"/>
+      <node ref="U4" pin="2" pinfunction="SDA_2" pintype="bidirectional"/>
+    </net>
+    <net code="9" name="Net-(U1-GPIO22)" class="Default">
+      <node ref="J1" pin="4" pinfunction="~_4" pintype="passive"/>
+      <node ref="U1" pin="36" pinfunction="GPIO22_36" pintype="bidirectional"/>
+      <node ref="U4" pin="3" pinfunction="SCL_3" pintype="input"/>
+    </net>
+    <net code="10" name="Net-(U1-VDET_2/GPIO35/ADC1_CH7)" class="Default">
+      <node ref="U1" pin="6" pinfunction="VDET_2/GPIO35/ADC1_CH7_6" pintype="input"/>
+      <node ref="U3" pin="1" pinfunction="AO_1" pintype="output"/>
+    </net>
+    <net code="11" name="unconnected-(U1-32K_XN/GPIO33/ADC1_CH5-Pad8)" class="Default">
+      <node ref="U1" pin="8" pinfunction="32K_XN/GPIO33/ADC1_CH5_8" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="12" name="unconnected-(U1-32K_XP/GPIO32/ADC1_CH4-Pad7)" class="Default">
+      <node ref="U1" pin="7" pinfunction="32K_XP/GPIO32/ADC1_CH4_7" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="13" name="unconnected-(U1-ADC2_CH0/GPIO4-Pad26)" class="Default">
+      <node ref="U1" pin="26" pinfunction="ADC2_CH0/GPIO4_26" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="14" name="unconnected-(U1-ADC2_CH2/GPIO2-Pad24)" class="Default">
+      <node ref="U1" pin="24" pinfunction="ADC2_CH2/GPIO2_24" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="15" name="unconnected-(U1-ADC2_CH7/GPIO27-Pad11)" class="Default">
+      <node ref="U1" pin="11" pinfunction="ADC2_CH7/GPIO27_11" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="16" name="unconnected-(U1-CHIP_PU-Pad2)" class="Default">
+      <node ref="U1" pin="2" pinfunction="CHIP_PU_2" pintype="input+no_connect"/>
+    </net>
+    <net code="17" name="unconnected-(U1-CMD-Pad18)" class="Default">
+      <node ref="U1" pin="18" pinfunction="CMD_18" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="18" name="unconnected-(U1-DAC_1/ADC2_CH8/GPIO25-Pad9)" class="Default">
+      <node ref="U1" pin="9" pinfunction="DAC_1/ADC2_CH8/GPIO25_9" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="19" name="unconnected-(U1-DAC_2/ADC2_CH9/GPIO26-Pad10)" class="Default">
+      <node ref="U1" pin="10" pinfunction="DAC_2/ADC2_CH9/GPIO26_10" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="20" name="unconnected-(U1-GPIO0/BOOT/ADC2_CH1-Pad25)" class="Default">
+      <node ref="U1" pin="25" pinfunction="GPIO0/BOOT/ADC2_CH1_25" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="21" name="unconnected-(U1-GPIO5-Pad29)" class="Default">
+      <node ref="U1" pin="29" pinfunction="GPIO5_29" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="22" name="unconnected-(U1-GPIO18-Pad30)" class="Default">
+      <node ref="U1" pin="30" pinfunction="GPIO18_30" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="23" name="unconnected-(U1-GPIO19-Pad31)" class="Default">
+      <node ref="U1" pin="31" pinfunction="GPIO19_31" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="24" name="unconnected-(U1-GPIO23-Pad37)" class="Default">
+      <node ref="U1" pin="37" pinfunction="GPIO23_37" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="25" name="unconnected-(U1-MTCK/GPIO13/ADC2_CH4-Pad15)" class="Default">
+      <node ref="U1" pin="15" pinfunction="MTCK/GPIO13/ADC2_CH4_15" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="26" name="unconnected-(U1-MTDI/GPIO12/ADC2_CH5-Pad13)" class="Default">
+      <node ref="U1" pin="13" pinfunction="MTDI/GPIO12/ADC2_CH5_13" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="27" name="unconnected-(U1-MTDO/GPIO15/ADC2_CH3-Pad23)" class="Default">
+      <node ref="U1" pin="23" pinfunction="MTDO/GPIO15/ADC2_CH3_23" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="28" name="unconnected-(U1-MTMS/GPIO14/ADC2_CH6-Pad12)" class="Default">
+      <node ref="U1" pin="12" pinfunction="MTMS/GPIO14/ADC2_CH6_12" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="29" name="unconnected-(U1-SD_CLK/GPIO6-Pad20)" class="Default">
+      <node ref="U1" pin="20" pinfunction="SD_CLK/GPIO6_20" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="30" name="unconnected-(U1-SD_DATA0/GPIO7-Pad21)" class="Default">
+      <node ref="U1" pin="21" pinfunction="SD_DATA0/GPIO7_21" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="31" name="unconnected-(U1-SD_DATA1/GPIO8-Pad22)" class="Default">
+      <node ref="U1" pin="22" pinfunction="SD_DATA1/GPIO8_22" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="32" name="unconnected-(U1-SD_DATA2/GPIO9-Pad16)" class="Default">
+      <node ref="U1" pin="16" pinfunction="SD_DATA2/GPIO9_16" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="33" name="unconnected-(U1-SD_DATA3/GPIO10-Pad17)" class="Default">
+      <node ref="U1" pin="17" pinfunction="SD_DATA3/GPIO10_17" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="34" name="unconnected-(U1-SENSOR_VN/GPIO39/ADC1_CH3-Pad4)" class="Default">
+      <node ref="U1" pin="4" pinfunction="SENSOR_VN/GPIO39/ADC1_CH3_4" pintype="input+no_connect"/>
+    </net>
+    <net code="35" name="unconnected-(U1-SENSOR_VP/GPIO36/ADC1_CH0-Pad3)" class="Default">
+      <node ref="U1" pin="3" pinfunction="SENSOR_VP/GPIO36/ADC1_CH0_3" pintype="input+no_connect"/>
+    </net>
+    <net code="36" name="unconnected-(U1-U0RXD/GPIO3-Pad34)" class="Default">
+      <node ref="U1" pin="34" pinfunction="U0RXD/GPIO3_34" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="37" name="unconnected-(U1-U0TXD/GPIO1-Pad35)" class="Default">
+      <node ref="U1" pin="35" pinfunction="U0TXD/GPIO1_35" pintype="bidirectional+no_connect"/>
+    </net>
+    <net code="38" name="unconnected-(U1-VDET_1/GPIO34/ADC1_CH6-Pad5)" class="Default">
+      <node ref="U1" pin="5" pinfunction="VDET_1/GPIO34/ADC1_CH6_5" pintype="input+no_connect"/>
+    </net>
+    <net code="39" name="unconnected-(U3-DO-Pad4)" class="Default">
+      <node ref="U3" pin="4" pinfunction="DO_4" pintype="output+no_connect"/>
+    </net>
+  </nets>
+</export>

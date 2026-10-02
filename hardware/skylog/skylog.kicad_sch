@@ -1682,7 +1682,176 @@
 			)
 			(embedded_fonts no)
 		)
+	
+(symbol "skylog:ENS160_AHT21_Interface"
+ (pin_names (offset 1.016) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 10.16 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "ki_keywords" "ENS160 AHT21 I2C interface conector externo 3V3" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "ENS160_AHT21_Interface_0_1"
+  (rectangle (start -15.24 5.08) (end 15.24 -5.08)
+   (stroke (width 0.254) (type default)) (fill (type background)))
+ 
+(text "3V3" (at -13.97 3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "GND" (at -13.97 1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SDA" (at -13.97 -1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SCL" (at -13.97 -3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+)
+ (symbol "ENS160_AHT21_Interface_1_1"
+  (pin passive line (at -17.78 3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "2" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "3" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "4" (effects (font (size 1.27 1.27)))))
+ )
+ (embedded_fonts no)
+)
+
+(symbol "skylog:Wire_Pad" (pin_names (offset 0) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "Wire_Pad" (at 0 -3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "Wire_Pad_0_1"
+  (circle (center 0 0) (radius 1.27) (stroke (width 0.254) (type default)) (fill (type none))))
+ (symbol "Wire_Pad_1_1"
+  (pin passive line (at -5.08 0 0) (length 3.81) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+ ) (embedded_fonts no)
+)
+(symbol "power:PWR_FLAG"
+		(power global)
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "#FLG"
+			(at 0 1.905 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 0 3.81 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "flag power"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "PWR_FLAG_0_0"
+			(pin power_out line
+				(at 0 0 90)
+				(length 0)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(symbol "PWR_FLAG_0_1"
+			(polyline
+				(pts
+					(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(embedded_fonts no)
 	)
+)
 	(junction
 		(at 146.05 34.29)
 		(diameter 0)
@@ -1718,16 +1887,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "fcd72f52-b3c7-48c8-bf1b-c88be58ed860")
-	)
-	(wire
-		(pts
-			(xy 114.3 46.99) (xy 149.86 46.99)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "052dfa26-5bd1-4aa1-8dc9-e107b9a769fd")
 	)
 	(wire
 		(pts
@@ -1791,16 +1950,6 @@
 	)
 	(wire
 		(pts
-			(xy 149.86 66.04) (xy 125.73 66.04)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2654e6b9-1f4f-45e7-abe8-3f3267a5e9fb")
-	)
-	(wire
-		(pts
 			(xy 195.58 63.5) (xy 208.28 63.5)
 		)
 		(stroke
@@ -1821,7 +1970,7 @@
 	)
 	(wire
 		(pts
-			(xy 243.84 129.54) (xy 123.19 129.54)
+			(xy 243.84 129.54) (xy 167.64 129.54)
 		)
 		(stroke
 			(width 0)
@@ -1829,6 +1978,7 @@
 		)
 		(uuid "4b4c163a-7b7c-46c0-966e-367a856ccd7f")
 	)
+(wire (pts (xy 167.64 129.54) (xy 123.19 129.54)) (stroke (width 0) (type default)) (uuid "f5b044a8-d640-4fab-8e30-7fc13a091493"))
 	(wire
 		(pts
 			(xy 129.54 41.91) (xy 83.82 41.91)
@@ -2061,16 +2211,6 @@
 	)
 	(wire
 		(pts
-			(xy 125.73 49.53) (xy 114.3 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bedf83f0-8af2-41e1-88b5-d0d0023cdb34")
-	)
-	(wire
-		(pts
 			(xy 182.88 137.16) (xy 182.88 121.92)
 		)
 		(stroke
@@ -2088,16 +2228,6 @@
 			(type default)
 		)
 		(uuid "c4af3438-f322-43dc-adda-93e4bb28a0a1")
-	)
-	(wire
-		(pts
-			(xy 125.73 66.04) (xy 125.73 49.53)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c4b527db-423f-4a65-8052-b75ecd69758e")
 	)
 	(wire
 		(pts
@@ -2151,7 +2281,7 @@
 	)
 	(wire
 		(pts
-			(xy 243.84 132.08) (xy 120.65 132.08)
+			(xy 243.84 132.08) (xy 170.18 132.08)
 		)
 		(stroke
 			(width 0)
@@ -2159,6 +2289,7 @@
 		)
 		(uuid "dc546d8c-a2bf-4333-9d90-e7519df53f90")
 	)
+(wire (pts (xy 170.18 132.08) (xy 120.65 132.08)) (stroke (width 0) (type default)) (uuid "3466e8a4-f28b-452e-bc93-765b9207f4ec"))
 	(wire
 		(pts
 			(xy 195.58 73.66) (xy 195.58 82.55)
@@ -2168,16 +2299,6 @@
 			(type default)
 		)
 		(uuid "dcd3a2d0-8666-4129-bb50-bd66127d2db0")
-	)
-	(wire
-		(pts
-			(xy 149.86 46.99) (xy 149.86 60.96)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "dee3ffa1-13f9-4d79-93b9-170f96455684")
 	)
 	(wire
 		(pts
@@ -2228,6 +2349,106 @@
 			(type default)
 		)
 		(uuid "f685d8a8-2ec6-4149-a56e-1b737d0bc14f")
+	)
+	(wire
+		(pts
+			(xy 114.3 107.95) (xy 118.11 107.95)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "99216da8-64e8-46c6-90c7-f3778a575190")
+	)
+	(label "RS485_TX"
+		(at 118.11 107.95 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "0a2c6c39-43c3-47fe-b39b-5b2a0bed730d")
+	)
+	(wire
+		(pts
+			(xy 114.3 105.41) (xy 118.11 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d704dcbc-544b-42b4-9aee-d0cf43b272b0")
+	)
+	(label "RS485_RX"
+		(at 118.11 105.41 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "f60babf4-a44f-4348-9e90-9cec4b75116f")
+	)
+	(wire
+		(pts
+			(xy 149.86 60.96) (xy 144.78 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c2fa84c-ab10-4ba2-9e26-e87ac71d6e9e")
+	)
+	(label "RS485_TX"
+		(at 144.78 60.96 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "8f1ac156-b090-4242-921a-54e085be3f58")
+	)
+	(wire
+		(pts
+			(xy 149.86 66.04) (xy 144.78 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dd001d35-55e5-429f-950f-dfece5d16036")
+	)
+	(label "RS485_RX"
+		(at 144.78 66.04 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "aafa6e3f-388f-4da5-a9fb-fbf87319d89f")
+	)
+	(wire
+		(pts
+			(xy 243.84 127) (xy 240.03 127)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f9cd87eb-a500-4278-8ce2-f07ac1904cd9")
+	)
+	(label "GND_SENSOR"
+		(at 240.03 127 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "abeecee4-40e5-4b2c-9a49-a46afe71af02")
 	)
 	(label "RS485_A"
 		(at 214.63 64.77 0)
@@ -2700,7 +2921,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "ESP32:ESP32-DevKitC"
+		(property "Footprint" "skylog:ESP32-DevKitC_BoardEdge"
 			(at 81.28 120.65 0)
 			(hide yes)
 			(show_name no)
@@ -2947,7 +3168,137 @@
 			)
 		)
 	)
-	(sheet_instances
+	(junction (at 182.88 137.16) (diameter 0) (color 0 0 0 0) (uuid "0e0231f0-80cb-4d98-a3b1-dc7b5df4d138"))
+(wire (pts (xy 182.88 137.16) (xy 182.88 151.13)) (stroke (width 0) (type default)) (uuid "d7c56259-99d6-4e16-949a-ba74ab739ac5"))
+
+
+(junction (at 179.07 134.62) (diameter 0) (color 0 0 0 0) (uuid "5f40dcee-7484-42b0-ab50-0faf8192bd70"))
+(wire (pts (xy 179.07 134.62) (xy 179.07 153.67)) (stroke (width 0) (type default)) (uuid "edd6e410-4424-4dda-ab49-ea7399f95a13"))
+(wire (pts (xy 179.07 153.67) (xy 240.03 153.67)) (stroke (width 0) (type default)) (uuid "23cbe061-75d7-4667-b5d9-ac85b1a5247f"))
+(junction (at 167.64 129.54) (diameter 0) (color 0 0 0 0) (uuid "e057d5f1-a1c6-4518-a46a-e1630bf34a8c"))
+(wire (pts (xy 167.64 129.54) (xy 167.64 156.21)) (stroke (width 0) (type default)) (uuid "3374a0e8-a41f-4488-ac53-bd556f5633f1"))
+
+
+(junction (at 170.18 132.08) (diameter 0) (color 0 0 0 0) (uuid "8f54167f-57f2-417d-b5b9-de3c1792924b"))
+(wire (pts (xy 170.18 132.08) (xy 170.18 158.75)) (stroke (width 0) (type default)) (uuid "47ca382c-8755-42e9-8457-68b8a556def9"))
+(wire (pts (xy 170.18 158.75) (xy 240.03 158.75)) (stroke (width 0) (type default)) (uuid "1d4bc3c3-fd03-4a6b-870a-7c1bd4b26679"))
+(text "ENS160+AHT21 externo: alimentar em 3V3.\nJ1: 1=3V3; 2=GND; 3=SDA (GPIO21); 4=SCL (GPIO22).\nNumeros de J1 pertencem a esta PCB; montar cabo pelos rotulos do modulo.\nSe expostos no modulo: CS -> 3V3; ADD -> GND; INT sem uso.\nConexoes de 3V3 e SDA diretas, sem jumpers de fio." (at 48.26 144.78 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "ddfdccb2-7c6a-4076-920f-f17aa841e7dc"))
+(symbol (lib_id "skylog:ENS160_AHT21_Interface") (at 257.81 154.94 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "fb0e3071-73d6-4a05-b199-b7047537637a")
+ (property "Reference" "J1" (at 257.81 144.78 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 257.81 147.32 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "da28aea7-f060-4099-bbf3-756485152877"))
+ (pin "2" (uuid "248fd2ce-464d-4d2e-9522-892ad57bbfe9"))
+ (pin "3" (uuid "f4f658b2-9eef-4880-99da-18ac9e64c347"))
+ (pin "4" (uuid "d5d2e6a6-09e8-4e0c-9fb5-a6186e64d477"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J1") (unit 1))))
+)
+	
+
+
+
+(wire (pts (xy 182.88 151.13) (xy 240.03 151.13)) (stroke (width 0) (type default)) (uuid "91a3bbb4-5514-4f3e-95ae-c2e3a952903b"))
+(wire (pts (xy 167.64 156.21) (xy 240.03 156.21)) (stroke (width 0) (type default)) (uuid "48500faf-bdeb-443d-8b23-f5b2bcd74018"))
+(wire (pts (xy 55.88 170.18) (xy 68.58 170.18)) (stroke (width 0) (type default)) (uuid "3b1fe392-32f8-4083-b995-cae30385e08a"))
+(label "VIN_SENSOR" (at 55.88 170.18 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4cd46e87-a0df-4639-904c-e36e9f88f51b"))
+(symbol (lib_id "skylog:Wire_Pad") (at 73.66 170.18 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "8d87177c-f641-43e9-9adc-a9dc22c07c2a")
+ (property "Reference" "J2" (at 73.66 166.37 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "WEMOS_5V" (at 73.66 173.99 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Entrada para a saida regulada de 5V do Wemos Battery Shield V3 externo. Nao conectar bateria crua nem 3V3. Conferir polaridade e desconectar o shield durante alimentacao USB do ESP32." (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "4b07e6b8-5810-4fc1-bec3-28b3bd322f2b"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J2") (unit 1))))
+)
+(wire (pts (xy 111.76 170.18) (xy 124.46 170.18)) (stroke (width 0) (type default)) (uuid "7dabd2d5-0e09-43ed-9e33-e99cff339ded"))
+(label "GND_SENSOR" (at 111.76 170.18 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "a0de5074-dd76-4704-899e-aaa7ea8a6c06"))
+(symbol (lib_id "skylog:Wire_Pad") (at 129.54 170.18 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "c6ae385a-ea91-4c1e-972f-9dbe5d2d097b")
+ (property "Reference" "J3" (at 129.54 166.37 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "WEMOS_GND" (at 129.54 173.99 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Retorno GND do Wemos Battery Shield V3 externo. Conferir polaridade; usar com J2 conectado a saida regulada de 5V. Desconectar o shield durante alimentacao USB do ESP32." (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "dc1d48b4-de67-4615-9e7a-d43cea3356ee"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J3") (unit 1))))
+)
+(text "Wemos Battery Shield V3 e bateria externos.\nJ2 = saida regulada de 5V; J3 = GND. Conferir polaridade.\nDesconectar o shield durante a alimentacao USB do ESP32." (at 48.26 180.34 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "409fad9a-619c-4a19-89fb-1f5da08e8a94"))
+(no_connect (at 48.26 54.61) (uuid "e767fa28-88db-4176-9f3f-516dab0550a0"))
+(no_connect (at 48.26 52.07) (uuid "2c507fdf-ef2a-4f39-ac2a-bcaf4550a031"))
+(no_connect (at 114.3 59.69) (uuid "7169cf34-882f-4771-8c87-ad7f4a3ef9f9"))
+(no_connect (at 114.3 57.15) (uuid "f9aeedea-ab33-439a-a9e4-9ad862aca165"))
+(no_connect (at 114.3 82.55) (uuid "a4194bbd-96ca-4fdd-99b1-839342fdac69"))
+(no_connect (at 48.26 46.99) (uuid "86ed5157-f19c-4595-b427-446aa303e8dc"))
+(no_connect (at 114.3 102.87) (uuid "14d71a21-8690-4787-91f8-4c3f6e332b6e"))
+(no_connect (at 114.3 77.47) (uuid "d5755ced-717f-42d1-8cf0-d4c21e129bdf"))
+(no_connect (at 114.3 80.01) (uuid "55658a1c-536c-4165-9e04-60d3b7c7e104"))
+(no_connect (at 114.3 54.61) (uuid "032521a8-7a7b-4e9e-8b9f-2eeb437bc616"))
+(no_connect (at 114.3 62.23) (uuid "95867491-0a1c-4c04-95e1-84a87ed59df2"))
+(no_connect (at 114.3 64.77) (uuid "7c1f7b6d-7c45-4330-a652-61a11741fce3"))
+(no_connect (at 114.3 67.31) (uuid "afc5b08f-9540-40f9-84e7-b8db91cebda3"))
+(no_connect (at 114.3 74.93) (uuid "50228a19-72c3-4e00-a9c7-8e05e16727cb"))
+(no_connect (at 48.26 62.23) (uuid "c99902a0-2681-47c7-9283-d4d5e0f07f1a"))
+(no_connect (at 48.26 59.69) (uuid "c3b6b561-775c-4149-9e11-4352e5918a5a"))
+(no_connect (at 48.26 67.31) (uuid "65fff3ee-1d02-4604-9e4e-ec055a131ee2"))
+(no_connect (at 48.26 64.77) (uuid "f3718ff2-59df-4512-85ce-482e5c01f27d"))
+(no_connect (at 114.3 90.17) (uuid "81ac61e9-7a0c-4630-8127-d7bfb4e5461d"))
+(no_connect (at 114.3 92.71) (uuid "a0bb53f6-eb7b-43e6-9a73-5d26c4676b87"))
+(no_connect (at 114.3 95.25) (uuid "e8d4b6cd-7a94-4b8d-a689-2db5b5ea707b"))
+(no_connect (at 114.3 97.79) (uuid "13bf985c-0746-4129-a907-105c17939924"))
+(no_connect (at 114.3 100.33) (uuid "33414077-814c-4738-8746-c2047584f987"))
+(no_connect (at 48.26 80.01) (uuid "9eae5a7d-bafd-4228-921b-2957db046c94"))
+(no_connect (at 48.26 77.47) (uuid "85f529b7-4673-4fe1-af78-d17293b7a874"))
+(no_connect (at 114.3 49.53) (uuid "fbe4e3a0-7be7-4763-92e5-f7ed1faf6c73"))
+(no_connect (at 114.3 46.99) (uuid "53f98916-59d0-475f-9713-d6c3006526f2"))
+(no_connect (at 48.26 72.39) (uuid "b4e68112-7ff5-4ac2-a6e4-9fae6ffdb59b"))
+(no_connect (at 248.92 99.06) (uuid "7fe5ef3b-aed9-42fc-9377-873d79eab065"))
+(wire (pts (xy 68.58 170.18) (xy 68.58 162.56)) (stroke (width 0) (type default)) (uuid "4b4c72a8-a79d-4363-ac83-e19014449a1d"))
+(junction (at 68.58 170.18) (diameter 0) (color 0 0 0 0) (uuid "819f8eea-7da4-4883-8fe9-94d50c541751"))
+(symbol (lib_id "power:PWR_FLAG") (at 68.58 162.56 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "f38db09e-9ef2-416b-a1be-c3b2f396f6da")
+ (property "Reference" "#FLG01" (at 68.58 160.655 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 68.58 158.75 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Fonte externa: saida regulada de 5V do Wemos Battery Shield V3 em J2; nao usar simultaneamente com USB do ESP32." (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "75fd50c8-fefe-453b-93fa-01b45f6d7f76"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG01") (unit 1))))
+)
+(wire (pts (xy 124.46 170.18) (xy 124.46 162.56)) (stroke (width 0) (type default)) (uuid "821d407e-b164-4915-a251-88c99064c683"))
+(junction (at 124.46 170.18) (diameter 0) (color 0 0 0 0) (uuid "3d6e7b27-1c99-41d0-957e-2c82b0c630b2"))
+(symbol (lib_id "power:PWR_FLAG") (at 124.46 162.56 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "4281ab36-d26a-45bc-8e85-0379ce72c918")
+ (property "Reference" "#FLG02" (at 124.46 160.655 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 124.46 158.75 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Retorno da alimentacao externa ligado em J3." (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "2c1ff317-edc1-4cde-b879-1ff0d0a1db57"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG02") (unit 1))))
+)
+(junction (at 105.41 41.91) (diameter 0) (color 0 0 0 0) (uuid "12285fc2-b4d0-4ee1-b5f8-686c862a921a"))
+(symbol (lib_id "power:PWR_FLAG") (at 105.41 41.91 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "f232f30a-5f19-4a8d-ade1-3bd7fc7305e5")
+ (property "Reference" "#FLG03" (at 105.41 40.005 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 105.41 38.1 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "3V3 fornecido pelo regulador incorporado a placa ESP32-DevKitC completa, alimentada em 5V." (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "ca8d3e80-6857-461e-b0be-3760117edd66"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG03") (unit 1))))
+)
+(text "NC: contatos externos sem uso; U1 representa a DevKitC completa.\nEN/reset e regulador 3V3 pertencem a DevKitC.\nFlags: 5V externo em J2, retorno em J3 e 3V3 gerado por U1." (at 48.26 190.5 0) (effects (font (size 1.0 1.0)) (justify left top)) (uuid "6e15cce0-2fed-42e7-8517-0b4f8450e9b8"))
+(sheet_instances
 		(path "/"
 			(page "1")
 		)

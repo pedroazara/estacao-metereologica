@@ -1,0 +1,37 @@
+{
+  "principal": {
+    "net_count": 41,
+    "all_net_names_and_pin_memberships_identical": true,
+    "all_component_uuids_preserved": true,
+    "expected_footprint_changes": {},
+    "nc_markers": 29,
+    "power_flags_without_footprints": 3,
+    "erc_errors": 0,
+    "erc_warnings": 0,
+    "erc_exclusions_added": false
+  },
+  "monocamada": {
+    "net_count": 41,
+    "all_net_names_and_pin_memberships_identical": true,
+    "all_component_uuids_preserved": true,
+    "expected_footprint_changes": {},
+    "nc_markers": 29,
+    "power_flags_without_footprints": 3,
+    "erc_errors": 0,
+    "erc_warnings": 0,
+    "erc_exclusions_added": false
+  },
+  "bicamada": {
+    "net_count": 39,
+    "all_net_names_and_pin_memberships_identical": true,
+    "all_component_uuids_preserved": true,
+    "expected_footprint_changes": {
+      "U1": "skylog_bicamada:ESP32-DevKitC_BoardEdge"
+    },
+    "nc_markers": 29,
+    "power_flags_without_footprints": 3,
+    "erc_errors": 0,
+    "erc_warnings": 0,
+    "erc_exclusions_added": false
+  }
+}

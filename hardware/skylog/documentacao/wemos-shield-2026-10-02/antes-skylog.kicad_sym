@@ -1,0 +1,323 @@
+(kicad_symbol_lib
+	(version 20251024)
+	(generator "kicad_symbol_editor")
+	(generator_version "10.0")
+
+(symbol "Sensor_TempUmid_RS485_5V_24V"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Sensor_TempUmid_RS485_5V_24V"
+				(at 0 15.24 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "skylog:PinSocket_1x04_P2.54mm_Vertical"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Alimentação" "5–24 V CC — conforme etiqueta"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Comunicacao_testada" "Modbus RTU; endereço 1; 9600 baud; 8N1"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Temperatura" "Registrador 0x0000; int16 com sinal; dividir por 10"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Umidade" "Registrador 0x0001; dividir por 10"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Pressao" "Mencionada na etiqueta; não confirmada nos testes"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Dados_pendentes" "Precisão, consumo e faixa de medição não confirmados"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Pinagem" "1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Validacao_mecanica" "Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Sensor_TempUmid_RS485_5V_24V_0_1"
+				(rectangle
+					(start -12.7 10.16)
+					(end 12.7 -10.16)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "Sensor_TempUmid_RS485_5V_24V_1_1"
+				(pin power_in line
+					(at -17.78 7.62 0)
+					(length 5.08)
+					(name "VIN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -17.78 2.54 0)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -17.78 -2.54 0)
+					(length 5.08)
+					(name "RS485_A+"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -17.78 -7.62 0)
+					(length 5.08)
+					(name "RS485_B-"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+
+(symbol "RS485_TTL_V2_OSHWLab" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes)
+(property "Reference" "U" (at 0 15.24 0) (effects (font (size 1.27 1.27))))
+(property "Value" "RS485_TTL_V2_OSHWLab" (at 0 17.78 0) (effects (font (size 1.27 1.27))))
+(property "Footprint" "skylog:RS485_TTL_V2_OSHWLab_PadGeometry" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Datasheet" "https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Description" "Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Pinagem" "CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Montagem" "JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Validacao_eletrica" "Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "Controle_direcao" "Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "ki_keywords" "RS485 TTL UART automatic module JST 2.50 Virendra" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(property "ki_fp_filters" "RS485_TTL_V2_OSHWLab*" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+(symbol "RS485_TTL_V2_OSHWLab_0_1" (rectangle (start -17.78 12.7) (end 17.78 -12.7) (stroke (width 0.254) (type default)) (fill (type background))))
+(symbol "RS485_TTL_V2_OSHWLab_1_1"
+(pin input line (at -22.86 7.62 0) (length 5.08) (name "TXD" (effects (font (size 1.27 1.27)))) (number "CN1.1" (effects (font (size 1.016 1.016)))))
+(pin output line (at -22.86 2.54 0) (length 5.08) (name "RXD" (effects (font (size 1.27 1.27)))) (number "CN1.2" (effects (font (size 1.016 1.016)))))
+(pin power_in line (at -22.86 -2.54 0) (length 5.08) (name "GND_TTL" (effects (font (size 1.27 1.27)))) (number "CN1.3" (effects (font (size 1.016 1.016)))))
+(pin power_in line (at -22.86 -7.62 0) (length 5.08) (name "+5V" (effects (font (size 1.27 1.27)))) (number "CN1.4" (effects (font (size 1.016 1.016)))))
+(pin bidirectional line (at 22.86 5.08 180) (length 5.08) (name "B" (effects (font (size 1.27 1.27)))) (number "CN2.1" (effects (font (size 1.016 1.016)))))
+(pin bidirectional line (at 22.86 0 180) (length 5.08) (name "A" (effects (font (size 1.27 1.27)))) (number "CN2.2" (effects (font (size 1.016 1.016)))))
+(pin passive line (at 22.86 -5.08 180) (length 5.08) (name "GND_RS485" (effects (font (size 1.27 1.27)))) (number "CN2.3" (effects (font (size 1.016 1.016)))))
+))
+
+(symbol "ENS160_AHT21_Interface"
+ (pin_names (offset 1.016) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 10.16 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "ki_keywords" "ENS160 AHT21 I2C interface conector externo 3V3" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "ENS160_AHT21_Interface_0_1"
+  (rectangle (start -15.24 5.08) (end 15.24 -5.08)
+   (stroke (width 0.254) (type default)) (fill (type background)))
+ 
+(text "3V3" (at -13.97 3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "GND" (at -13.97 1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SDA" (at -13.97 -1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SCL" (at -13.97 -3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+)
+ (symbol "ENS160_AHT21_Interface_1_1"
+  (pin passive line (at -17.78 3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "2" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "3" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "4" (effects (font (size 1.27 1.27)))))
+ )
+ (embedded_fonts no)
+)
+
+(symbol "Wire_Jumper" (pin_names (offset 0) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "JP" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "FIO / 0R" (at 0 6.35 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Jumper_P10.00mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Jumper montado com fio isolado ou resistor zero ohm compativel; distancia entre furos de 10 mm. Ponte para manter todas as trilhas na mesma face da PCB." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "Wire_Jumper_0_1"
+  (rectangle (start -2.54 1.016) (end 2.54 -1.016) (stroke (width 0.254) (type default)) (fill (type background))))
+ (symbol "Wire_Jumper_1_1"
+  (pin passive line (at 5.08 0 180) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -5.08 0 0) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+ ) (embedded_fonts no)
+)
+)

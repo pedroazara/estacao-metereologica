@@ -1,5 +1,7 @@
 # Conversor RS485 / TTL V2 — módulo pronto
 
+> Nota de organização (02/10/2026): os esquemas auxiliares citados neste documento foram arquivados em `backups/historico-antes-proposta-unica-2026-10-02.zip`. O único projeto ativo é [skylog.kicad_pro](skylog.kicad_pro). As informações de pinagem, dimensões e limitações abaixo continuam sendo referências do módulo.
+
 ## Uso na configuração vigente — 01/10/2026
 
 O conversor permanece necessário para o **sensor ambiental RS485 de

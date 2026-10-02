@@ -1,0 +1,17 @@
+{
+  "reference": "J1",
+  "symbol_uuid": "fb0e3071-73d6-4a05-b199-b7047537637a",
+  "lib_id": "skylog:ENS160_AHT21_Interface",
+  "footprint": "skylog:ENS160_AHT21_1x04_P2.54mm",
+  "sheet_uuid": "350f3427-bcec-49b0-ac2f-a03c28574f3d",
+  "position": [
+    257.81,
+    154.94
+  ],
+  "nets": {
+    "1": "/ENS_3V3",
+    "2": "/GND_SENSOR",
+    "3": "/ENS_SDA",
+    "4": "Net-(U1-GPIO22)"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "net_count": 39,
+  "component_count": 8,
+  "all_net_names_and_memberships_preserved": true,
+  "all_component_uuids_preserved": true,
+  "U1_footprint": "skylog:ESP32-DevKitC_BoardEdge",
+  "no_jumpers": true,
+  "NC_count": 29,
+  "power_flags": 3,
+  "root_not_modified": true
+}

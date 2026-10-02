@@ -265,4 +265,74 @@
 (pin bidirectional line (at 22.86 0 180) (length 5.08) (name "A" (effects (font (size 1.27 1.27)))) (number "CN2.2" (effects (font (size 1.016 1.016)))))
 (pin passive line (at 22.86 -5.08 180) (length 5.08) (name "GND_RS485" (effects (font (size 1.27 1.27)))) (number "CN2.3" (effects (font (size 1.016 1.016)))))
 ))
+
+(symbol "ENS160_AHT21_Interface"
+ (pin_names (offset 1.016) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 10.16 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "ki_keywords" "ENS160 AHT21 I2C interface conector externo 3V3" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "ENS160_AHT21_Interface_0_1"
+  (rectangle (start -15.24 5.08) (end 15.24 -5.08)
+   (stroke (width 0.254) (type default)) (fill (type background)))
+ 
+(text "3V3" (at -13.97 3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "GND" (at -13.97 1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SDA" (at -13.97 -1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SCL" (at -13.97 -3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+)
+ (symbol "ENS160_AHT21_Interface_1_1"
+  (pin passive line (at -17.78 3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "2" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "3" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "4" (effects (font (size 1.27 1.27)))))
+ )
+ (embedded_fonts no)
+)
+
+(symbol "Wire_Jumper" (pin_names (offset 0) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "JP" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "FIO / 0R" (at 0 6.35 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Jumper_P10.00mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Jumper montado com fio isolado ou resistor zero ohm compativel; distancia entre furos de 10 mm. Ponte para manter todas as trilhas na mesma face da PCB." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "Wire_Jumper_0_1"
+  (rectangle (start -2.54 1.016) (end 2.54 -1.016) (stroke (width 0.254) (type default)) (fill (type background))))
+ (symbol "Wire_Jumper_1_1"
+  (pin passive line (at 5.08 0 180) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -5.08 0 0) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+ ) (embedded_fonts no)
+)
+
+(symbol "Wire_Pad" (pin_names (offset 0) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "Wire_Pad" (at 0 -3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "Wire_Pad_0_1"
+  (circle (center 0 0) (radius 1.27) (stroke (width 0.254) (type default)) (fill (type none))))
+ (symbol "Wire_Pad_1_1"
+  (pin passive line (at -5.08 0 0) (length 3.81) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+ ) (embedded_fonts no)
+)
 )

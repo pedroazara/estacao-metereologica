@@ -1,0 +1,158 @@
+{
+  "nc_pins": [
+    [
+      "U1",
+      "8"
+    ],
+    [
+      "U1",
+      "7"
+    ],
+    [
+      "U1",
+      "26"
+    ],
+    [
+      "U1",
+      "24"
+    ],
+    [
+      "U1",
+      "11"
+    ],
+    [
+      "U1",
+      "2"
+    ],
+    [
+      "U1",
+      "18"
+    ],
+    [
+      "U1",
+      "9"
+    ],
+    [
+      "U1",
+      "10"
+    ],
+    [
+      "U1",
+      "25"
+    ],
+    [
+      "U1",
+      "29"
+    ],
+    [
+      "U1",
+      "30"
+    ],
+    [
+      "U1",
+      "31"
+    ],
+    [
+      "U1",
+      "37"
+    ],
+    [
+      "U1",
+      "15"
+    ],
+    [
+      "U1",
+      "13"
+    ],
+    [
+      "U1",
+      "23"
+    ],
+    [
+      "U1",
+      "12"
+    ],
+    [
+      "U1",
+      "20"
+    ],
+    [
+      "U1",
+      "21"
+    ],
+    [
+      "U1",
+      "22"
+    ],
+    [
+      "U1",
+      "16"
+    ],
+    [
+      "U1",
+      "17"
+    ],
+    [
+      "U1",
+      "4"
+    ],
+    [
+      "U1",
+      "3"
+    ],
+    [
+      "U1",
+      "34"
+    ],
+    [
+      "U1",
+      "35"
+    ],
+    [
+      "U1",
+      "5"
+    ],
+    [
+      "U3",
+      "4"
+    ]
+  ],
+  "flags": [
+    {
+      "reference": "#FLG01",
+      "uuid": "f38db09e-9ef2-416b-a1be-c3b2f396f6da",
+      "net": "/VIN_SENSOR",
+      "position": [
+        68.58,
+        162.56
+      ],
+      "description": "Fonte externa: saida regulada de 5V do Wemos Battery Shield V3 em J2; nao usar simultaneamente com USB do ESP32.",
+      "on_board": false,
+      "footprint": ""
+    },
+    {
+      "reference": "#FLG02",
+      "uuid": "4281ab36-d26a-45bc-8e85-0379ce72c918",
+      "net": "/GND_SENSOR",
+      "position": [
+        124.46,
+        162.56
+      ],
+      "description": "Retorno da alimentacao externa ligado em J3.",
+      "on_board": false,
+      "footprint": ""
+    },
+    {
+      "reference": "#FLG03",
+      "uuid": "f232f30a-5f19-4a8d-ade1-3bd7fc7305e5",
+      "net": "Net-(U1-3V3)",
+      "position": [
+        105.41,
+        41.91
+      ],
+      "description": "3V3 fornecido pelo regulador incorporado a placa ESP32-DevKitC completa, alimentada em 5V.",
+      "on_board": false,
+      "footprint": ""
+    }
+  ]
+}
