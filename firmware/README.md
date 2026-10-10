@@ -1,32 +1,37 @@
 # Firmware ESP32 — Estação Meteorológica Móvel
 
-## Configuração vigente (01/10/2026)
+Estado documentado em [10/10/2026](../docs/versoes/2026-10-10-2cd5977-local/documentacao-tecnica.md), sobre o commit
+`2cd5977` com alterações locais. Não há versão independente declarada do firmware.
 
-O ESP32 fica responsável por **três sensores externos**: **GY-302/BH1750**
-(luminosidade), **KY-028** (temperatura auxiliar) e **sensor ambiental RS485**
-(temperatura e umidade). **GPS, movimento/IMU e som serão obtidos pelo telefone
-da pessoa que realizar a medição.**
+## Configuração da V1 (09/10/2026)
+
+O ESP32 fica responsável por **quatro módulos externos**: **GY-302/BH1750**
+(luminosidade), **KY-028** (temperatura auxiliar), **sensor ambiental RS485**
+(temperatura e umidade) e **ENS160+AHT21** (qualidade do ar, com eCO₂ estimado,
+TVOC, AQI, temperatura e umidade de compensação). **GPS e nível sonoro são
+obtidos pelo telefone da pessoa que realiza a medição.**
 
 O **WTGAHRS3-485**, o **KY-038** e o **KY-013** saíram da montagem prevista.
-Os testes, drivers e estudos desses módulos permanecem como histórico.
+Os testes separados desses módulos foram removidos na limpeza de 10/10/2026.
+Os drivers ainda usados pelo firmware principal foram preservados.
 
-**Estado da implementação:** esta decisão atualiza a especificação. O
-[`painel_wifi.ino`](painel_wifi/painel_wifi.ino) ainda contém a implementação
-anterior, com os seis módulos, consultas ao WTGAHRS3 e leituras do KY-038 e do
-KY-013. A retirada dessas rotinas, dos campos de telemetria e das telas
-correspondentes ainda precisa ser feita. A coleta de movimento pelo telefone
-é parte da arquitetura prevista e ainda precisa ser implementada no app;
-ver o [estado do aplicativo](../app/README.md).
+O aplicativo e a base implementam gravação e sincronização. A V1 ainda exige
+integração de software e validação física. O `painel_wifi.ino` executa rotinas da
+bancada anterior: WTGAHRS3, KY-013 e KY-038 continuam ativos por padrão. Não há
+leitura ou publicação de ENS160+AHT21 nesse sketch; ela existe somente no teste
+separado. A lista acima identifica a montagem pretendida, não todos os recursos
+já integrados.
 
 ### Hardware e conexões previstos
 
 | Item | Função / ligação ao ESP32 |
 |---|---|
-| ESP32 DevKit (WROOM-32) | controlador dos três sensores externos |
+| ESP32 DevKit (WROOM-32) | controlador dos quatro módulos externos |
 | GY-302 / BH1750 | 3V3 e GND; SDA → GPIO21; SCL → GPIO22; ADDR → GND (I²C `0x23`) |
 | KY-028 | 3V3 e GND; AO → GPIO35; DO sem ligação |
+| ENS160 + AHT21 | 3V3 e GND; SDA → GPIO21; SCL → GPIO22; ENS160 em `0x52` ou `0x53`, AHT21 em `0x38` |
 | Sensor ambiental RS485 | A/B → conversor RS485/TTL; endereço Modbus `0x01`, 9600 baud, 8N1 |
-| Conversor RS485 / TTL V2 automático | entrada TXD ← GPIO17; saída RXD → GPIO16; alimentação de 5 V e GND comum, conforme o [módulo documentado](../hardware/skylog/conversor-rs485.md) |
+| Conversor RS485 / TTL V2 automático | entrada TXD ← GPIO17; saída RXD → GPIO16; alimentação de 5 V e GND comum, conforme o [módulo documentado](../hardware/skylog/documentacao/conversor-rs485.md) |
 
 ```text
 GY-302         ESP32                 KY-028
@@ -35,6 +40,12 @@ GY-302         ESP32                 KY-028
  SDA ───────── GPIO21         GPIO35 ─ AO
  SCL ───────── GPIO22                  DO (sem ligação)
  ADDR ──────── GND
+
+ENS160+AHT21
+ VCC ───────── 3V3
+ GND ───────── GND
+ SDA ───────── GPIO21  (I²C compartilhado com o GY-302)
+ SCL ───────── GPIO22
 
 Sensor ambiental       Conversor RS485/TTL automático       ESP32
  A ─────────────────── A
@@ -52,52 +63,53 @@ configuração anterior com controle manual, e precisa ser alinhado ao módulo
 usado. A compatibilidade elétrica do exemplar físico do conversor continua
 sujeita às verificações registradas na sua documentação.
 
-Os sensores ficam fora da placa. Seus footprints na PCB representam **somente
-os conectores**: GY-302 com 5 pinos, KY-028 com 4 pinos e sensor ambiental
-com 4 pinos, com passo de 2,54 mm. O conector do KY-028 preserva DO mesmo
-sem uso no firmware.
+Os sensores ficam fora da placa. A placa de interface recebe as conexões do
+GY-302, do KY-028, do sensor ambiental RS485 e do ENS160+AHT21. O conector do
+KY-028 preserva DO mesmo sem uso no firmware. O módulo ENS160+AHT21 compartilha
+SDA e SCL com o GY-302 e deve ser ligado conforme os rótulos do próprio módulo.
 
 O divisor externo de **10 kΩ / 10 kΩ** pertencia à entrada do KY-038 e **não é
 necessário na nova montagem**, pois esse módulo foi retirado. A configuração
 vigente não especifica divisor externo para GY-302 ou KY-028, alimentados em
 3,3 V. Isso não remove os resistores presentes nos próprios módulos: a
 terminação e a polarização do conversor RS485 devem ser consideradas conforme
-a [documentação do conversor](../hardware/skylog/conversor-rs485.md).
+a [documentação do conversor](../hardware/skylog/documentacao/conversor-rs485.md).
 
 ### Coleta e processamento
 
 Permanece a separação entre coleta e processamento: o ESP32 fornece os dados
-ambientais e o telefone fornece posição, movimento e som; a análise pode
-rodar na base. A gravação no cartão SD do ESP32 pertence ao planejamento
+ambientais e o telefone fornece posição e som; a análise roda na base e é
+apresentada pelo site. A gravação no cartão SD do ESP32 pertence ao planejamento
 histórico e não foi implementada; não é um requisito da coleta vigente,
 cuja gravação fica a cargo do telefone.
 
 O porte do filtro de Kalman para C++ foi cancelado na arquitetura anterior
-([telemetria](../docs/04-telemetria.md)). A mudança da origem dos dados de
-movimento para o telefone ainda exige adaptar e validar o fluxo de coleta e
-processamento. O lado Python permanece como bancada de estudo e validação.
+([telemetria](../docs/04-telemetria.md)). O lado Python permanece como bancada
+de estudo, processamento e validação.
 
 ---
 
 ## Sketches
+
+Foram mantidos o firmware principal e os diagnósticos dos sensores da montagem
+prevista: ENS160+AHT21, ambiental RS485, KY-028 e varredura de registradores.
+Os testes antigos de KY-013/KY-038, a bancada conjunta, o sketch WTG e o teste
+de motor com nome GY-302 foram removidos. Aquisição BH1750: `painel_wifi.ino`.
+
 
 | Sketch | Para quê |
 |---|---|
 | [`teste_ens160_aht21/`](teste_ens160_aht21/) | teste de bancada do módulo ENS160 + AHT21: varredura I²C, temperatura, umidade, eCO₂ estimado, TVOC e AQI; instruções no início do sketch |
 | [`teste_sensor_ambiental/`](teste_sensor_ambiental/) | **diagnóstico** do sensor ambiental RS485: varre baud e endereço, despeja registradores e mostra todas as escalas possíveis |
 | [`varredura_registradores/`](varredura_registradores/) | varredura larga (`0x0000`–`0x01FF`, funções `0x03` e `0x04`) para caçar grandezas escondidas |
-| [`painel_wifi/`](painel_wifi/) | firmware principal com portal Wi-Fi, painel e telemetria; ainda contém os seis módulos da configuração anterior, pendente de adaptação |
-| [`estacao_esp32/`](estacao_esp32/) | **legado**: leitura do WTGAHRS3-485 (GPS + IMU) e do sensor ambiental (T/UR), no mesmo barramento RS485 |
-| [`teste_sensores_baratos/`](teste_sensores_baratos/) | bancada histórica com KY-013, KY-028, KY-038 e GY-302; inclui módulos retirados da montagem vigente |
-| [`teste_gy302/`](teste_gy302/) | nome de pasta preservado, mas o sketch atual controla motor com AccelStepper; o teste do sensor precisa ser restaurado. A aquisição BH1750 está em [`painel_wifi.ino`](painel_wifi/painel_wifi.ino) |
+| [`painel_wifi/`](painel_wifi/) | firmware principal com portal Wi-Fi, painel e telemetria; também preserva rotinas da configuração anterior |
 | [`teste_ky028/`](teste_ky028/) | teste individual e calibração da temperatura auxiliar mantida no projeto |
-| [`teste_ky013/`](teste_ky013/), [`teste_ky038/`](teste_ky038/) | **legado**: testes individuais dos módulos retirados |
 
 ### Painel Wi-Fi — implementação existente
 
-As funções abaixo descrevem o código atual, ainda anterior à retirada dos
-módulos. O GPS mostrado pelo painel e as rotinas de GPS/IMU continuam ligados
-ao WTGAHRS3; isso ainda não representa a coleta pelo telefone.
+As funções abaixo descrevem recursos preservados da bancada anterior. O GPS
+mostrado nesse painel e as rotinas de GPS/IMU estão ligados ao WTGAHRS3 e não
+representam a coleta da V1 pelo telefone.
 
 O ESP32 conecta na sua rede (roteador ou hotspot do celular) e serve o painel
 nela. Na primeira vez — ou se a rede salva não for encontrada — ele sobe um
@@ -106,7 +118,7 @@ ponto de acesso temporário só para configuração:
 | | |
 |---|---|
 | rede | `EstacaoMeteorologica-Config` |
-| senha | `estacao2026` |
+| senha | consulte `AP_CONFIG_SENHA` no sketch; não confundir com a senha da rede salva |
 | página | `http://192.168.4.1` |
 
 Conecte nessa rede, escolha o Wi-Fi de verdade numa lista (varredura ao vivo)
@@ -134,9 +146,12 @@ trajeto. Um mapa de verdade fica viável agora que o ESP32 tem internet via
 roteador (o navegador busca os tiles direto, sem o ESP32 mediar), mas ainda
 não está implementado — ver `docs/04-telemetria.md`.
 
-O `loop()` nunca bloqueia: a leitura Modbus roda em intervalos fixos (ambiente
-a cada 2 s, GPS a cada 1 s) e o servidor sempre entrega o último valor em
-cache.
+O escalonador distribui as leituras Modbus em slots, e o servidor entrega o
+último valor em cache. As transações incluem esperas e timeout; portanto não há
+garantia de `loop()` sem bloqueio. No modo de configuração Wi-Fi, BLE anuncia,
+mas o `loop()` retorna antes da aquisição/publicação e a UART só é iniciada por
+`iniciarPainel()`. A coleta ambiental após arrancar sem rede salva/disponível
+precisa ser corrigida e validada; ligar BLE sozinho não resolve essa condição.
 
 Ajuste rede e senha no topo de
 [`painel_wifi.ino`](painel_wifi/painel_wifi.ino) — a senha precisa ter no mínimo
@@ -150,8 +165,8 @@ detecta a placa sozinho pelo `#if defined(ESP32)`.
 
 Esta seção registra a bancada e o escalonador da configuração com WTGAHRS3 e
 sensor ambiental. Na montagem vigente, **somente o sensor ambiental permanece
-no RS485**; o escalonador e as consultas de GPS/IMU abaixo ainda existem no
-código e deverão ser removidos ou adaptados.
+no RS485**; o escalonador e as consultas de GPS/IMU abaixo permanecem no código
+como histórico e não definem a montagem da V1.
 
 Ao pôr o WTGAHRS3 (`0x50`) e o sensor ambiental (`0x01`) no mesmo par A/B, o
 GPS continuou perfeito e **o ambiental parou de responder quase sempre** —
@@ -192,7 +207,7 @@ tempo. A 9600 baud cada transação custa aproximadamente:
 | GPS (2 transações) | 50 | ~52 ms |
 | ambiente (+ silêncio t3.5) | 17 | ~23 ms |
 
-O IMU a 10 Hz sozinho consome 380 ms de cada segundo — 85% do barramento. Com
+O IMU a 10 Hz sozinho consome 380 ms de cada segundo — cerca de 38% do segundo. Com
 um temporizador independente por sensor, eles competem, e o mais raro é sempre
 o prejudicado.
 
@@ -264,9 +279,9 @@ configuração não. `0x0064 = 1` e `0x0065 = 3` casam com endereço Modbus 1 e 
 > TVOC nem eCO2 em lugar nenhum do espaço de endereços. O anúncio lista as cinco
 > grandezas para a família; o "Type 2" é a variante de dois sensores.
 >
-> **Consequência para o projeto:** a pressão atmosférica continua descoberta.
+> **Consequência para o projeto:** a pressão atmosférica não integra a V1.
 > O **BME280** foi uma possibilidade de expansão estudada; não integra a
-> configuração vigente de três sensores. O WTGAHRS3 retirado também não
+> configuração vigente de quatro módulos. O WTGAHRS3 retirado também não
 > fornecia essa medição (`0x45` lia 0 Pa).
 
 ## Como abrir
@@ -304,29 +319,31 @@ Pela linha de comando:
 arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app firmware/painel_wifi
 ```
 
-## Estado atual e adaptação pendente
+## Estado atual da V1
 
-- [x] Configuração definida: GY-302, KY-028 e ambiental RS485 no ESP32;
-      GPS, movimento/IMU e som ficam a cargo do telefone.
+- [x] Configuração definida: GY-302, KY-028, ENS160+AHT21 e ambiental RS485
+      no ESP32; GPS e som ficam a cargo do telefone.
 - [x] Sketch de diagnóstico e mapa do sensor ambiental confirmados na bancada.
 - [x] Driver do sensor ambiental (`ambiente_rs485.h/.cpp`), separado do
       diagnóstico; esta unidade fornece somente temperatura e umidade.
 - [x] Aquisição de GY-302 e KY-028 em `painel_wifi`; teste individual do
-      KY-028 disponível. A pasta `teste_gy302` contém atualmente código de motor.
+      KY-028 disponível. A antiga pasta `teste_gy302`, com teste de motor, foi removida.
+- [x] Teste de bancada do ENS160+AHT21 disponível, incluindo eCO₂ estimado,
+      TVOC, AQI e compensação por temperatura e umidade.
 - [x] Portal de configuração Wi-Fi com credenciais em `Preferences` e
       retorno ao portal quando a conexão falha.
-- [ ] Adaptar `painel_wifi` para os três sensores mantidos: retirar consultas ao
-      WTGAHRS3 e leituras de KY-038/KY-013, revisar escalonador, painel e
-      telemetria, e validar o funcionamento sem os módulos retirados.
-- [ ] Alinhar `PINO_DE` ao conversor automático (`-1`) e validar a ligação real.
-- [ ] Implementar a coleta de movimento pelo telefone e integrar/validar os
-      dados do telefone com as leituras ambientais do ESP32.
-- [ ] Validar a nova montagem e o firmware adaptado em bancada.
+- [x] Aplicativo, site e sistema de coleta/sincronização funcionais.
+- [ ] Integrar ENS160+AHT21 no `painel_wifi` e nos consumidores BLE/app/base.
+- [ ] Alinhar o controle automático RS485 (`PINO_DE = -1`) e os sensores ativos.
+- [ ] Permitir aquisição/publicação no arranque sem rede Wi-Fi configurada.
+- [ ] Finalizar e usinar a PCB na CNC, conferir o conversor RS485 e validar a
+      montagem completa com os quatro módulos externos.
+- [ ] Projetar e imprimir a caixa depois de fixadas as dimensões da placa e
+      dos conectores.
 
 A integração anterior com WTGAHRS3 e ambiental no mesmo barramento, o painel
-com GPS e os testes dos módulos retirados permanecem como histórico. As
-verificações anteriores de compilação com `arduino-cli` não validam a nova
-configuração. Esta atualização é apenas documental e não altera os sketches.
+com GPS permanecem no firmware; os testes separados dos módulos retirados
+foram removidos.
 
 ## Histórico: conhecimento herdado do lado Python
 

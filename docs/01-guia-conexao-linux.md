@@ -1,10 +1,9 @@
 # Guia de conexão — WTGAHRS3-485 no Linux (legado)
 
-> **Referência histórica — arquitetura revisada em 01/10/2026.** O WTGAHRS3
+> **Referência histórica — arquitetura revisada em 09/10/2026.** O WTGAHRS3
 > não integra mais o hardware previsto para a estação. O ESP32 fica com
-> GY-302, KY-028 e o sensor ambiental RS485; GPS, movimento e som passam a
-> ser responsabilidade do celular. GPS e som já têm coleta no aplicativo;
-> a coleta dos sensores de movimento do telefone ainda está pendente.
+> GY-302, KY-028, ENS160+AHT21 e o sensor ambiental RS485; GPS e nível sonoro
+> ficam a cargo do celular.
 > Este guia foi preservado para bancada e manutenção das coletas antigas.
 > Suas pinagens e alimentações são específicas do WTGAHRS3 e não devem ser
 > aplicadas ao sensor ambiental. Ver [arquitetura atual](04-telemetria.md).

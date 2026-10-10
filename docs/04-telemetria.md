@@ -1,53 +1,59 @@
 # Telemetria — arquitetura do sistema
 
-## Arquitetura aprovada em 01/10/2026
+## Arquitetura da V1 — atualizada em 09/10/2026
 
-O ESP32 fica responsável por **três sensores externos**: luminosidade GY-302,
-temperatura auxiliar KY-028 e temperatura/umidade do sensor ambiental RS485.
-O **celular fornece GPS, movimento e som**. WTGAHRS3 (GPS + IMU), KY-038 e
-KY-013 saem do conjunto previsto para a estação. Esta decisão não acrescenta
-outros sensores à placa.
+O ESP32 fica responsável por **quatro módulos externos**: luminosidade GY-302,
+temperatura auxiliar KY-028, temperatura/umidade do sensor ambiental RS485 e
+qualidade do ar do ENS160+AHT21. O **celular fornece GPS e nível sonoro**.
+WTGAHRS3 (GPS + IMU), KY-038 e KY-013 não fazem parte da montagem da V1.
 
 | Origem | Medida | Interface prevista |
 |---|---|---|
 | ESP32 · GY-302/BH1750 | Luminosidade | I²C: SDA GPIO21, SCL GPIO22; endereço `0x23` |
 | ESP32 · KY-028 | Temperatura auxiliar | AO no GPIO35; DO não utilizado pelo firmware principal |
+| ESP32 · ENS160+AHT21 | eCO₂ estimado, TVOC, AQI, temperatura e umidade de compensação | I²C compartilhado: ENS160 em `0x52` ou `0x53`; AHT21 em `0x38` |
 | ESP32 · ambiental RS485 | Temperatura e umidade | Conversor RS485 ↔ UART2: RX GPIO16, TX GPIO17; Modbus `0x01`, 9600 8N1 |
 | Celular · GPS | Localização e percurso | Serviço de localização do aplicativo |
-| Celular · sensores de movimento | Movimento | Coleta ainda pendente de implementação e validação |
 | Celular · microfone | Níveis sonoros | Captura e processamento no aplicativo, sem guardar áudio |
 
-O GY-302 e o KY-028 usam 3,3 V na configuração documentada do firmware.
+O eCO₂ informado pelo ENS160 é uma **estimativa baseada em gases**, não uma
+medição direta de CO₂. O AHT21 é usado para compensação por temperatura e
+umidade. GY-302, KY-028 e ENS160+AHT21 usam 3,3 V na configuração documentada.
 A tensão de alimentação do sensor ambiental depende do módulo utilizado;
 RS485 define a comunicação, não essa tensão. As conexões da placa devem ser
 conferidas com [a documentação do firmware](../firmware/README.md) e os
 arquivos de hardware do projeto.
 
 ```text
-GY-302 ── I²C ──────────┐
-KY-028 ── analógico ────┼── ESP32 ── BLE ──┐
-ambiental ── RS485 ─────┘                 │
-                                         ▼
-                            aplicativo no celular
-                          + GPS e níveis sonoros
-                          + movimento (pendente)
-                                         │
-                              sessão local no celular
-                                         │
-                           envio HTTP para a base
-                                         ▼
-                         Raspberry Pi: guarda e análise
+GY-302 ─────── I²C ───────┐
+ENS160+AHT21 ─ I²C ───────┤
+KY-028 ─────── analógico ─┼── ESP32 ── BLE ──┐
+ambiental ───── RS485 ─────┘                 │
+                                            ▼
+                               aplicativo no celular
+                              + GPS e nível sonoro
+                                            │
+                                 sessão local no celular
+                                            │
+                              envio HTTP para a base
+                                            ▼
+                            Raspberry Pi: guarda e analisa
+                                            │
+                                            ▼
+                                  site de visualização
 ```
 
-A base continua responsável por receber sessões, manter o histórico e apoiar
-as análises. O filtro descrito em [03-filtro-kalman.md](03-filtro-kalman.md)
-e as ferramentas WTG permanecem como referência histórica. A integração com
-movimento medido pelo telefone ainda precisa ser definida e validada.
+A base recebe as sessões, mantém o histórico, processa os dados e alimenta o
+site de análise. O filtro descrito em [03-filtro-kalman.md](03-filtro-kalman.md)
+e as ferramentas WTG permanecem como referência histórica.
 
-## Estado implementado e pendências
+## Estado da V1
 
-A decisão de hardware acima é o destino da migração; **o código ainda contém
-partes da arquitetura anterior**.
+O aplicativo, o site e o sistema de coleta e sincronização estão funcionais.
+Além da PCB, montagem e caixa, faltam integrar ENS160+AHT21 de ponta a ponta,
+alinhar o firmware aos módulos previstos e incorporar o som do telefone à
+visualização da base. A [revisão do código em 10/10/2026](versoes/2026-10-10-2cd5977-local/documentacao-tecnica.md)
+registra as divergências e testes locais.
 
 - O aplicativo já obtém o GPS do telefone e grava registros `gps`. A recepção
   por BLE usada pelo app inclui os dados ambientais da estação; posição e IMU
@@ -57,14 +63,11 @@ partes da arquitetura anterior**.
   com o app em primeiro plano; ao ser interrompida, a coleta que a utiliza é
   encerrada e salva. dB SPL estimado depende de calibração; dBFS é nível
   relativo à captura.
-- Não há coleta implementada dos sensores de movimento do telefone nos
-  arquivos inspecionados do app. GPS com velocidade e rumo não equivale a
-  uma série de acelerômetro/giroscópio. Ainda faltam definição de medidas,
-  unidades, frequência, carimbo e contrato, além da implementação.
-- O firmware principal ainda possui aquisição e configuração do WTGAHRS3,
-  KY-038 e KY-013. O app também mantém opções e campos desses módulos. Sua
-  remoção ou isolamento como legado exige uma alteração de código posterior;
-  esta revisão de documentação não a executa.
+- O sensor ENS160+AHT21 foi incluído na configuração física da V1. O sketch
+  de bancada documenta a leitura de eCO₂ estimado, TVOC, AQI, temperatura e
+  umidade. Não há aquisição/publicação no firmware principal nem opção no app.
+- O repositório preserva rotinas e campos do WTGAHRS3, KY-038 e KY-013 para
+  reproduzir testes e ler sessões antigas. Eles não integram o hardware novo.
 - O cartão SD no ESP32 continua sendo um plano antigo, não a custódia atual
   da coleta. Hoje as sessões são gravadas no telefone e podem ser enviadas à
   base por HTTP. O envio marca a sessão como enviada e preserva o arquivo
@@ -83,28 +86,29 @@ quando calibrado, estado de calibração, janela e indicadores de saturação ou
 ausência de sinal. As fontes são, respectivamente,
 [estacao_ble.dart](../app/lib/ble/estacao_ble.dart) e
 [central_sensores.dart](../app/lib/coleta/central_sensores.dart).
-Nenhum novo formato de movimento é definido por este documento.
 
 O [sincronizador](../app/lib/rede/sincronizador.dart) envia o arquivo para
 `POST /sync` na base, como `application/x-ndjson`, e preserva a cópia local.
 BLE recebe as leituras da estação durante a coleta; HTTP envia a sessão
 salva para a base. O MQTT e os contratos de posição/IMU do ESP32 ainda
-presentes no repositório pertencem ao caminho anterior e precisam ser
-considerados ao migrar firmware, testes e base.
+presentes no repositório pertencem ao caminho anterior e devem ser tratados
+como compatibilidade histórica. O servidor atual não assina MQTT e não roda
+Kalman: grava JSONL e cria pontos SQLite com GPS bruto e último ambiente.
+`som_celular` é preservado no bruto, mas ainda não é processado no mapa.
+O firmware anuncia BLE no portal Wi-Fi, porém retorna antes da aquisição e
+publicação; a operação ambiental no arranque sem rede permanece pendente.
 
-## Próximas etapas da migração
+## Próximas etapas
 
-1. Alinhar firmware, opções do aplicativo e documentação de montagem aos três
-   sensores externos aprovados, mantendo a leitura ambiental independente do
-   WTGAHRS3.
-2. Implementar e validar a coleta de movimento no telefone, incluindo os
-   critérios de disponibilidade dos sensores e continuidade da coleta.
-3. Ajustar ingestão, análise e testes ao contrato efetivamente adotado para o
-   telefone. Preservar a leitura das sessões históricas sem atribuir seus
-   dados WTG à nova origem.
-4. Validar uma sessão completa: três sensores da estação, GPS e som do
-   telefone, gravação local e envio para a base. Movimento só entra nessa
-   validação depois de implementado.
+1. Integrar ENS160+AHT21 em firmware, BLE, app e base; alinhar sensores ativos,
+   direção do conversor e aquisição sem rede Wi-Fi.
+2. Finalizar o esquema e o leiaute da PCB, conferindo alimentação, pinagem,
+   conectores e dimensões dos módulos reais.
+3. Gerar os percursos de usinagem, produzir a placa na CNC e montar os quatro
+   módulos externos da V1.
+4. Validar uma sessão completa com sensores ambientais, GPS e som do telefone,
+   gravação local, sincronização com a base e exibição no site.
+5. Medir a montagem definitiva, projetar a caixa e imprimir o gabinete.
 
 ## Referência da arquitetura anterior — 17/08/2026
 
@@ -388,8 +392,8 @@ Se um dia a operação exigir posição filtrada em campo sem base, o porte volt
 pauta — e aí valem os cuidados originais: `float` dentro do filtro (a FPU do
 ESP32 é de precisão simples, `double` é emulado e caro), `dt` medido com
 `esp_timer_get_time()`, e verificação passando os CSVs de `data/` pelos dois
-filtros com comparação amostra a amostra. `tests/test_filtro_kalman.py` serve
-de especificação.
+filtros com comparação amostra a amostra. O antigo `tests/test_filtro_kalman.py` servia
+de especificação e foi removido na limpeza de 10/10/2026.
 
 ---
 

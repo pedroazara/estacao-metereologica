@@ -1,0 +1,83 @@
+
+┌─────────────────────────────────────────────────────────┐
+│ A new version of Flutter is available!                  │
+│                                                         │
+│ To update to the latest version, run "flutter upgrade". │
+└─────────────────────────────────────────────────────────┘
+00:00 +0: loading /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/medicao_sonora_test.dart
+00:00 +0: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/medicao_sonora_test.dart: AmostraSom converte evento válido e calcula a duração real do bloco
+00:00 +1: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gps_freshness_test.dart: freshness só existe após fix e respeita a data original da posição
+00:00 +2: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gps_freshness_test.dart: freshness só existe após fix e respeita a data original da posição
+00:00 +3: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gps_freshness_test.dart: freshness só existe após fix e respeita a data original da posição
+00:00 +4: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: salva metadados antes do GPS e mantém snapshot da seleção
+00:00 +5: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: salva metadados antes do GPS e mantém snapshot da seleção
+00:00 +6: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: salva metadados antes do GPS e mantém snapshot da seleção
+00:00 +7: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gps_freshness_test.dart: erro e parada limpam posição e freshness sem impedir recuperação
+00:00 +8: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/medicao_sonora_test.dart: MedicaoSonora saturação usa o pico do último bloco e máximo usa seu RMS
+00:00 +9: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +10: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +11: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +12: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +13: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +14: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +15: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +16: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (setUpAll)
+00:00 +16: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: filtra campos ausentes, não numéricos e lux indisponível sem inventar zeros
+00:00 +17: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: filtra campos ausentes, não numéricos e lux indisponível sem inventar zeros
+00:00 +18: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/medicao_sonora_test.dart: MedicaoSonora referência rejeita silêncio e potência insuficiente na janela
+00:00 +19: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +20: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +21: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +22: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +23: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +24: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +25: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +26: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +27: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +28: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +28: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/gravacao_sensores_test.dart: desconectar elimina leituras ambientais antigas da prévia
+[FBP] stopScan: already stopped
+00:00 +29: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+00:00 +30: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: busca vazia termina depois de 15 segundos
+flutter_blue_plus_version=2.3.12
+[FBP] stopScan: already stopped
+00:00 +31: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: tenta novamente e encontra estacao ligada depois
+[FBP] stopScan: already stopped
+00:00 +32: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: desconectar cancela uma busca pendente
+[FBP] stopScan: already stopped
+00:00 +33: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: fechar cancela scanner e tentativas automaticas
+00:00 +34: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/estacao_ble_test.dart: (tearDownAll)
+00:01 +34: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: começa vazia e expõe uma seleção imutável
+00:01 +35: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: serializa mudanças concorrentes sem perder escolhas
+00:01 +36: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: falha de persistência mantém escolha e permite repetir para salvar
+00:01 +37: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: bloqueio impede mudanças novas e operações que ainda estavam na fila
+00:01 +38: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: erro de leitura é informado e permite uma escolha nova
+00:01 +39: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/selecao_sensores_test.dart: arquivo persiste seleção e recupera em uma nova instância
+00:01 +40: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +41: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +42: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +43: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +44: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +45: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +46: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +47: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +48: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +49: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +50: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +51: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +52: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +53: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +54: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +55: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +56: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +57: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+00:02 +58: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/widget_test.dart: sobe e mostra a navegacao
+flutter_blue_plus_version=2.3.12
+00:03 +59: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/telas_sensores_test.dart: início orienta a seleção e deixa leituras na tela de sensores
+00:03 +60: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/decibelimetro_test.dart: tela inicia por ação explícita, exibe leituras e encerra
+00:04 +61: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/decibelimetro_test.dart: tela inicia por ação explícita, exibe leituras e encerra
+00:04 +62: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/telas_sensores_test.dart: teste explícito e leitura recente liberam o início da coleta
+00:04 +63: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/telas_sensores_test.dart: teste explícito e leitura recente liberam o início da coleta
+00:05 +64: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/telas_sensores_test.dart: durante a coleta os sete seletores ficam bloqueados
+00:05 +65: /home/pedro-henrique/Documentos/projetos/estacao-metereologica/app/test/telas_sensores_test.dart: início e sensores cabem em 360 por 800 com fonte ampliada
+00:06 +66: All tests passed!

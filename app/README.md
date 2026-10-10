@@ -2,32 +2,35 @@
 
 Aplicativo Flutter da estação meteorológica: permite escolher e conferir os sensores antes de gravar uma coleta. Combina os sensores do telefone com as leituras recebidas do ESP32 por Bluetooth LE. O início usa o nome **Skylog**; o nome instalado no Android ainda é **Estacao Movel** e o pacote Flutter é `estacao_movel`.
 
-## Sensores definidos para o projeto
+Versão do pacote: **1.0.0+1**, Dart `^3.13.1`. Estado local e evidências:
+[documentação de 10/10/2026](../docs/versoes/2026-10-10-2cd5977-local/documentacao-tecnica.md).
 
-A configuração definida em 01/10/2026 usa o telefone da pessoa que faz a
-medição para localização, movimento e som. O ESP32 recebe somente os três
-módulos externos abaixo e transmite suas leituras ao aplicativo:
+## Sensores definidos para a V1
+
+O aplicativo, a gravação das coletas e a sincronização com a base estão
+funcionais. Na configuração final, o telefone fornece localização e nível
+sonoro; o ESP32 reúne os quatro módulos ambientais abaixo e transmite suas
+leituras por Bluetooth:
 
 | Medição | Origem definida | Situação no aplicativo |
 | --- | --- | --- |
 | Localização e percurso | GPS do telefone | Captura e gravação disponíveis |
-| Movimento | Sensores de movimento do telefone | Captura e gravação ainda precisam ser implementadas |
 | Nível sonoro | Microfone do telefone | Captura e gravação de níveis disponíveis; calibração descrita abaixo |
 | Temperatura e umidade | Sensor ambiental RS485, ligado ao ESP32 | Recebimento por Bluetooth disponível |
 | Luminosidade | GY-302 / BH1750, ligado ao ESP32 | Recebimento por Bluetooth disponível |
 | Temperatura auxiliar | KY-028, ligado ao ESP32 | Recebimento por Bluetooth disponível |
+| Qualidade do ar | ENS160 + AHT21, ligado ao ESP32 | Planejado; sem ID de seleção, leitura BLE ou visualização no app atual |
 
 O **WTGAHRS3-485** (GPS e movimento/IMU), o **KY-038** (som) e o
 **KY-013** (temperatura auxiliar) foram retirados da configuração do projeto.
 Os sensores que permanecem são externos à placa; seus footprints na PCB
 representam somente os conectores.
 
-Esta definição ainda precisa ser concluída no código: a seleção de sensores
-continua oferecendo KY-013 e KY-038, e o contrato de comunicação mantém
-referências ao GPS/IMU externo. Esses itens são legados a remover, não módulos
-a instalar. O app já usa o GPS e o microfone do telefone, mas ainda não possui
-captura dos sensores de movimento do telefone. Esta atualização de
-documentação não altera o aplicativo nem o firmware.
+O valor de eCO₂ do ENS160 é uma estimativa baseada nos gases detectados, não
+uma medição direta de CO₂. Além da placa e da caixa, falta integrar esse módulo
+no firmware, no contrato de dados e no aplicativo. A tela atual ainda oferece
+**KY-013 e KY-038**, pois percorre todos os valores de `SensorId`; para a montagem
+V1, deixe essas opções desmarcadas. Elas não foram removidas da implementação.
 
 ## Pastas neste computador
 
@@ -71,11 +74,14 @@ Nenhum emulador foi instalado nesta preparação. Comece pelo celular USB, que t
 O emulador é útil para telas, navegação, permissões e posições simuladas. Para conferir GPS em campo, dados ambientais e conexão com o ESP32, use o celular real. Versões atuais do emulador oferecem recursos de Bluetooth virtual, mas isso não garante acesso à estação física pelo Bluetooth do computador. [Recursos de rede do emulador](https://developer.android.com/studio/run/emulator-networking).
 
 Neste projeto, a posição e o som vêm do telefone; temperatura/umidade RS485,
-luminosidade GY-302 e temperatura auxiliar KY-028 vêm da estação. A coleta
-de movimento pelo telefone ainda está pendente. Sem o ESP32 conectado, as
-telas de ajustes da estação e os dados desses módulos ficam indisponíveis.
+luminosidade GY-302 e temperatura auxiliar KY-028 vêm da estação.
+Qualidade do ar do ENS160+AHT21 ainda depende de integração. Sem o ESP32 conectado, as telas de ajustes da
+estação e os dados desses módulos ficam indisponíveis.
 A busca pela estação ocorre automaticamente por UUID de serviço; o nome
 padrão do firmware é `esp32-01`.
+No firmware atual, entrar no portal de configuração Wi-Fi mantém o anúncio BLE,
+mas impede a aquisição/publicação ambiental. Assim, estação conectada por BLE
+sem leituras pode ser consequência desse modo; a correção está pendente.
 
 ## Editar e ver o resultado
 
@@ -109,12 +115,12 @@ a preparação, a quantidade de sensores escolhidos/prontos e os controles da
 coleta. O botão **Selecionar sensores** abre a aba de conferência. A engrenagem
 em Sensores abre os ajustes existentes da estação.
 
-1. Escolha os sensores da configuração definida: GPS e som do celular;
+1. Escolha os sensores disponíveis: GPS e som do celular;
    temperatura/umidade RS485, luminosidade GY-302 e temperatura KY-028 da
-   estação. A escolha começa vazia e é salva localmente para a próxima
-   abertura. Enquanto a interface não for atualizada, deixe KY-013 e KY-038
-   desmarcados, inclusive se estiverem em uma seleção salva anteriormente.
-   Movimento do telefone ainda não está disponível para seleção ou gravação.
+   estação. A escolha é salva localmente para a próxima abertura. O
+   ENS160+AHT21 compõe a montagem prevista, mas ainda não aparece na seleção.
+   KY-013 e KY-038 continuam selecionáveis no código atual; deixe-os desmarcados
+   na montagem V1. WTGAHRS3 não fornece a posição usada nessa coleta.
 2. Confira valores e estado em cada cartão. **Testar microfone** inicia a prévia
    de som, sem gravar uma sessão; o decibelímetro completo compartilha essa
    captura. Desmarcar o som encerra seu teste. As demais leituras são recebidas
@@ -132,8 +138,11 @@ em Sensores abre os ajustes existentes da estação.
 O primeiro envelope JSONL tem `src = selecao` e a lista imutável de IDs.
 Os níveis do microfone usam `src = som_celular`, com `nivel_dbfs`,
 `nivel_db_spl_estimado` (nulo sem calibração), estado de saturação/silêncio e
-identificação do microfone. A interpretação deste novo tipo pela base fica
-para uma etapa posterior. A seleção controla o aplicativo e não desliga
+identificação do microfone. Esses registros seguem no arquivo sincronizado e
+são preservados pela base. O processador atual não incorpora `som_celular`
+ao SQLite nem à camada de ruído do mapa; essa camada ainda lê `amb.db` do
+KY-038. Sessões sem GPS são recebidas, mas geram zero pontos de mapa.
+A seleção controla o aplicativo e não desliga
 fisicamente os sensores da estação.
 
 Se a captura do microfone for interrompida durante uma coleta que o inclui,

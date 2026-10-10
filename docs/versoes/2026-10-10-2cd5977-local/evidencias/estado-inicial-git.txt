@@ -1,0 +1,21 @@
+ M README.md
+ M app/README.md
+ M blog/post-estacao-meteorologica.md
+ M docs/01-guia-conexao-linux.md
+ M docs/02-protocolo-modbus-wtgahrs3.md
+ M docs/03-filtro-kalman.md
+ M docs/04-telemetria.md
+ M docs/05-base-raspberry-pi.md
+ M firmware/README.md
+ M hardware/skylog/README.md
+ M hardware/skylog/conversor-rs485.md
+ M hardware/skylog/skylog.kicad-pedro_sch.kicad_pcb
+ M hardware/skylog/skylog.kicad-pedro_sch.kicad_pro
+?? cnc-jog/
+?? hardware/skylog/skylog.kicad-pedro_sch-B_Cu.gbr
+?? hardware/skylog/skylog.kicad-pedro_sch-Edge_Cuts.gbr
+?? hardware/skylog/skylog.kicad-pedro_sch-F_Silkscreen.gbr
+?? hardware/skylog/skylog.kicad-pedro_sch-NPTH.drl
+?? hardware/skylog/skylog.kicad-pedro_sch-PTH.drl
+?? hardware/skylog/skylog.kicad-pedro_sch-job.gbrjob
+?? hardware/skylog/skylog.kicad-pedro_sch.step

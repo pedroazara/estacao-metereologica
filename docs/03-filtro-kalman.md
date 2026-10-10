@@ -1,17 +1,17 @@
 # Filtro de Kalman — teoria, derivação e aplicação neste projeto
 
-> **Escopo histórico — arquitetura revisada em 01/10/2026.** As medições,
+> **Escopo histórico — arquitetura revisada em 09/10/2026.** As medições,
 > calibrações e exemplos abaixo foram desenvolvidos para o WTGAHRS3 e as
 > ferramentas Python existentes. O sensor saiu do hardware previsto: o
-> celular é a fonte definida para GPS e movimento, além do som. A captura
-> de GPS e som já existe no app; a dos sensores de movimento ainda está
-> pendente. A matemática continua como referência, mas taxas, eixos,
-> unidades, ruído e integração do filtro terão de ser validados para o
-> telefone. Este documento não comprova que essa migração foi implementada.
+> celular é a fonte definida para GPS e nível sonoro. Movimento inercial e
+> fusão com Kalman não integram o escopo da V1. A matemática continua como
+> referência histórica e bancada de estudo.
 > Ver [arquitetura atual](04-telemetria.md).
 
 Documento de referência do filtro implementado em `src/filtro_kalman.py`.
-As lições numeradas em `src/kalman/` reproduzem cada etapa de forma executável.
+As lições numeradas e os testes antigos foram removidos na limpeza de
+10/10/2026. As referências abaixo descrevem o estudo histórico, não arquivos
+executáveis disponíveis na árvore atual.
 
 ---
 

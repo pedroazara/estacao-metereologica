@@ -2,23 +2,49 @@
 
 Documento de referência da **base**: o Raspberry Pi que recebe as sessões
 coletadas em campo, guarda o histórico e apoia a análise. A implantação foi
-proposta em 17/08/2026; a divisão dos sensores foi revisada em **01/10/2026**.
+proposta em 17/08/2026; a divisão dos sensores foi revisada em **09/10/2026**.
 
-Na arquitetura aprovada, o ESP32 atende **GY-302, KY-028 e o sensor ambiental
-RS485**. O celular fornece **GPS, movimento e som**, registra a sessão e a
-envia para a base. GPS e níveis sonoros já são coletados pelo aplicativo;
-a captura dos sensores de movimento do telefone ainda está pendente.
-WTGAHRS3, KY-038 e KY-013 deixam de fazer parte do hardware previsto.
+Na arquitetura da V1, o ESP32 atende **GY-302, KY-028, ENS160+AHT21 e o sensor
+ambiental RS485**. O celular fornece **GPS e nível sonoro**, registra a sessão
+e a envia para a base. O aplicativo, o sistema de coleta e o site estão
+funcionais. WTGAHRS3, KY-038 e KY-013 não fazem parte do hardware previsto.
 
-As ferramentas MQTT, GPS/IMU do ESP32 e Kalman citadas nos testes abaixo
-continuam no repositório como parte da implementação anterior. Sua presença
-não significa que a migração para sensores do celular esteja concluída.
+As ferramentas MQTT, GPS/IMU do ESP32 e Kalman continuam no repositório, mas o
+servidor atual não consome MQTT nem executa Kalman. Os ensaios MQTT abaixo são
+históricos e não funcionam como teste do servidor atual.
 
 Ver [04-telemetria.md](04-telemetria.md) para a arquitetura completa e o
 contrato de dados. Este documento cobre só a máquina da base: para que ela
 serve, como preparar e o que ela não aguenta.
 
 ---
+
+## Operação atual conferida em 10/10/2026
+
+Na raiz do projeto:
+
+```bash
+python3 src/servidor_telemetria.py --porta 8771
+```
+
+A base atual usa Python e SQLite da biblioteca padrão; recebe `POST /sync` e
+serve o painel em `http://<host>:8771`. Mosquitto é dispensável nesse fluxo.
+O bruto fica em `data/sincronizadas/`, e o derivado em `data/estacao.db`.
+O processamento associa o último ambiente ao GPS do telefone, sem Kalman.
+Sessões sem GPS geram zero pontos; som do telefone permanece somente no JSONL.
+O mapa atual usa Leaflet e tiles online; a proposta de canvas offline abaixo
+não foi a implementação adotada. Adaptar usuário/caminhos do arquivo real
+[`telemetria.service`](../servidor/telemetria.service) antes da instalação.
+
+A [documentação versionada](versoes/2026-10-10-2cd5977-local/documentacao-tecnica.md)
+contém interfaces, limitações, resultados de testes e roteiro de validação.
+Nenhuma implantação no Pi foi executada nesta revisão.
+
+## Histórico de decisões e preparação da base
+
+As seções seguintes preservam o estudo de 17/08/2026 e notas posteriores.
+Passos de broker, monitor `/dados` e simulador MQTT referem-se ao servidor
+antigo; não descrevem recursos do `servidor_telemetria.py` presente.
 
 ## Por que um Pi e não o notebook
 
@@ -34,12 +60,12 @@ telefone.
 Consequências que só a base entrega:
 
 - **Sempre ligada.** As sessões podem ser enviadas pelo celular quando a
-  base estiver acessível. O caminho MQTT antigo também pode ser acompanhado
-  durante a transição.
+  base estiver acessível. Ferramentas MQTT separadas continuam disponíveis,
+  mas o servidor atual não as consome.
 - **Endereço fixo.** O aplicativo precisa de um destino estável para enviar
   suas sessões por HTTP.
 - **Histórico que acumula.** A base reúne as sessões recebidas; o banco com
-  dados crus e derivados continua sendo uma etapa a concluir.
+  dados derivados já existe em SQLite; os arquivos crus ficam em JSONL separado.
 
 **Isto não é uma escolha de arquitetura, é de implantação.** O
 `src/servidor_telemetria.py` roda igual nos dois. Desenvolva no PC (iteração
@@ -83,8 +109,8 @@ O peso vem do framework, não do Pi. Painel leve roda liso até no 3B.
 ## Preparação — passo a passo
 
 Os passos de MQTT e simulação preservam a instalação e o diagnóstico do
-caminho antigo. Eles não validam a captura de movimento do telefone nem
-substituem um teste de sessão do aplicativo com envio por `POST /sync`.
+caminho antigo. Eles não substituem um teste de sessão do aplicativo com
+envio por `POST /sync`.
 
 ### 1. Gravar o cartão
 
@@ -128,8 +154,9 @@ escuta em `localhost` e recusa cliente anônimo. As armadilhas dessa instalaçã
 
 ### 5. Teste do caminho MQTT legado, sem hardware nenhum
 
-Este teste exercita o simulador e o caminho MQTT de posição/IMU já existente
-no servidor. Ele é útil para manter compatibilidade com o sistema anterior.
+Este roteiro dependia do servidor antigo com assinatura MQTT. O simulador foi removido na limpeza de 10/10/2026; o servidor atual não recebe MQTT; o ensaio
+completo abaixo é apenas registro histórico. Teste a versão atual por `/sync`,
+conforme a documentação versionada.
 
 No Pi, suba o servidor:
 
@@ -206,7 +233,7 @@ monitorar a base a partir do notebook.
 
 ### 6. Adaptador RS485-USB no Pi — bancada legada
 
-A base recebe as sessões do telefone; a leitura dos três sensores externos
+A base recebe as sessões do telefone; a leitura dos quatro módulos externos
 cabe ao ESP32. O adaptador direto no Pi é opcional para bancada e manutenção
 das ferramentas WTG antigas:
 
@@ -259,24 +286,22 @@ SSD USB e aponte o banco para lá — o SD fica só com o sistema. Use `UUID=` n
 
 | Responsabilidade | ESP32 | Celular | Raspberry Pi |
 |---|---|---|---|
-| Ler GY-302, KY-028 e ambiental RS485 | Sim | Recebe por BLE | Recebe na sessão |
+| Ler GY-302, KY-028 e ambiental RS485 | Implementado | Recebe por BLE | Recebe na sessão |
+| Ler ENS160+AHT21 | Teste separado; integração pendente | Ainda sem suporte | Ainda sem suporte |
 | Obter GPS | Fora do hardware previsto | Implementado | Recebe na sessão |
 | Medir níveis sonoros | Fora do hardware previsto | Implementado, sem guardar áudio | Recebe na sessão |
-| Capturar sensores de movimento | Fora do hardware previsto | Previsto; implementação pendente | Integração pendente |
 | Gravar a sessão em campo | SD ainda não implementado | JSONL local implementado | — |
 | Carimbar os registros atuais da sessão | — | `ts_app` ao anexar o dado | Preserva o registro recebido |
 | Enviar a sessão para a base | — | HTTP `POST /sync` implementado | Recebe o arquivo |
 | Manter histórico e apoiar análise | — | Mantém a cópia local | Responsabilidade da base |
-| Kalman com movimento do telefone | — | Coleta de movimento pendente | Adaptação e validação pendentes |
 
-As rotinas de Kalman para dados WTG permanecem disponíveis para as coletas
-históricas. Não comprovam fusão já implementada com sensores de movimento
-do telefone. Os planos anteriores de `seq`, `ts`, `ms` e cartão SD estão
-preservados como histórico em [04-telemetria.md](04-telemetria.md).
+As rotinas de Kalman para dados WTG e os planos anteriores de `seq`, `ts`,
+`ms` e cartão SD estão preservados como histórico em
+[04-telemetria.md](04-telemetria.md).
 
 ---
 
-## Pendente
+## Melhorias posteriores à V1
 
 - [ ] Tela touch. Preferir a **DSI oficial de 7"** a HDMI + USB: não ocupa porta
       USB, não precisa de conversor, driver de toque já vem no sistema. Somar o
@@ -287,5 +312,5 @@ preservados como histórico em [04-telemetria.md](04-telemetria.md).
       instrumento é desligado no botão da régua, sem shutdown gracioso.
 - [ ] Acesso remoto (Tailscale ou equivalente), se for preciso abrir o painel
       fora da rede local.
-- [ ] Banco em duas camadas (cru imutável + derivado recomputável) — ver
-      [04-telemetria.md](04-telemetria.md).
+- [x] JSONL recebido e SQLite derivado implementados; reenvio maior substitui
+      o bruto anterior, portanto não há imutabilidade de todas as revisões.

@@ -1,0 +1,134 @@
+CÍRCULO DE 20 mm — PRIMEIRO ARQUIVO NO GSENDER
+
+Arquivo: circulo_20mm_SOMENTE_NO_AR.nc
+Finalidade: aprender a carregar e executar G-code, sem cortar material.
+Não é um programa de gravação no MDF. Não basta ligar o motor para convertê-lo
+em programa de corte: há deslocamentos centro-borda e borda-centro na mesma
+altura, sem entrada de corte ou retirada da ferramenta.
+
+O QUE ELE FAZ
+
+O centro do círculo é a posição física X/Y em que a máquina estiver quando
+você iniciar o arquivo completo. Não precisa zerar X, Y ou Z para este teste.
+Usa movimentos relativos e não contém comandos para gravar o zero de trabalho.
+G50 cancela uma eventual escala de coordenadas antes de qualquer movimento.
+Se o controlador rejeitar qualquer comando do cabeçalho, não pule a linha:
+interrompa e envie o erro para análise.
+
+1. Anda 10 mm em X positivo, do centro até a borda.
+2. Percorre um círculo de 20 mm de diâmetro, em quatro arcos anti-horários.
+3. Volta 10 mm em X negativo ao centro, a posição inicial.
+
+X e Y ficam entre -10 e +10 mm em relação ao ponto de partida.
+O programa não comanda Z: mantém a altura inicial durante todo o percurso.
+A imagem terá um círculo e uma linha entre o centro e sua borda: é esperado.
+Avanço: 120 mm/min SOMENTE EM VAZIO. Duração teórica aproximada: 42 segundos,
+sem contar aceleração e comunicação, com o override em 100%.
+
+PREPARAÇÃO — OPERADOR PRESENTE
+
+- Deixe o motor da fresa fisicamente desligado no regulador/chave. Se houver
+  desconexão independente e acessível do motor, mantenha-o desenergizado.
+  Não intervenha na fiação. O controle e os motores dos eixos precisam estar
+  ligados para movimentar a CNC. O comando M5 não garante desligamento do
+  motor controlado pelo seu regulador físico.
+- Tire mãos, cabos e objetos soltos da área móvel. Use proteção ocular.
+  Deixe uma parada física acessível; o computador não substitui essa parada.
+- Com JOG por passos pequenos e velocidade baixa, confirme o sentido de Z
+  antes de levantar a ferramenta. Posicione a ponta acima de TODOS os
+  obstáculos do percurso, incluindo o MDF e os grampos, com margem de folga.
+  Confira que há curso livre em Z para essa subida. Não use homing ou Go To.
+- Escolha o centro numa região livre. Precisará de 10 mm de curso em cada
+  sentido de X e Y, MAIS margem para o tamanho da ferramenta, porca e suporte.
+  Não confie em limites eletrônicos não validados. Não rode perto do fim de
+  curso nem suponha que o gSender detectará uma colisão.
+- Confira que não há comandos automáticos/macros de início, fim ou retomada
+  configurados no gSender que movimentem Z, acionem o motor ou mudem modos.
+  Caso existam ou você não saiba verificar, fique apenas na visualização.
+- Se aparecer alarme, não desbloqueie sem entender a causa.
+
+CARREGAR E EXECUTAR
+
+1. No gSender, use Load File / Carregar arquivo e abra o arquivo .nc.
+2. Inspecione apenas o visualizador: círculo de 20 x 20 mm e linha radial.
+   Como os movimentos são relativos, a origem mostrada pelo visualizador pode
+   diferir da posição física. O círculo será centrado no ponto de partida real.
+3. Não clique em Outline: ele também movimenta a máquina e não é necessário.
+4. Confira novamente altura e área livres, motor da fresa desligado, velocidade
+   de avanço ajustada para 100% do programa e máquina parada, sem alarmes.
+5. Use Start / Iniciar, a partir da PRIMEIRA linha. Acompanhe a máquina.
+6. Se algo sair do esperado, interrompa. Pause/Stop do programa não desligam
+   necessariamente o motor manual. Para perigo imediato use a parada física.
+7. No fim, confira o retorno físico ao ponto inicial; a coordenada na tela
+   sozinha não comprova precisão nem ausência de perda de passos.
+
+Se interromper, NÃO use Start from Line / Retomar da linha. Esse arquivo usa
+movimentos relativos: reposicione manualmente num local livre e recomece do
+início. Ao concluir normalmente, ele retorna ao modo absoluto G90; se abortar,
+não presuma que os modos ou a posição continuem válidos para outro programa.
+
+ENTENDENDO O ZERO DE TRABALHO — PARA UM FUTURO CORTE
+
+Encostar a ferramenta na peça não informa automaticamente o zero ao gSender.
+É preciso atribuir uma coordenada àquela posição usando o controle de definir
+zero ou editando o valor da posição de trabalho. Isso é diferente de Go To
+(mover para uma coordenada) e de Home (referenciar os eixos nos sensores).
+
+Num programa cuja origem Z fica no topo do MDF:
+- Z = 0 corresponde à superfície;
+- Z positivo fica acima da superfície;
+- Z negativo entra no material.
+Essa convenção exige confirmar previamente que Z positivo afasta a ferramenta
+da peça. Não use um arquivo de corte se o movimento físico estiver invertido.
+
+X e Y devem ser definidos no mesmo ponto escolhido como origem no desenho/CAM:
+pode ser o centro ou um canto, dependendo do arquivo. Não existe uma origem
+universal válida para todo arquivo. Este círculo EM VAZIO não depende disso.
+
+APROXIMAÇÃO COM PAPEL — NÃO FAZER COM A FRESA GIRANDO
+
+Com MDF bem fixado, ponta limpa e motor da fresa fisicamente desenergizado:
+1. Coloque uma tira de papel de espessura conhecida sobre o MDF, deixando uma
+   parte para puxar sem pôr os dedos sob a ferramenta. Não use as mãos para
+   segurar o MDF.
+2. Aproxime a ferramenta por JOG lento. Perto da superfície, use passos de
+   0,01 mm, somente se a máquina demonstrou responder a esses pequenos passos.
+   Não empurre a ponta contra o MDF nem aperte o papel.
+3. Entre os movimentos, com o eixo parado, deslize a tira pela ponta livre.
+   Pare quando sentir um leve atrito. Não force: a ponta é muito pequena.
+4. Nesse ponto a ferramenta está ACIMA do MDF pela espessura do papel. Edite
+   o valor da posição Z DE TRABALHO no gSender para essa espessura POSITIVA:
+   por exemplo, +0.10 mm APENAS se o papel medir 0.10 mm. Não suponha que toda
+   folha mede isso. Confirme as unidades em milímetros. Se não conhece a
+   espessura, a referência é aproximada e não serve para definir um corte fino.
+5. Levante a ferramenta por JOG e retire o papel. Não use Go To Z0 para testar.
+
+No gSender, editar o valor da posição define a referência; Go To movimenta a
+máquina. Se os controles da sua versão forem diferentes, pare e mande uma
+captura da área de coordenadas antes de clicar. Não use Zero All por engano
+depois de levantar a ferramenta: isso deslocaria o zero do topo para o ar.
+
+Definir o zero muda o referencial de trabalho (offset), que pode ficar salvo
+na controladora. Não é atualização de firmware nem calibração dos motores.
+Eu não defini nem alterei esse zero por você.
+
+LIMITES DESTE TESTE
+
+O arquivo foi conferido por cálculo offline, sem conexão USB ou execução na
+CNC. Isso não valida a mecânica, os sensores, a calibração, a fixação da fresa,
+o sentido dos eixos nem os comandos extras configurados no seu gSender.
+Não foram alterados firmware, parâmetros ou configurações da máquina.
+
+A foto sugere ferramenta de ponta reduzida, mas não fornece diâmetro cortante
+ou parâmetros de corte. Não use os 120 mm/min como recomendação para MDF.
+Um futuro arquivo de gravação precisa de zero Z verificado, ferramenta e
+rotação identificadas, fixação e extração de pó adequadas. O motor manual
+também precisa de procedimento próprio para ligar e desligar.
+
+REFERÊNCIAS
+
+gSender: carregar arquivos, definir coordenadas e compensar a espessura do papel
+https://resources.sienci.com/view/gs-using-gsender/
+
+grblHAL: códigos G21, G17, G94, G91/G90, G91.1, G50 e G3
+https://github.com/grblHAL/core

@@ -1,0 +1,21 @@
+Revisão documental: 10/10/2026
+
+129 destinos de links locais conferidos nos oito documentos alterados e nos
+dois documentos novos. Zero destinos ausentes após conclusão da entrega.
+Figuras do esquema, PCB e site inspecionadas visualmente; fontes/copias
+preservadas nesta versão. As figuras de hardware são exportações históricas,
+não novas exportações da variante local.
+UUIDs de serviço e características comparados entre contrato.dart e ble_estacao.h.
+Contagens e redes dos pads extraídas das duas PCBs; isto não substitui ERC/DRC.
+
+Inventário: 31 arquivos; 5 atualizados, 2 revisados sem alteração, 24 excluídos
+com motivo. Nenhum pendente. Dependências, terceiros, metadados e cópias
+históricas excluídos da revisão autoral ativa; backups ZIP não extraídos.
+
+Comparação SHA-256 com inventário inicial: somente oito arquivos documentais
+rastreados foram alterados nesta revisão. Fontes de software, firmware e
+arquivos de hardware rastreados permaneceram idênticos ao estado de entrada,
+inclusive as alterações locais de hardware já existentes.
+
+Comando git diff --check: sem problemas de espaços/conflitos reportados.
+Limite: links externos foram preservados, mas não foram revalidados na web.

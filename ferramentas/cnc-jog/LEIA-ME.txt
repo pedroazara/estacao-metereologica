@@ -1,0 +1,85 @@
+OFICINA — PAINEL LOCAL DE JOG DA CNC
+
+Abrir: http://127.0.0.1:8765
+Iniciar novamente: execute ./iniciar.sh neste diretório.
+Alternativa: python3 server.py
+Encerrar: Ctrl+C no terminal do servidor.
+Porta alternativa: ./iniciar.sh --port 8766
+
+Requisitos: Linux, Python 3.10+ e pyserial 3.5 (já disponível neste computador).
+Não é necessário internet para usar o painel. Nada é publicado na rede local.
+O processo não inicia automaticamente com o computador.
+
+COM CNC DESLIGADA
+Escolha “Demonstração · sem CNC”, Conectar, marque a confirmação e Habilitar JOG.
+Todos os movimentos serão virtuais. A faixa roxa diferencia este modo.
+
+COM A CNC REAL, OPERADOR PRESENTE
+Feche outros monitores seriais. Conecte o USB e selecione /dev/ttyACM0 · SKR / NXP.
+A alimentação de potência dos motores é independente da comunicação USB.
+O painel aguarda a mensagem inicial, lê a identificação/configurações e exige
+um estado atualizado antes de concluir a conexão. Isso pode levar alguns segundos.
+Usa DTR ativo para a USB nativa LPC e consulta de estado grblHAL 0x80.
+Uma mudança de sessão após conectar bloqueia os controles e exige reconexão;
+nenhum movimento é habilitado automaticamente.
+Clique em Conectar, confira área livre e spindle parado, marque a confirmação,
+e Habilitar JOG. No modo “Por clique”, cada clique envia um deslocamento.
+X/Y e Z têm distâncias e velocidades independentes. F é sempre mm/min.
+Comece com 0,1 mm para confirmar sentidos físicos. Cancele com o botão ou Esc.
+
+SEGURAR PARA MOVER E JOYSTICK
+Escolha o modo antes de habilitar os controles. Mudar o modo os bloqueia.
+Em “Segurar para mover”, mantenha pressionado X+, X−, Y+, Y−, Z+ ou Z−.
+Também é possível focar um desses botões e segurar Espaço ou Enter.
+Solte o botão para cancelar. Aguarde a confirmação da parada antes de outro
+acionamento. O cancelamento normal ao soltar mantém a habilitação; Esc,
+perda de foco, falha ou limite do acionamento exigem habilitar novamente.
+
+No joystick X/Y, pressione e arraste para fora do centro, mantendo pressionado.
+Ele seleciona um eixo por vez, sem diagonais. A distância do centro controla a
+velocidade, de 60 mm/min até o máximo escolhido no campo X/Y.
+Voltar ao centro cancela; para voltar a mover, solte e inicie outro gesto.
+Mover o mouse sem pressionar não move a CNC. Z usa os botões separados.
+
+Cada acionamento dura no máximo 10 segundos e solicita no máximo 10 mm
+acumulados em X/Y ou 3 mm em Z. Ida e volta contam no limite, não só o saldo.
+O contínuo usa trechos curtos de até 150 ms de deslocamento comandado,
+aguardando confirmação e Idle entre eles; pode haver pequenas pulsações.
+Sem renovação do gesto por 600 ms, o servidor cancela e bloqueia os controles.
+Não há fila longa nem movimento infinito. Esses recursos não substituem
+limites mecânicos, sensores, comissionamento ou uma parada física acessível.
+O computador/USB pode falhar; não suponha parada instantânea ao soltar.
+
+Um novo JOG só é aceito após a confirmação do anterior e o estado Idle.
+Trocar de aba, perder heartbeat ou perder status serial bloqueia os controles
+e solicita cancelamento. A desconexão do USB pode impedir a entrega do comando.
+O botão não é uma parada de emergência física.
+
+O painel não altera firmware ou parâmetros, não zera coordenadas, não faz
+homing, não desbloqueia alarmes, não aciona spindle e não executa arquivos.
+Máximos do painel: XY 5 mm/clique e 600 mm/min; Z 2 mm/clique e 240 mm/min.
+Esses limites locais não são especificações mecânicas validadas.
+
+POSIÇÃO E RELATÓRIO
+As posições são calculadas pelo firmware. Não comprovam movimento dos motores.
+Leia o guia em http://127.0.0.1:8765/relatorio.html (também há link no painel).
+Histórico de comunicação > Salvar diagnóstico baixa um JSON da sessão atual.
+Dados de simulação vêm identificados como tal, inclusive no nome do arquivo.
+
+TESTES SEM HARDWARE
+python3 -m unittest -v
+Os testes e o simulador não acessam o USB físico.
+Testes adicionais da interface, com Node.js: node --test test_controls.cjs
+
+ARQUIVOS
+server.py — serviço local/serial e bloqueios de movimento
+simulator.py — controladora virtual em memória
+index.html, app.js, style.css, layout.css, continuous.css — interface
+relatorio.html, report.css — guia e relatório da inspeção anterior
+test_panel.py — testes funcionais e de proteção da API
+test_continuous.py — testes do controle contínuo e interrupções
+test_controls.cjs — eventos e respostas atrasadas da interface, sem navegador real
+
+Limitação de comissionamento: os comandos foram aceitos pela placa na inspeção
+anterior, mas o operador não confirmou movimento. Ainda faltam validação
+presencial, calibração, sensores, alimentação dos drivers e spindle.

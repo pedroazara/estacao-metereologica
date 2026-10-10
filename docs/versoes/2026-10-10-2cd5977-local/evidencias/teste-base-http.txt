@@ -1,0 +1,7 @@
+
+sync: recebida esp32/esp32-01-20261010-120000.jsonl - 3 registros
+sync: processada esp32-01-20261010-120000.jsonl - 1 pontos no banco
+PASS: HTTP local /sync, reenvio idempotente, /sessoes, GPS sem Kalman, ambiente no mapa e JSONL preservado.
+CONFIRMADO: som_celular preservado no bruto, mas db derivado permanece nulo.
+CONFIRMADO: dev derivado = esp32
+Dados sintéticos; banco e arquivos temporários removidos. Nenhum dado real ou hardware acessado.

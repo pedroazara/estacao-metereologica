@@ -1,0 +1,57 @@
+ADAPTACAO PARA CIRCULO DE 20 mm, PROFUNDIDADE NOMINAL 0,10 mm
+
+STATUS: RASCUNHO. NAO E UM ARQUIVO PRONTO PARA A CNC.
+
+circulo_20mm_Z-0.10_RASCUNHO.nc.template contem campos de velocidade ainda
+nao preenchidos. Nao renomeie para .nc, nao carregue no gSender e nao remova
+os campos para tentar executar. O arquivo anterior SOMENTE_NO_AR foi mantido.
+
+O percurso foi adaptado para:
+1. Usar milimetros, coordenadas absolutas e o referencial de trabalho G54.
+2. Pausar para conferir o zero e manter o motor desligado.
+3. Posicionar Z em +5 mm e ir a X=10, Y=0, na borda do circulo.
+4. Pausar para o operador ligar o motor manualmente e aguardar estabilizar.
+5. Aproximar a ponta a Z=+0,50 mm e depois descer a Z=-0,10 mm.
+6. Percorrer um unico circulo de 20 mm de diametro na trajetoria da ponta.
+7. Levantar a Z=+5 mm, pausar para desligar o motor e so depois voltar ao centro.
+
+Nao ha linha radial cortada entre centro e borda: esses deslocamentos ocorrem
+com Z positivo. O diametro exterior do sulco nao sera necessariamente 20 mm:
+depende da geometria e largura efetiva da ferramenta. Nao ha compensacao de
+raio da ferramenta. -0,10 mm e a menor coordenada Z programada; NAO e um
+limite de seguranca global contra outros comandos, erro de zero ou mecanica.
+
+Ainda precisamos confirmar velocidades de posicionamento, mergulho e corte.
+O avanco de 120 mm/min do arquivo em vazio NAO foi aprovado para corte.
+O avanco anteriormente usado no JOG e a indicacao do regulador ajudam a
+entender o teste anterior, mas nao comprovam parametros corretos da fresa.
+
+PREPARACAO QUE CONTINUA NECESSARIA ANTES DE UM FUTURO ARQUIVO EXECUTAVEL
+
+- Confirmar ferramenta integra, corretamente presa e apropriada ao material;
+  identificar diametro da ponta e faixa de rotacao antes de definir avancos.
+- Zero XY G54 no centro desejado; zero Z G54 na superficie do MDF, NAO no
+  fundo de um rasgo. Encostar nao define automaticamente esse zero.
+- Confirmar movimento fisico de Z positivo afastando a ponta da peca.
+- G54 deve ser o mesmo referencial definido no gSender. O arquivo nao grava
+  offsets nem calibra eixos e nao corrige um zero configurado incorretamente.
+- A altura de +5 mm e apenas uma proposta: precisa haver curso e folga para
+  ferramenta, porca, suporte e grampos em TODOS os deslocamentos. Se nao
+  houver, a altura e/ou fixacao e percurso precisam ser revistos.
+- MDF fixado, area livre, protecao ocular, extracao de po e parada fisica
+  acessivel. Nao segurar a peca com a mao.
+- Nao utilizar macros automaticas de inicio/fim/retomada que acrescentem
+  movimentos ou mudem os modos do programa.
+- Fazer ensaio em vazio com um arquivo especifico: nao simular corte elevando
+  informalmente o zero e depois esquecer de repor a referencia real.
+- M0 pausa o programa, mas nao e parada de emergencia. M5, Pause e Stop do
+  gSender NAO garantem desligamento do motor acionado pelo regulador fisico.
+- Nao recomecar de uma linha intermediaria. Se interromper, reavaliar posicao,
+  zero, altura e motor antes de qualquer tentativa de reinicio completo.
+
+Somente arquivos locais foram criados. Nao houve comunicacao com a CNC,
+atualizacao de firmware nem alteracao de configuracoes da controladora.
+
+Referencias:
+https://github.com/grblHAL/core
+https://resources.sienci.com/view/gs-using-gsender/

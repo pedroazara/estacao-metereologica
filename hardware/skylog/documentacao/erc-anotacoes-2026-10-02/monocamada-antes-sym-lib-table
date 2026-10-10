@@ -1,3 +1,0 @@
-(sym_lib_table (version 7)
-  (lib (name "skylog") (type "KiCad") (uri "${KIPRJMOD}/../../skylog.kicad_sym") (options "") (descr "Símbolos do projeto Skylog"))
-)

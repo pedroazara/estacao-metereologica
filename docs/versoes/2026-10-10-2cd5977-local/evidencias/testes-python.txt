@@ -1,0 +1,12 @@
+test_gps_parado_veta_ruido_do_acelerometro (test_filtro_kalman.DetectorParadoTest.test_gps_parado_veta_ruido_do_acelerometro) ... ok
+test_gps_tem_histerese_contra_zero_isolado (test_filtro_kalman.DetectorParadoTest.test_gps_tem_histerese_contra_zero_isolado) ... ok
+test_histerese_combina_acelerometro_e_giroscopio (test_filtro_kalman.DetectorParadoTest.test_histerese_combina_acelerometro_e_giroscopio) ... ok
+test_exige_sequencia_e_expira_cadencia (test_filtro_kalman.DetectorPassosTest.test_exige_sequencia_e_expira_cadencia) ... ok
+test_ancora_rejeita_curva_e_corrige_trecho_reto (test_filtro_kalman.EstimadorRumoTest.test_ancora_rejeita_curva_e_corrige_trecho_reto) ... ok
+test_subtrai_bias_e_congela_integral_em_reposo (test_filtro_kalman.EstimadorRumoTest.test_subtrai_bias_e_congela_integral_em_reposo) ... ok
+test_zupt_antes_da_propagacao_e_pdr_bloqueado (test_filtro_kalman.FiltroCVTest.test_zupt_antes_da_propagacao_e_pdr_bloqueado) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.001s
+
+OK
