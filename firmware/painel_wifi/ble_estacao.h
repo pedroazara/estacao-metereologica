@@ -50,6 +50,10 @@ static const char *UUID_AMB     = "e5710003-b100-4a1e-9d2f-7c3a5b8e1f40";
 static const char *UUID_IMU     = "e5710004-b100-4a1e-9d2f-7c3a5b8e1f40";
 // A unica caracteristica gravavel: e por ela que o app configura a estacao.
 static const char *UUID_CFG     = "e5710005-b100-4a1e-9d2f-7c3a5b8e1f40";
+// Localizacao vinda do TELEFONE (write). O celular escreve aqui o proprio GPS e
+// a estacao passa a emitir isso como `pos`, com a linha de tempo dela. Assim ha
+// UMA fonte de dados so - o ESP -, com IMU, ambiente e posicao no mesmo `seq`.
+static const char *UUID_LOC     = "e5710006-b100-4a1e-9d2f-7c3a5b8e1f40";
 
 /** Sobe a pilha BLE e comeca a anunciar. Chame uma vez, depois do Wi-Fi. */
 void iniciar(const char *nomeAnunciado);
@@ -81,6 +85,9 @@ void publicarCfg(const String &json);
  * onWrite so guarda a string; quem aplica e o loop(), no seu proprio tempo.
  */
 String configPendente();
+
+/** Ultima localizacao escrita pelo telefone desde a ultima chamada, ou "". */
+String localizacaoPendente();
 
 /**
  * Chame no loop(). Existe por causa de uma armadilha do BLE: quando o cliente

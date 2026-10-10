@@ -5,92 +5,279 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../armazenamento/gravador.dart';
+import '../gps/gps_telefone.dart';
 import '../modelo/leituras.dart';
+import '../modelo/sensores.dart';
 import 'contrato.dart';
 
 enum EstadoLigacao { desligado, procurando, conectando, ligado, erro }
 
 /// Toda a conversa com a estacao. A interface so observa isto.
+///
+/// SIMPLIFICADO em 26/08/2026: sem IMU, sem Kalman. A POSICAO vem do GPS do
+/// proprio telefone (gravada direto, independente do ESP); o AMBIENTE
+/// (temperatura/umidade) vem do ESP por BLE. A trajetoria comeca quando o
+/// usuario aperta Gravar. Analise fina fica na base.
 class EstacaoBle extends ChangeNotifier {
   EstadoLigacao estado = EstadoLigacao.desligado;
   String mensagem = 'desconectado';
 
   Status? status;
-  Posicao? posicao;
   Ambiente? ambiente;
-  LoteImu? ultimoLote;
   Configuracao? config;
 
-  int notificacoesRecebidas = 0;
-  int falhasDeParse = 0;
-  DateTime? ultimaNotificacao;
+  final Gravador gravador;
+  final GpsTelefone gps;
 
-  final gravador = Gravador();
+  EstacaoBle({Gravador? gravador, GpsTelefone? gps})
+    : gravador = gravador ?? Gravador(),
+      gps = gps ?? GpsTelefone() {
+    this.gps.aoReceber = _gpsDoTelefone;
+    this.gps.addListener(notifyListeners);
+  }
+
+  DateTime? ultimaLeituraAmbiente;
+  Set<String> _camposAmbienteValidos = const {};
+  Set<String> get camposAmbienteValidos => _camposAmbienteValidos;
+  Set<SensorId>? _sensoresGravacao;
+  bool _iniciandoGravacao = false;
+  int _geracaoGravacao = 0;
+
+  bool get _gravarGps =>
+      _sensoresGravacao == null ||
+      _sensoresGravacao!.contains(SensorId.gpsCelular);
+
+  /// Trajetoria da MEDICAO: pontos [lat,lon] acumulados enquanto grava. Vazia
+  /// fora da gravacao - a trajetoria e da medida, nao do passeio ate comecar.
+  final List<List<double>> trilha = [];
+
+  /// Posicao atual do telefone, para o mapa marcar onde voce esta agora.
+  double? get telLat => gps.lat;
+  double? get telLon => gps.lon;
+  double? get precisaoM => gps.precisaoM;
 
   BluetoothDevice? _dispositivo;
   BluetoothCharacteristic? _carCfg;
   final _assinaturas = <StreamSubscription<dynamic>>[];
   StreamSubscription<dynamic>? _assEstado;
+  Completer<BluetoothDevice?>? _busca;
+  int _tentativa = 0;
+  Timer? _autoTimer;
+  Timer? _relogioParado;
 
   bool get conectado => estado == EstadoLigacao.ligado;
 
-  /// Procura a estacao e conecta na primeira que anunciar o nosso servico.
-  ///
-  /// O filtro e por UUID DE SERVICO, nao por nome: nome de dispositivo BLE nao
-  /// e unico nem confiavel, e um vizinho com um ESP32 qualquer chamado
-  /// "esp32-01" apareceria na lista. O UUID e nosso.
+  // ------------------------------------------------------------------ GPS
+  /// Liga o GPS do telefone. Chamado uma vez, na partida do app.
+  Future<void> iniciarGpsTelefone() async {
+    await gps.iniciar();
+  }
+
+  /// Cada posicao REAL vira ponto na hora - sem isso, dois problemas: perder
+  /// fixes entre amostragens (trajetoria com poucos pontos) e, pior, gravar o
+  /// mesmo ponto em cache varias vezes achando que sao novos (foi o que uma
+  /// correcao anterior errada fazia: um timer de 1s relendo a ultima posicao
+  /// conhecida, que o GpsTelefone so atualiza a cada ~1s de verdade agora -
+  /// ver gps_telefone.dart). Aqui grava exatamente o que o GPS mediu, quando
+  /// mediu, e nada mais.
+  void _gpsDoTelefone(
+    double lat,
+    double lon,
+    double precisaoM,
+    double velKmh,
+    double rumo,
+  ) {
+    if (gravador.gravando && !_iniciandoGravacao && _gravarGps) {
+      gravador.anexar('gps', {
+        'lat': lat,
+        'lon': lon,
+        'precisao': precisaoM,
+        'vel': velKmh,
+        'rumo': rumo,
+      });
+      if (trilha.isEmpty || trilha.last[0] != lat || trilha.last[1] != lon) {
+        trilha.add([lat, lon]);
+        if (trilha.length > 5000) trilha.removeAt(0);
+      }
+    }
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------- Gravacao
+  Future<void> iniciarGravacao({Set<SensorId>? sensores}) async {
+    if (!_vivo || gravador.gravando || _iniciandoGravacao) return;
+    _iniciandoGravacao = true;
+    final geracao = ++_geracaoGravacao;
+    // Copia antes do primeiro await: alterações na seleção da interface nunca
+    // modificam os dados de uma coleta que já começou.
+    _sensoresGravacao = sensores == null ? null : Set.unmodifiable(sensores);
+    trilha.clear();
+    try {
+      await gravador.iniciar(status?.dev ?? 'estacao');
+      if (!_vivo || geracao != _geracaoGravacao) {
+        await gravador.encerrar();
+        return;
+      }
+      gravador.anexar('selecao', {
+        'sensores': [
+          for (final sensor in SensorId.values)
+            if (_sensoresGravacao?.contains(sensor) ??
+                (sensor != SensorId.somCelular))
+              sensor.name,
+        ],
+      });
+      // Primeiro ponto imediato, se ja houver fix - nao espera o proximo evento
+      // do stream para a trajetoria comecar a existir.
+      final la = gps.lat, lo = gps.lon;
+      final fix = gps.ultimaLeitura;
+      if (_gravarGps &&
+          la != null &&
+          lo != null &&
+          fix != null &&
+          DateTime.now().difference(fix) <= const Duration(seconds: 5)) {
+        gravador.anexar('gps', {
+          'lat': la,
+          'lon': lo,
+          'precisao': gps.precisaoM ?? 0.0,
+          'vel': gps.velKmh ?? 0.0,
+          'rumo': gps.rumo ?? 0.0,
+        });
+        trilha.add([la, lo]);
+      }
+      // So para redesenhar o "sem fix ha Ns" na tela em tempo real - nao grava
+      // nada por conta propria. A gravacao de verdade e so em _gpsDoTelefone.
+      _relogioParado?.cancel();
+      _relogioParado = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => notifyListeners(),
+      );
+    } finally {
+      _iniciandoGravacao = false;
+    }
+    notifyListeners();
+  }
+
+  Future<void> pararGravacao() async {
+    _geracaoGravacao++;
+    _relogioParado?.cancel();
+    _relogioParado = null;
+    await gravador.encerrar();
+    _sensoresGravacao = null;
+    notifyListeners();
+  }
+
+  /// Segundos desde o ultimo fix real recebido - a UI usa isto para avisar se
+  /// o GPS parou de responder (em vez de fingir que continua atualizando).
+  int? get segundosSemFix => gps.ultimaLeitura == null
+      ? null
+      : DateTime.now().difference(gps.ultimaLeitura!).inSeconds;
+
+  // ------------------------------------------------------------ Auto-conexao
+  void iniciarAutoConexao() {
+    _autoTimer?.cancel();
+    _tentarSeSolto();
+    _autoTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _tentarSeSolto(),
+    );
+  }
+
+  void _tentarSeSolto() {
+    if (estado == EstadoLigacao.desligado || estado == EstadoLigacao.erro) {
+      procurarEConectar();
+    }
+  }
+
+  /// Procura a estacao (por UUID de servico, nao por nome) e conecta. So para
+  /// receber os dados ambientais - a posicao nao depende disto.
   Future<void> procurarEConectar() async {
-    if (estado == EstadoLigacao.procurando ||
-        estado == EstadoLigacao.conectando) {
+    if (!_vivo ||
+        estado == EstadoLigacao.procurando ||
+        estado == EstadoLigacao.conectando ||
+        conectado) {
       return;
     }
+    final tentativa = ++_tentativa;
     _mudar(EstadoLigacao.procurando, 'procurando a estacao...');
-
     try {
-      if (await FlutterBluePlus.isSupported == false) {
+      final suportado = await FlutterBluePlus.isSupported;
+      if (!_tentativaAtual(tentativa)) return;
+      if (!suportado) {
         _mudar(EstadoLigacao.erro, 'este celular nao tem Bluetooth LE');
         return;
       }
-      // Em muitos Android o radio esta desligado; pedir para ligar evita um
-      // "nao encontrei nada" que na verdade era o Bluetooth off.
       if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
         try {
           await FlutterBluePlus.turnOn();
         } catch (_) {
+          if (!_tentativaAtual(tentativa)) return;
           _mudar(EstadoLigacao.erro, 'ligue o Bluetooth e tente de novo');
           return;
         }
       }
-
-      await FlutterBluePlus.startScan(
-        withServices: [Guid(Contrato.servico)],
-        timeout: const Duration(seconds: 15),
-      );
-
-      BluetoothDevice? achado;
-      await for (final resultados in FlutterBluePlus.scanResults) {
-        if (resultados.isNotEmpty) {
-          achado = resultados.first.device;
-          break;
-        }
-      }
-      await FlutterBluePlus.stopScan();
-
+      if (!_tentativaAtual(tentativa)) return;
+      final achado = await _procurarDispositivo(tentativa);
+      if (!_tentativaAtual(tentativa)) return;
       if (achado == null) {
-        _mudar(EstadoLigacao.erro,
-            'estacao nao encontrada - ela esta ligada e por perto?');
+        _mudar(
+          EstadoLigacao.desligado,
+          'estacao nao encontrada - ela esta ligada e por perto?',
+        );
         return;
       }
       await _conectar(achado);
     } catch (e) {
+      if (!_tentativaAtual(tentativa)) return;
       _mudar(EstadoLigacao.erro, 'falha ao procurar: $e');
     }
+  }
+
+  bool _tentativaAtual(int tentativa) => _vivo && tentativa == _tentativa;
+
+  Future<BluetoothDevice?> _procurarDispositivo(int tentativa) async {
+    final busca = Completer<BluetoothDevice?>();
+    _busca = busca;
+    StreamSubscription<List<ScanResult>>? resultados;
+    StreamSubscription<bool>? procurando;
+    try {
+      await FlutterBluePlus.startScan(
+        withServices: [Guid(Contrato.servico)],
+        timeout: const Duration(seconds: 15),
+      );
+      if (!_tentativaAtual(tentativa)) return null;
+      resultados = FlutterBluePlus.scanResults.listen(
+        (itens) {
+          if (itens.isNotEmpty && !busca.isCompleted) {
+            busca.complete(itens.first.device);
+          }
+        },
+        onError: (Object erro, StackTrace pilha) {
+          if (!busca.isCompleted) busca.completeError(erro, pilha);
+        },
+      );
+      // O timeout encerra o scanner, mas scanResults nunca fecha. Observar
+      // isScanning libera a tentativa e permite que o timer tente novamente.
+      procurando = FlutterBluePlus.isScanning.listen((ativo) {
+        if (!ativo && !busca.isCompleted) busca.complete(null);
+      });
+      return await busca.future;
+    } finally {
+      await resultados?.cancel();
+      await procurando?.cancel();
+      await FlutterBluePlus.stopScan();
+      if (identical(_busca, busca)) _busca = null;
+    }
+  }
+
+  void _cancelarBusca() {
+    _tentativa++;
+    final busca = _busca;
+    if (busca != null && !busca.isCompleted) busca.complete(null);
   }
 
   Future<void> _conectar(BluetoothDevice d) async {
     _mudar(EstadoLigacao.conectando, 'conectando...');
     _dispositivo = d;
-
     await _assEstado?.cancel();
     _assEstado = d.connectionState.listen((s) {
       if (s == BluetoothConnectionState.disconnected &&
@@ -99,110 +286,104 @@ class EstacaoBle extends ChangeNotifier {
         _limparAssinaturas();
       }
     });
-
-    // ATENCAO AO `license`. O flutter_blue_plus tem licenca dupla desde a 2.x:
-    // `nonprofit` cobre uso pessoal, pesquisa e instituicao de ensino, que e o
-    // caso deste projeto; uso com fins lucrativos exige licenca COMERCIAL paga.
-    // Se a estacao virar produto vendido, isto precisa ser revisto - ver o
-    // LICENSE do pacote. Nao e detalhe de compilacao, e condicao de uso.
-    //
-    // O `mtu` aqui ja faz a negociacao na conexao, antes de qualquer
-    // notificacao chegar. Fazer depois seria tarde: as primeiras notificacoes
-    // viriam truncadas no MTU padrao de 23 bytes.
+    // license.nonprofit: uso pessoal/pesquisa/ensino. Uso comercial exige
+    // licenca paga do flutter_blue_plus - ver o LICENSE do pacote.
     await d.connect(
       license: License.nonprofit,
       mtu: Contrato.mtu,
       autoConnect: false,
       timeout: const Duration(seconds: 20),
     );
-
     final servicos = await d.discoverServices();
     final servico = servicos.firstWhere(
       (s) => s.uuid == Guid(Contrato.servico),
       orElse: () => throw Exception('servico da estacao nao encontrado'),
     );
-
     for (final c in servico.characteristics) {
       final id = c.uuid.toString().toLowerCase();
       if (id == Contrato.cfg.toLowerCase()) _carCfg = c;
-      await _assinar(c, id);
+      // Assina o que este app usa: ambiente, status e a CONFIG. A cfg precisa
+      // ser assinada para o app receber a confirmacao do que a estacao aplicou
+      // - sem isso, mudar um ajuste so aparecia depois de reiniciar o app. IMU
+      // e posicao do ESP sao ignorados (a posicao vem do GPS do telefone).
+      if (id == Contrato.amb.toLowerCase() ||
+          id == Contrato.status.toLowerCase() ||
+          id == Contrato.cfg.toLowerCase()) {
+        await _assinar(c, id);
+      }
     }
-
-    // Le a configuracao atual de cara: a tela de ajustes precisa mostrar o que
-    // a estacao ESTA fazendo, nao valores padrao inventados pelo app.
     try {
       final bruto = await _carCfg?.read();
-      if (bruto != null && bruto.isNotEmpty) _processar(Contrato.cfg, bruto);
+      if (bruto != null && bruto.isNotEmpty) {
+        processarPacote(Contrato.cfg, bruto);
+      }
     } catch (_) {}
-
     _mudar(EstadoLigacao.ligado, 'conectado');
   }
 
   Future<void> _assinar(BluetoothCharacteristic c, String id) async {
     if (!c.properties.notify) return;
     await c.setNotifyValue(true);
-    _assinaturas.add(c.onValueReceived.listen((dados) => _processar(id, dados)));
+    _assinaturas.add(
+      c.onValueReceived.listen((dados) => processarPacote(id, dados)),
+    );
   }
 
-  void _processar(String id, List<int> bytes) {
+  /// Entrada única das notificações; pública para testar pacotes sem rádio real.
+  @visibleForTesting
+  void processarPacote(String id, List<int> bytes) {
     if (bytes.isEmpty) return;
-    notificacoesRecebidas++;
-    ultimaNotificacao = DateTime.now();
-
     Map<String, dynamic> j;
     try {
       j = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
     } catch (_) {
-      // Quase sempre significa notificacao truncada, ou seja: o MTU nao subiu.
-      falhasDeParse++;
-      notifyListeners();
       return;
     }
-
-    switch (id) {
-      case _ when id == Contrato.status.toLowerCase():
-        status = Status.doJson(j);
-        _gravar('status', j);
-      case _ when id == Contrato.pos.toLowerCase():
-        posicao = Posicao.doJson(j);
-        _gravar('pos', j);
-      case _ when id == Contrato.amb.toLowerCase():
-        ambiente = Ambiente.doJson(j);
-        _gravar('amb', j);
-      case _ when id == Contrato.imu.toLowerCase():
-        ultimoLote = LoteImu.doJson(j);
-        _gravar('imu', j);
-      case _ when id == Contrato.cfg.toLowerCase():
-        config = Configuracao.doJson(j);
-      // A configuracao NAO vai para o arquivo da coleta: ela e ajuste do
-      // instrumento, nao medida. Misturar as duas coisas sujaria a serie.
+    if (id == Contrato.amb.toLowerCase()) {
+      ambiente = Ambiente.doJson(j);
+      ultimaLeituraAmbiente = DateTime.now();
+      _camposAmbienteValidos = Set.unmodifiable({
+        for (final campo in const ['temp', 'umid', 'lux', 't28', 't13', 'db'])
+          if (j[campo] is num &&
+              (j[campo] as num).isFinite &&
+              (campo != 'lux' || (j[campo] as num) >= 0))
+            campo,
+      });
+      if (gravador.gravando && !_iniciandoGravacao) {
+        if (_sensoresGravacao == null) {
+          gravador.anexar('amb', j);
+        } else {
+          final permitidos = {
+            for (final sensor in _sensoresGravacao!) ...sensor.camposAmbiente,
+          };
+          final filtrado = <String, dynamic>{
+            for (final campo in _camposAmbienteValidos)
+              if (permitidos.contains(campo)) campo: j[campo],
+          };
+          if (filtrado.isNotEmpty) {
+            if (j.containsKey('seq')) filtrado['seq'] = j['seq'];
+            gravador.anexar('amb', filtrado);
+          }
+        }
+      }
+    } else if (id == Contrato.status.toLowerCase()) {
+      status = Status.doJson(j);
+    } else if (id == Contrato.cfg.toLowerCase()) {
+      config = Configuracao.doJson(j);
     }
     notifyListeners();
   }
 
-  void _gravar(String origem, Map<String, dynamic> j) {
-    if (gravador.gravando) gravador.anexar(origem, j);
-  }
-
-  Future<void> iniciarGravacao() async {
-    await gravador.iniciar(status?.dev ?? 'estacao');
-    notifyListeners();
-  }
-
-  Future<void> pararGravacao() async {
-    await gravador.encerrar();
-    notifyListeners();
-  }
-
-  /// Envia a configuracao. O firmware responde por notify com o estado REAL
-  /// depois de aplicar os limites dele, entao nao atualizamos `config` aqui —
-  /// mostrar o pedido como se fosse o resultado seria mentir para o usuario.
+  /// Envia a configuracao. A estacao responde por notify com o estado real
+  /// (apos os limites dela), entao nao atualizamos `config` aqui.
   Future<bool> enviarConfig(Configuracao nova) async {
     final c = _carCfg;
     if (c == null) return false;
     try {
-      await c.write(utf8.encode(jsonEncode(nova.paraEscrita())),
-          withoutResponse: false);
+      await c.write(
+        utf8.encode(jsonEncode(nova.paraEscrita())),
+        withoutResponse: false,
+      );
       return true;
     } catch (_) {
       return false;
@@ -210,7 +391,11 @@ class EstacaoBle extends ChangeNotifier {
   }
 
   Future<void> desconectar() async {
-    await gravador.encerrar();
+    _cancelarBusca();
+    _limparLeituraAmbiente();
+    notifyListeners();
+    await FlutterBluePlus.stopScan();
+    await pararGravacao();
     _limparAssinaturas();
     await _assEstado?.cancel();
     _assEstado = null;
@@ -230,15 +415,38 @@ class EstacaoBle extends ChangeNotifier {
   }
 
   void _mudar(EstadoLigacao e, String m) {
+    if (e != EstadoLigacao.ligado) _limparLeituraAmbiente();
     estado = e;
     mensagem = m;
     notifyListeners();
   }
 
+  void _limparLeituraAmbiente() {
+    ultimaLeituraAmbiente = null;
+    _camposAmbienteValidos = const {};
+    ambiente = null;
+  }
+
+  // Guarda contra notify apos dispose (async que completa depois de fechar).
+  bool _vivo = true;
+
+  @override
+  void notifyListeners() {
+    if (_vivo) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _vivo = false;
+    _geracaoGravacao++;
+    _cancelarBusca();
+    _autoTimer?.cancel();
+    _relogioParado?.cancel();
     _limparAssinaturas();
     _assEstado?.cancel();
+    gps.removeListener(notifyListeners);
+    gps.aoReceber = null;
+    gps.parar();
     gravador.encerrar();
     super.dispose();
   }

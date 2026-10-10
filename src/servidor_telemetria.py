@@ -1,558 +1,1190 @@
 #!/usr/bin/env python3
 """
-Servidor de telemetria: assina o broker MQTT, roda o filtro de Kalman nos
-dados que o ESP32 publica e serve um painel web.
+Base da estacao: servidor HTTP que RECEBE as coletas do celular, guarda o cru,
+roda o filtro de Kalman em lote e mostra o resultado.
 
-    python3 servidor_telemetria.py                 # broker em localhost
-    python3 servidor_telemetria.py --broker 192.168.0.111
+    python3 servidor_telemetria.py            # porta 8771
 
 Painel em http://localhost:8771
 
-Precisa do Mosquitto rodando - ver servidor/mosquitto-estacao.conf e a secao
-"Broker MQTT" em docs/04-telemetria.md.
+--------------------------------------------------------------------------
+POR QUE E SO ISSO (simplificado em 26/08/2026)
 
-O ESP32 (firmware/painel_wifi) publica em tres topicos, separados por taxa:
+A base deixou de monitorar o ESP ao vivo. O fluxo virou um so:
 
-    estacao/<dev>/pos      1 Hz    posicao GPS
-    estacao/<dev>/imu      1 Hz    lote de N amostras do IMU
-    estacao/<dev>/amb      0.1 Hz  temperatura e umidade
-    estacao/<dev>/status   retained + LWT (o broker avisa quando o ESP32 cai)
+    ESP --BLE--> celular (coleta e guarda) --HTTP--> base (guarda + processa)
 
-Aqui esses topicos alimentam o FiltroCV de filtro_kalman.py - o mesmo filtro
-ja validado do lado Python, sem porte para C++ - e viram CSV mais painel.
+Nao ha mais MQTT, nem broker, nem CSV ao vivo, nem filtro rodando em stream.
+A base tem tres deveres, todos em lote, na hora que a coleta chega:
 
-Limitacao conhecida: o carimbo de tempo absoluto vem do relogio do PC, na
-chegada da mensagem. O dt usado pelo filtro vem do proprio ESP32 (campo "dt"
-do lote de IMU), que e imune a latencia da rede. Quando entrar o buffer
-offline no ESP32, o carimbo tera de vir do GPS - ver docs/04-telemetria.md.
+    1. guardar o cru (JSONL imutavel, custodia)
+    2. rodar o Kalman e gravar o derivado (SQLite, recomputavel)
+    3. mostrar as sessoes e o trajeto (painel web)
+
+O caminho ao vivo saiu inteiro - com ele, sumiu a dependencia de paho-mqtt e
+uma categoria inteira de bug (jitter de rede no dt, amostra fora de ordem).
+Ver docs/04-telemetria.md.
 """
 
 import argparse
-import csv
 import json
-import math
 import os
-import threading
-import time
+import sqlite3
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs, urlparse
 
-import paho.mqtt.client as mqtt
-
-from filtro_kalman import DetectorPassos, FiltroCV
-
-# ---------------------------------------------------------------------------
-# Estado compartilhado entre o receptor MQTT e o painel
-# ---------------------------------------------------------------------------
-_lock = threading.Lock()
-
-estado = {
-    # --- ligacao ---
-    "online": False, "broker": False, "ultimo_pacote": 0.0, "dev": None,
-    "msgs": 0, "perdidos": 0,
-    # --- ambiente ---
-    "temp": None, "umid": None,
-    # --- GPS cru ---
-    "fix": False, "lat": None, "lon": None, "alt": 0.0, "vel": 0.0,
-    "sat": 0, "hdop": 0.0, "rumo": 0.0, "pontos": [],
-    # --- Kalman ---
-    "kf_lat": None, "kf_lon": None, "kf_vel": 0.0, "kf_sigma": 0.0,
-    "kf_parado": True, "kf_pontos": [],
-    # --- IMU (ultima amostra do lote) ---
-    "ax": 0.0, "ay": 0.0, "az": 1.0, "gx": 0.0, "gy": 0.0, "gz": 0.0,
-    "roll": 0.0, "pitch": 0.0, "yaw": 0.0, "amostras_imu": 0, "passos": 0,
-}
-
-_kf = FiltroCV()
-_passos = DetectorPassos()
-_seq_anterior = {}      # ultimo seq por (dev, tipo), para detectar perda
-_csv = None
-_csv_arquivo = None
-
-# Qual estacao este servidor esta seguindo. Definido por --dev ou travado na
-# primeira que publicar dado. Sem isso, duas estacoes no ar (o ESP32 real e o
-# simulador, por exemplo) misturariam trajetos no mesmo mapa e no mesmo filtro.
-_dev_alvo = None
-_devs_ignorados = set()
-
-MAX_PONTOS = 5000
-TOPICO_RAIZ = "estacao"
-
-
-def haversine_m(a, b):
-    """Distancia em metros entre dois pares (lat, lon)."""
-    lat1, lon1 = a
-    lat2, lon2 = b
-    r = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    h = (math.sin(dp / 2) ** 2
-         + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2)
-    return 2 * r * math.asin(math.sqrt(h))
-
-
-def registrar_ponto(chave, lat, lon, min_dist=1.0):
-    """Guarda o ponto so se andou o suficiente - evita borrao de ruido parado."""
-    pts = estado[chave]
-    if not pts or haversine_m(pts[-1], (lat, lon)) > min_dist:
-        pts.append([lat, lon])
-        if len(pts) > MAX_PONTOS:
-            del pts[0]
-
-
-def contar_sequencia(dev, tipo, seq):
-    """
-    Detecta mensagem perdida pela lacuna no contador do ESP32.
-
-    A chave inclui o dev: cada estacao tem o proprio contador, e duas
-    publicando no mesmo tipo de topico contariam perda falsa uma da outra.
-    """
-    if seq is None:
-        return
-    chave = (dev, tipo)
-    anterior = _seq_anterior.get(chave)
-    # Contador menor que o anterior = o ESP32 reiniciou; recomeca sem acusar perda.
-    if anterior is not None and anterior < seq <= anterior + 10000:
-        with _lock:
-            estado["perdidos"] += seq - anterior - 1
-    _seq_anterior[chave] = seq
+from processar_sessao import processar_sessao
+import planejamento
 
 
 # ---------------------------------------------------------------------------
-# Processamento por topico
+# Caminhos e banco
 # ---------------------------------------------------------------------------
-def processar_amb(dev, m):
-    with _lock:
-        estado["temp"] = m.get("temp")
-        estado["umid"] = m.get("umid")
+def _raiz():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def processar_imu(dev, m):
-    """
-    Predicao do Kalman com o lote de amostras.
-
-    O dt vem do ESP32 (esp_timer), nao do relogio do PC: a latencia do Wi-Fi
-    varia de dezenas a centenas de ms e contaminaria a predicao do filtro.
-    """
-    lote = m.get("m") or []
-    dt = m.get("dt")
-    if not lote or not dt or not (0.0 < dt < 1.0):
-        return
-
-    for amostra in lote:
-        ax = amostra.get("ax", 0.0)
-        ay = amostra.get("ay", 0.0)
-        az = amostra.get("az", 1.0)
-        gx = amostra.get("gx", 0.0)
-        gy = amostra.get("gy", 0.0)
-        gz = amostra.get("gz", 0.0)
-        roll = amostra.get("roll", 0.0)
-        pitch = amostra.get("pitch", 0.0)
-
-        houve_passo = _passos.amostra(ax, ay, az, dt)
-        _kf.prever(ax, ay, az, roll, pitch, dt, gx, gy, gz,
-                   passo_detectado=houve_passo, passos_ativos=_passos.andando())
-        if _kf.entrou_parado:
-            _passos.encerrar_movimento()
-
-    ultima = lote[-1]
-    with _lock:
-        estado.update(ax=ultima.get("ax", 0.0), ay=ultima.get("ay", 0.0),
-                      az=ultima.get("az", 1.0), gx=ultima.get("gx", 0.0),
-                      gy=ultima.get("gy", 0.0), gz=ultima.get("gz", 0.0),
-                      roll=ultima.get("roll", 0.0), pitch=ultima.get("pitch", 0.0),
-                      yaw=ultima.get("yaw", 0.0), passos=_passos.passos)
-        estado["amostras_imu"] += len(lote)
-        if _kf.pronto:
-            estado["kf_parado"] = _kf.parado
+def _pasta_sincronizadas():
+    pasta = os.path.join(_raiz(), "data", "sincronizadas")
+    os.makedirs(pasta, exist_ok=True)
+    return pasta
 
 
-def processar_pos(dev, m):
-    """Correcao do Kalman quando chega um fix."""
-    if not m.get("fix"):
-        with _lock:
-            estado["fix"] = False
-        return
-
-    lat, lon = m["lat"], m["lon"]
-    hdop = m.get("hdop") or 1.0
-    vel = m.get("vel", 0.0)
-    rumo = m.get("rumo", 0.0)
-
-    with _lock:
-        estado.update(fix=True, lat=lat, lon=lon, alt=m.get("alt", 0.0),
-                      vel=vel, sat=m.get("sat", 0), hdop=hdop, rumo=rumo)
-        registrar_ponto("pontos", lat, lon)
-
-    agora = time.monotonic()
-    if not _kf.pronto:
-        _kf.iniciar(lat, lon)
-        _kf.atualizar_movimento_gps(agora, lat, lon, vel)
-        return
-
-    _kf.atualizar_movimento_gps(agora, lat, lon, vel)
-    _kf.corrigir_gps(lat, lon, hdop=hdop)
-    _kf.corrigir_velocidade(vel, rumo)
-
-    klat, klon = _kf.posicao
-    with _lock:
-        estado["kf_lat"], estado["kf_lon"] = klat, klon
-        estado["kf_vel"] = _kf.velocidade_kmh
-        estado["kf_sigma"] = _kf.sigma_pos
-        registrar_ponto("kf_pontos", klat, klon)
+def _caminho_banco():
+    return os.path.join(_raiz(), "data", "estacao.db")
 
 
-def processar_status(dev, m):
-    with _lock:
-        estado["online"] = bool(m.get("online"))
+def _validar_tracos(tracos):
+    """Confere o formato de `tracos`: lista de {"raio_m": numero (0,500],
+    "pontos": [[lat,lon], ...] nao vazia}. Devolve a mensagem de erro, ou None
+    se estiver tudo certo. Cada pincelada carrega o proprio raio - e o que
+    permite mudar o tamanho do pincel sem afetar o que ja foi pintado."""
+    if not isinstance(tracos, list) or not tracos:
+        return "tracos precisa ser uma lista nao vazia"
+    for t in tracos:
+        if not isinstance(t, dict):
+            return "cada traco precisa ser {raio_m, pontos}"
+        raio_m = t.get("raio_m")
+        pontos = t.get("pontos")
+        if not isinstance(raio_m, (int, float)) or raio_m <= 0 or raio_m > 500:
+            return "raio_m de um traco fora da faixa (0-500 m)"
+        if not isinstance(pontos, list) or not pontos:
+            return "um traco esta sem pontos"
+    return None
 
 
-# ---------------------------------------------------------------------------
-# MQTT
-# ---------------------------------------------------------------------------
-def ao_conectar(cliente, dados, flags, codigo, propriedades=None):
-    if codigo == 0:
-        alvo = f"{TOPICO_RAIZ}/+/+"
-        cliente.subscribe(alvo, qos=1)
-        with _lock:
-            estado["broker"] = True
-        print(f"conectado ao broker, assinando {alvo}")
-    else:
-        print(f"falha ao conectar no broker (codigo {codigo})")
+def _limpar_nome(s):
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in s)[:40] or "x"
 
 
-def ao_desconectar(cliente, dados, flags, codigo, propriedades=None):
-    with _lock:
-        estado["broker"] = False
-    print("desconectado do broker - tentando reconectar...")
-
-
-def ao_receber(cliente, dados, msg):
-    global _dev_alvo
-
-    partes = msg.topic.split("/")
-    if len(partes) != 3:
-        return
-    _, dev, tipo = partes
-
+def _contar_linhas(caminho):
     try:
-        m = json.loads(msg.payload)
-    except json.JSONDecodeError:
-        return
+        with open(caminho, "rb") as f:
+            return sum(1 for _ in f)
+    except OSError:
+        return 0
 
-    # O "status" e retained: o broker entrega o de TODA estacao que ja passou
-    # por aqui assim que assinamos. Nao serve para escolher quem seguir.
-    if tipo != "status":
-        if _dev_alvo is None:
-            _dev_alvo = dev
-            print(f"\nseguindo a estacao '{dev}'")
-        elif dev != _dev_alvo:
-            if dev not in _devs_ignorados:
-                _devs_ignorados.add(dev)
-                print(f"\nignorando '{dev}' (seguindo '{_dev_alvo}'; "
-                      f"use --dev para trocar)")
-            return
-    elif _dev_alvo is not None and dev != _dev_alvo:
-        return
 
-    with _lock:
-        estado["dev"] = dev
-        estado["msgs"] += 1
-        if tipo != "status":
-            estado["ultimo_pacote"] = time.time()
+def _ler_corpo(handler):
+    """Le o corpo do POST aceitando as DUAS formas de envio.
 
-    contar_sequencia(dev, tipo, m.get("seq"))
+    O HttpClient do Dart, quando o Content-Length nao e definido, manda o corpo
+    em "chunked" (Transfer-Encoding), sem Content-Length. A leitura antiga so
+    olhava Content-Length e recebia 0 bytes - era o bug de "chega 0 dados"
+    apesar de o arquivo no telefone ter tudo. Agora: se ha Content-Length, le
+    n bytes; senao, se for chunked, decodifica os pedacos ate o de tamanho 0.
+    """
+    cl = handler.headers.get("Content-Length")
+    if cl is not None:
+        n = int(cl)
+        return handler.rfile.read(n) if n > 0 else b""
 
+    te = (handler.headers.get("Transfer-Encoding") or "").lower()
+    if "chunked" in te:
+        partes = []
+        while True:
+            linha = handler.rfile.readline().strip()
+            if not linha:
+                continue
+            tamanho = int(linha.split(b";")[0], 16)
+            if tamanho == 0:
+                handler.rfile.readline()   # consome o CRLF final
+                break
+            partes.append(handler.rfile.read(tamanho))
+            handler.rfile.readline()        # CRLF apos cada pedaco
+        return b"".join(partes)
+
+    return b""
+
+
+def _listar_sessoes():
+    db = _caminho_banco()
+    if not os.path.exists(db):
+        return {"sessoes": []}
+    con = sqlite3.connect(db)
     try:
-        if tipo == "pos":
-            processar_pos(dev, m)
-        elif tipo == "imu":
-            processar_imu(dev, m)
-        elif tipo == "amb":
-            processar_amb(dev, m)
-        elif tipo == "status":
-            processar_status(dev, m)
-        else:
-            return
-    except Exception as erro:        # um payload ruim nao pode derrubar o servidor
-        print(f"erro processando {msg.topic}: {erro}")
-        return
+        linhas = con.execute(
+            "SELECT sessao, dev, processada_em, n_derivado FROM sessoes "
+            "ORDER BY processada_em DESC").fetchall()
+    except sqlite3.Error:
+        return {"sessoes": []}
+    finally:
+        con.close()
+    return {"sessoes": [
+        {"sessao": s, "dev": d, "processada_em": p, "n_derivado": n}
+        for (s, d, p, n) in linhas]}
 
-    if tipo in ("pos", "amb"):
-        gravar_csv()
+
+def _dev_da_sessao(nome):
+    db = _caminho_banco()
+    if not nome or not os.path.exists(db):
+        return None
+    con = sqlite3.connect(db)
+    try:
+        r = con.execute(
+            "SELECT dev FROM sessoes WHERE sessao = ?", (nome,)).fetchone()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    return r[0] if r else None
+
+
+def _trajeto_sessao(nome):
+    nome = os.path.basename(nome or "")
+    db = _caminho_banco()
+    if not nome or not os.path.exists(db):
+        return {"cru": [], "kf": []}
+    con = sqlite3.connect(db)
+    try:
+        linhas = con.execute(
+            "SELECT ts, lat, lon, kf_lat, kf_lon, kf_vel, kf_sigma, temp, umid, "
+            "ruido_db, temp_aux28, temp_aux13, luminosidade "
+            "FROM derivado WHERE sessao = ? ORDER BY ts", (nome,)).fetchall()
+    except sqlite3.Error:
+        return {"cru": [], "kf": [], "pontos": []}
+    finally:
+        con.close()
+    cru = [[r[1], r[2]] for r in linhas]
+    kf = [[r[3], r[4]] for r in linhas]
+    # Um ponto por fix, com todas as grandezas medidas nele: e isso que o
+    # seletor de medida no painel usa pra colorir o mapa e mostrar no popup.
+    # Usa a posicao filtrada (kf) para o ponto ficar sobre o trajeto limpo,
+    # nao sobre o jitter cru. -1 e o sentinel do GY-302 pra "sem leitura
+    # valida" naquele ciclo (ver publicarAmbiente() em painel_wifi.ino) - vira
+    # None aqui, igual um sensor que nunca respondeu, pra escala/cor no mapa
+    # nao precisarem de um caso especial.
+    pontos = [{
+        "lat": r[3], "lon": r[4], "vel": r[5],
+        "temp": r[7], "umid": r[8], "db": r[9], "t28": r[10], "t13": r[11],
+        "lux": r[12] if r[12] not in (None, -1) else None,
+    } for r in linhas]
+    MEDIDAS = ("temp", "umid", "db", "t28", "t13", "lux")
+    resumo = {}
+    if pontos:
+        ult = pontos[-1]
+        resumo = {"n": len(pontos), "vel": ult["vel"], "sigma": linhas[-1][6]}
+        for medida in MEDIDAS:
+            vals = [p[medida] for p in pontos if p[medida] is not None]
+            resumo[medida] = ult[medida]
+            resumo[f"{medida}_min"] = min(vals) if vals else None
+            resumo[f"{medida}_max"] = max(vals) if vals else None
+    return {"cru": cru, "kf": kf, "pontos": pontos, "resumo": resumo}
 
 
 # ---------------------------------------------------------------------------
-# CSV
+# Painel
 # ---------------------------------------------------------------------------
-# "dev" e a PRIMEIRA coluna de proposito: e a procedencia do dado, e sem ela um
-# CSV gerado pelo src/simular_estacao.py (dev "esp32-sim") fica indistinguivel
-# de uma coleta real na mesma pasta, com o mesmo padrao de nome. Meses depois
-# ninguem separa os dois - e um instrumento de pesquisa nao pode ter dado de
-# origem duvidosa no acervo.
-CABECALHO = ["dev", "hora", "lat", "lon", "alt", "vel", "sat", "hdop",
-             "kf_lat", "kf_lon", "kf_vel", "kf_sigma", "kf_parado",
-             "temp", "umid", "ax", "ay", "az", "roll", "pitch", "yaw", "passos"]
-
-
-def abrir_csv(caminho):
-    global _csv, _csv_arquivo
-    novo = not os.path.exists(caminho)
-    _csv_arquivo = open(caminho, "a", newline="")
-    _csv = csv.writer(_csv_arquivo)
-    if novo:
-        _csv.writerow(CABECALHO)
-        _csv_arquivo.flush()
-    print(f"gravando em {caminho}")
-
-
-def gravar_csv():
-    if _csv is None:
-        return
-    with _lock:
-        linha = [
-            estado["dev"] or "?",
-            datetime.now().isoformat(timespec="milliseconds"),
-            estado["lat"], estado["lon"], estado["alt"], estado["vel"],
-            estado["sat"], estado["hdop"],
-            estado["kf_lat"], estado["kf_lon"], estado["kf_vel"],
-            estado["kf_sigma"], estado["kf_parado"],
-            estado["temp"], estado["umid"],
-            estado["ax"], estado["ay"], estado["az"],
-            estado["roll"], estado["pitch"], estado["yaw"], estado["passos"],
-        ]
-    _csv.writerow(linha)
-    _csv_arquivo.flush()
-
-
-# ---------------------------------------------------------------------------
-# Pagina
-# ---------------------------------------------------------------------------
-PAGINA = """<!DOCTYPE html>
+PAGINA = r"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Telemetria da estacao</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Base da Estacao</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  :root { --fundo:#f4f5f7; --cartao:#fff; --texto:#16181d; --fraco:#6b7280;
-          --borda:#e3e5e9; --temp:#e0533d; --umid:#2f7fd1; --cru:#9099a8; --kf:#2f9e57; }
-  @media (prefers-color-scheme: dark) {
-    :root { --fundo:#111317; --cartao:#1a1d23; --texto:#f0f2f5; --fraco:#9099a8;
-            --borda:#2a2e36; --temp:#ff7a5e; --umid:#63aef5; --cru:#6b7280; --kf:#4fd07a; }
-  }
-  * { box-sizing:border-box; }
-  body { margin:0; padding:20px 16px 40px; background:var(--fundo); color:var(--texto);
-         font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
-  .env { max-width:760px; margin:0 auto; }
-  header { display:flex; align-items:baseline; justify-content:space-between;
-           gap:12px; margin-bottom:18px; flex-wrap:wrap; }
-  h1 { font-size:1.05rem; font-weight:600; margin:0; }
-  .estado { font-size:.8rem; color:var(--fraco); display:flex; align-items:center; gap:6px; }
-  .bolinha { width:8px; height:8px; border-radius:50%; background:#35c46a; }
-  .bolinha.ruim { background:#e04b4b; }
-  .grade { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-  @media (max-width:640px) { .grade { grid-template-columns:repeat(2,1fr); } }
-  .cartao { background:var(--cartao); border:1px solid var(--borda);
-            border-radius:14px; padding:16px 18px; margin-top:12px; }
-  .grade .cartao { margin-top:0; }
-  .rotulo { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
-            color:var(--fraco); margin-bottom:6px; }
-  .valor { font-size:1.8rem; font-weight:650; line-height:1; font-variant-numeric:tabular-nums; }
-  .valor span { font-size:.9rem; font-weight:500; color:var(--fraco); margin-left:3px; }
-  #mapa { width:100%; height:420px; border-radius:10px; z-index:0; }
-  .leaflet-container { background:var(--fundo); font:inherit; }
-  /* Os tiles do OSM sao claros; no tema escuro, suaviza para nao ofuscar. */
-  @media (prefers-color-scheme: dark) {
-    .leaflet-tile { filter:brightness(.75) contrast(1.05); }
-  }
-  .cabecalho-mapa { display:flex; justify-content:space-between; align-items:center;
-                    gap:10px; margin-bottom:6px; flex-wrap:wrap; }
-  .seguir { font-size:.72rem; color:var(--fraco); display:flex; align-items:center;
-            gap:5px; cursor:pointer; text-transform:none; letter-spacing:0; }
-  .semfix { font-size:.8rem; color:var(--fraco); padding:24px 0; text-align:center; }
-  .legenda { display:flex; gap:16px; font-size:.75rem; color:var(--fraco); margin-top:8px; flex-wrap:wrap; }
-  .legenda i { display:inline-block; width:10px; height:3px; border-radius:2px;
-               margin-right:5px; vertical-align:middle; }
-  table { width:100%; border-collapse:collapse; font-size:.85rem;
-          font-variant-numeric:tabular-nums; }
-  td { padding:5px 0; border-bottom:1px solid var(--borda); }
-  td:last-child { text-align:right; font-weight:600; }
-  tr:last-child td { border-bottom:none; }
-  footer { margin-top:20px; font-size:.72rem; color:var(--fraco); text-align:center; }
+  :root{--bg:#0d1117;--card:#161b22;--borda:#232d38;--txt:#e6edf3;--txt2:#8b949e;
+        --verde:#3fb950;--azul:#58a6ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+            background:var(--bg);color:var(--txt)}
+  #topo{height:56px;display:flex;align-items:center;gap:12px;padding:0 18px;
+        background:var(--card);border-bottom:1px solid var(--borda);position:relative;z-index:1100}
+  #topo h1{font-size:15px;font-weight:600}
+  .pilula{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);
+          background:#0d1117;border:1px solid var(--borda);border-radius:999px;padding:5px 11px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 7px var(--verde)}
+  #corpo{display:flex;height:calc(100% - 56px)}
+  #lista{width:300px;border-right:1px solid var(--borda);overflow-y:auto;flex:none;background:var(--card)}
+  .cab{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--txt2);padding:14px 16px 8px}
+  .sessao{padding:12px 16px;border-bottom:1px solid var(--borda);cursor:pointer}
+  .sessao:hover{background:#1c2430}
+  .sessao.sel{background:#132132;border-left:3px solid var(--azul)}
+  .sessao .nome{font-size:12.5px;font-family:ui-monospace,monospace;word-break:break-all}
+  .sessao .sub{font-size:11px;color:var(--txt2);margin-top:3px}
+  #vazio{padding:24px 16px;font-size:12.5px;color:var(--txt2);line-height:1.6}
+  #direita{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+  #mapa{flex:1;background:#0a0e13;margin:14px;border-radius:12px;border:1px solid var(--borda);z-index:0}
+  .leaflet-container{background:#0a0e13;font:inherit}
+  @media (prefers-color-scheme: dark){.leaflet-tile{filter:brightness(.8) contrast(1.05)}}
+  #escala{position:absolute;top:24px;right:26px;z-index:1000;background:#0d1117cc;
+          border:1px solid var(--borda);border-radius:8px;padding:8px 10px;font-size:10px;color:var(--txt2)}
+  #escala .barra{width:14px;height:90px;border-radius:3px;margin:4px auto;
+       background:linear-gradient(to top,#58a6ff,#3fb950,#d29922,#f85149)}
+  #escala select{display:block;width:100%;background:#0d1117;color:var(--txt);
+       border:1px solid var(--borda);border-radius:5px;font-size:10px;
+       padding:3px 4px;margin-bottom:7px;font-family:inherit}
+  #resumo{display:flex;gap:22px;padding:0 20px 16px;flex-wrap:wrap}
+  .n .v{font-size:19px;font-weight:650;font-family:ui-monospace,monospace}
+  .n .r{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
+  #placeholder{flex:1;display:flex;align-items:center;justify-content:center;
+               color:var(--txt2);font-size:13px;text-align:center;padding:30px}
+  .pontotemp{border-radius:50%;border:1.5px solid rgba(13,17,23,.85)}
+  .leaflet-popup-content-wrapper{background:#161b22;color:var(--txt);border-radius:8px}
+  .leaflet-popup-tip{background:#161b22}
+  .leaflet-popup-content{font-family:ui-monospace,monospace;font-size:12px;margin:8px 10px}
+  .leaflet-popup-content b{color:#ff7a5e}
+
+  .aba{background:transparent;border:1px solid var(--borda);color:var(--txt2);
+       padding:5px 12px;border-radius:999px;font-size:12px;cursor:pointer;font-family:inherit}
+  .aba.on{background:var(--azul);border-color:var(--azul);color:#07121f;font-weight:600}
+  .btn{background:#1c242e;color:var(--txt);border:1px solid var(--borda);border-radius:7px;
+       padding:7px 12px;font-size:11.5px;cursor:pointer;font-family:inherit}
+  .btn:hover{background:#26303c}
+  .btn.primario{background:var(--verde);border-color:var(--verde);color:#07120d;font-weight:600}
+  .btn.perigo{color:#f85149;border-color:#4a2325}
+  #corpo_planos{display:none;height:calc(100% - 56px)}
+  #painel_novo{padding:14px 16px}
+  #barra_pincel{display:none;align-items:center;gap:10px;padding:10px 16px;
+                background:var(--card);border-bottom:1px solid var(--borda);flex-wrap:wrap}
+  #barra_pincel label{font-size:11px;color:var(--txt2)}
+  #barra_pincel input[type=text]{background:#0d1117;border:1px solid var(--borda);color:var(--txt);
+                                  border-radius:6px;padding:5px 8px;font-size:12px;width:90px}
+  #raio_val{font-family:ui-monospace,monospace;font-size:12px;min-width:44px;display:inline-block}
+  #resumo_plano{display:none;padding:14px 20px}
+  #acoes_plano{display:flex;gap:8px;padding:0 20px 14px;flex-wrap:wrap}
 </style>
 </head>
 <body>
-<div class="env">
-  <header>
-    <h1>Telemetria da estacao</h1>
-    <div class="estado"><span class="bolinha" id="bolinha"></span><span id="conn">iniciando</span></div>
-  </header>
-
-  <div class="grade">
-    <div class="cartao"><div class="rotulo">Temperatura</div>
-      <div class="valor" id="vt" style="color:var(--temp)">--<span>&deg;C</span></div></div>
-    <div class="cartao"><div class="rotulo">Umidade</div>
-      <div class="valor" id="vu" style="color:var(--umid)">--<span>%</span></div></div>
-    <div class="cartao"><div class="rotulo">Velocidade</div>
-      <div class="valor" id="vv">--<span>km/h</span></div></div>
-    <div class="cartao"><div class="rotulo">Satelites</div>
-      <div class="valor" id="vs">--</div></div>
-  </div>
-
-  <div class="cartao">
-    <div class="cabecalho-mapa">
-      <span class="rotulo" style="margin:0">Trajeto</span>
-      <label class="seguir"><input type="checkbox" id="seguir" checked>seguir a estacao</label>
+<div id="topo">
+  <h1>Base da Estacao</h1>
+  <button class="aba on" data-aba="sessoes">Sessoes</button>
+  <button class="aba" data-aba="planos">Planejar area</button>
+  <span class="pilula"><span class="dot"></span>base no ar</span>
+  <span class="pilula"><span id="t_sess">0 sessoes</span></span>
+  <span style="margin-left:auto;font-size:11px;color:var(--txt2)" id="relogio"></span>
+</div>
+<div id="corpo">
+  <div id="lista">
+    <div class="cab">Coletas recebidas</div>
+    <div id="sessoes"></div>
+    <div id="vazio" style="display:none">
+      Nenhuma coleta ainda.<br><br>
+      No app do celular, aba <b>Sessoes</b>, envie uma coleta para esta base.
+      Ela chega aqui ja processada.
     </div>
-    <div id="semfix" class="semfix">esperando o primeiro fix do GPS...</div>
+  </div>
+  <div id="direita">
+    <div id="placeholder">Selecione uma coleta a esquerda para ver o trajeto.</div>
     <div id="mapa" style="display:none"></div>
-    <div class="legenda">
-      <span><i style="background:var(--cru)"></i>GPS cru</span>
-      <span><i style="background:var(--kf)"></i>Kalman</span>
+    <div id="escala" style="display:none">
+      <select id="sel_medida"></select>
+      <div id="escala_valores">
+        <div style="text-align:center" id="esc_max">--</div>
+        <div class="barra"></div>
+        <div style="text-align:center" id="esc_min">--</div>
+        <div style="text-align:center;margin-top:4px" id="esc_unidade">°C</div>
+      </div>
+      <div id="escala_vazia" style="display:none;text-align:center;padding:4px 0">sem dados</div>
+    </div>
+    <div id="resumo" style="display:none"></div>
+    <div id="acoes_sessao" style="display:none;padding:0 20px 14px">
+      <button class="btn" id="btn_cobertura">Ver cobertura do plano</button>
+      <span id="cobertura_info" style="font-size:11.5px;color:var(--txt2);margin-left:8px"></span>
     </div>
   </div>
-
-  <div class="cartao">
-    <div class="rotulo">Detalhes</div>
-    <table id="tab"></table>
-  </div>
-
-  <footer><span id="rodape">&nbsp;</span></footer>
 </div>
 
+<div id="corpo_planos">
+  <div id="lista">
+    <div class="cab">Areas planejadas</div>
+    <div id="painel_novo">
+      <button class="btn primario" id="btn_novo_plano" style="width:100%">+ Nova area</button>
+    </div>
+    <div id="planos"></div>
+    <div id="vazio_planos" style="display:none;padding:0 16px 16px;font-size:12.5px;
+         color:var(--txt2);line-height:1.6">
+      Nenhuma area planejada ainda.<br><br>
+      Toque <b>+ Nova area</b>, escolha o tamanho do pincel e arraste no mapa
+      para pintar onde o usuario deve medir.
+    </div>
+  </div>
+  <div id="direita">
+    <div id="barra_pincel">
+      <label>pincel</label>
+      <input type="range" id="raio_pincel" min="3" max="60" value="15">
+      <span id="raio_val">15 m</span>
+      <label style="margin-left:10px">estacao</label>
+      <input type="text" id="dev_plano" value="esp32-01">
+      <button class="btn primario" id="btn_modo_pintar">Pincel</button>
+      <button class="btn" id="btn_modo_apagar">Borracha</button>
+      <button class="btn" id="btn_desfazer">Desfazer</button>
+      <button class="btn" id="btn_limpar">Limpar</button>
+      <button class="btn primario" id="btn_salvar_plano">Salvar</button>
+      <button class="btn" id="btn_cancelar_plano">Cancelar</button>
+    </div>
+    <div id="placeholder_planos" style="flex:1;display:flex;align-items:center;justify-content:center;
+         color:var(--txt2);font-size:13px;text-align:center;padding:30px">
+      Selecione uma area a esquerda, ou toque <b>+ Nova area</b> para pintar uma nova.
+    </div>
+    <div id="mapa_planos" style="display:none;flex:1;background:#0a0e13;margin:14px;
+         border-radius:12px;border:1px solid var(--borda)"></div>
+    <div id="resumo_plano"></div>
+    <div id="acoes_plano">
+      <button class="btn primario" id="btn_ativar_plano" style="display:none">Ativar para o medidor</button>
+      <button class="btn" id="btn_editar_plano" style="display:none">Editar desenho</button>
+      <button class="btn perigo" id="btn_apagar_plano" style="display:none">Apagar area</button>
+    </div>
+  </div>
+</div>
 <script>
-// --- Mapa (Leaflet + tiles do OpenStreetMap) -------------------------------
-// Os tiles vem da internet: o navegador que abre este painel precisa de rede.
-// O painel do proprio ESP32 (firmware/painel_wifi) segue com rastro em canvas
-// justamente porque em campo pode nao haver internet.
-let mapa = null, traceCru = null, traceKf = null, marcador = null;
-let primeiroEnquadre = true;
+const $ = s => document.querySelector(s);
+let sel = null, traj = null;
+const fmtData = iso => iso ? iso.replace('T',' ').slice(0,16) : '';
 
-function corDe(nome) {
-  return getComputedStyle(document.documentElement).getPropertyValue(nome).trim();
+async function carregarSessoes(){
+  try{
+    const d = await (await fetch('/sessoes',{cache:'no-store'})).json();
+    const lista = d.sessoes || [];
+    $('#t_sess').textContent = lista.length + (lista.length===1?' sessao':' sessoes');
+    $('#vazio').style.display = lista.length ? 'none':'block';
+    const box = $('#sessoes');
+    box.innerHTML = lista.map(s => `
+      <div class="sessao ${s.sessao===sel?'sel':''}" data-n="${s.sessao}">
+        <div class="nome">${s.sessao}</div>
+        <div class="sub">${s.n_derivado} pontos &middot; ${fmtData(s.processada_em)}</div>
+      </div>`).join('');
+    box.querySelectorAll('.sessao').forEach(el => el.onclick = () => selecionar(el.dataset.n));
+    if(!sel && lista.length) selecionar(lista[0].sessao);
+  }catch(e){}
 }
 
-function iniciarMapa(centro) {
-  mapa = L.map('mapa', { zoomControl: true }).setView(centro, 18);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+async function selecionar(nome){
+  sel = nome;
+  // Trocou de sessao - a visao de cobertura, se estava ligada, era da
+  // sessao anterior; volta pro trajeto normal em vez de mostrar algo errado.
+  if(coberturaAtiva){
+    coberturaAtiva = false;
+    camadaCobertura.clearLayers();
+    $('#btn_cobertura').textContent = 'Ver cobertura do plano';
+    $('#cobertura_info').textContent = '';
+  }
+  document.querySelectorAll('.sessao').forEach(el => el.classList.toggle('sel', el.dataset.n===nome));
+  traj = await (await fetch('/sessao?nome='+encodeURIComponent(nome),{cache:'no-store'})).json();
+  $('#placeholder').style.display='none';
+  $('#mapa').style.display='block';
+  $('#resumo').style.display='flex';
+  const r = traj.resumo||{};
+  $('#resumo').innerHTML = [
+    ['pontos', r.n||0], ['vel final', (r.vel??0).toFixed(1)+' km/h'],
+    ['incerteza', '±'+(r.sigma??0).toFixed(1)+' m'],
+    ['temp', r.temp!=null? r.temp.toFixed(1)+' C':'--'],
+    ['umid', r.umid!=null? r.umid.toFixed(1)+' %':'--'],
+  ].map(([k,v])=>`<div class="n"><div class="v">${v}</div><div class="r">${k}</div></div>`).join('');
+  desenhar();
+}
+
+// --- Mapa (Leaflet + tiles do OpenStreetMap, buscados pelo NAVEGADOR de quem
+// abre o painel - nao pelo Pi, que so serve esta pagina). Igual ao mapa do
+// app, para o pesquisador ver a mesma coisa nos dois lugares.
+let mapa = null, trilha = null;
+let marcadores = [];
+let camadaCobertura = null, coberturaAtiva = false;
+
+// Visualizacao em camadas: qual grandeza medida colore os pontos no mapa.
+// So os dados de sessoes coletadas depois dos sensores baratos (KY-038/028/013,
+// GY-302) tem db/t28/t13/lux preenchidos - coletas antigas mostram "sem dados"
+// e pontos cinza pra essas medidas, igual o painel ja fazia quando faltava
+// temp/umid.
+const MEDIDAS = [
+  {campo:'temp', rotulo:'Temperatura', unidade:'°C', casas:1},
+  {campo:'umid', rotulo:'Umidade', unidade:'%', casas:0},
+  {campo:'db', rotulo:'Ruido', unidade:'dB', casas:1},
+  {campo:'t28', rotulo:'Temp. auxiliar (KY-028)', unidade:'°C', casas:1},
+  {campo:'t13', rotulo:'Temp. auxiliar (KY-013)', unidade:'°C', casas:1},
+  {campo:'lux', rotulo:'Luminosidade', unidade:'lux', casas:0},
+];
+let medidaAtual = 'temp';
+let pontoMarcadores = [];
+$('#sel_medida').innerHTML = MEDIDAS.map(m =>
+  `<option value="${m.campo}">${m.rotulo}</option>`).join('');
+$('#sel_medida').onchange = () => { medidaAtual = $('#sel_medida').value; atualizarCores(); };
+
+function popupPonto(p){
+  const partes = MEDIDAS.map(m => {
+    const v = p[m.campo];
+    const txt = v!=null ? v.toFixed(m.casas)+' '+m.unidade : '--';
+    return m.campo===medidaAtual ? `<b>${txt}</b>` : txt;
+  });
+  return partes.join(' &middot; ') + `<br>${(p.vel||0).toFixed(1)} km/h`;
+}
+
+// Recolore os marcadores ja desenhados e atualiza a legenda - chamado ao
+// trocar a medida selecionada (sem recalcular o mapa/trajeto) e uma vez no
+// fim de desenhar().
+function atualizarCores(){
+  if(!pontoMarcadores.length){ $('#escala').style.display = 'none'; return; }
+  const r = (traj && traj.resumo) || {};
+  const medida = MEDIDAS.find(m => m.campo===medidaAtual) || MEDIDAS[0];
+  const vmin = r[medida.campo+'_min'], vmax = r[medida.campo+'_max'];
+  const faixa = (vmax!=null && vmax>vmin) ? vmax-vmin : 1;
+  for(const {marcador, ponto} of pontoMarcadores){
+    const val = ponto[medida.campo];
+    const cor = val==null ? '#7d8794' : corTemp((val-vmin)/faixa);
+    marcador.setStyle({fillColor: cor});
+    marcador.setPopupContent(popupPonto(ponto));
+  }
+  $('#escala').style.display = 'block';
+  if(vmin!=null){
+    $('#escala_valores').style.display = 'block';
+    $('#escala_vazia').style.display = 'none';
+    $('#esc_max').textContent = vmax.toFixed(medida.casas);
+    $('#esc_min').textContent = vmin.toFixed(medida.casas);
+    $('#esc_unidade').textContent = medida.unidade;
+  } else {
+    $('#escala_valores').style.display = 'none';
+    $('#escala_vazia').style.display = 'block';
+  }
+}
+
+function iniciarMapa(centro){
+  mapa = L.map('mapa', {zoomControl:true}).setView(centro, 17);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(mapa);
+  trilha = L.polyline([], {color:'#3fb950', weight:4, opacity:.85}).addTo(mapa);
 
-  traceCru = L.polyline([], { color: corDe('--cru'), weight: 3, opacity: .8 }).addTo(mapa);
-  traceKf  = L.polyline([], { color: corDe('--kf'),  weight: 4 }).addTo(mapa);
-  marcador = L.circleMarker(centro, {
-    radius: 7, color: '#fff', weight: 2,
-    fillColor: corDe('--kf'), fillOpacity: 1
-  }).addTo(mapa);
-
-  // Arrastar o mapa desliga o seguimento automatico - senao o proximo fix
-  // puxaria a vista de volta e voce nunca conseguiria olhar em volta.
-  mapa.on('dragstart', () => { document.getElementById('seguir').checked = false; });
+  // Pane so para o pano de fundo da area planejada, na visao "cobertura do
+  // plano" (ver alternarCobertura). Opaca + mix-blend-mode:multiply, mesma
+  // ideia da planoPane da aba Planejar area: mancha bem visivel sem apagar
+  // ruas/predios do mapa por baixo.
+  mapa.createPane('coberturaPane');
+  mapa.getPane('coberturaPane').style.zIndex = 350;
+  mapa.getPane('coberturaPane').style.opacity = 1;
+  mapa.getPane('coberturaPane').style.mixBlendMode = 'multiply';
+  mapa.getPane('coberturaPane').style.pointerEvents = 'none';
+  camadaCobertura = L.layerGroup().addTo(mapa);
 }
 
-function atualizarMapa(d) {
-  const cru = d.pontos || [], kf = d.kf_pontos || [];
-  // Preferimos a saida do Kalman para o marcador; sem ela, o fix cru serve.
-  const atual = kf.length ? kf[kf.length-1] : (cru.length ? cru[cru.length-1] : null);
-  if (!atual) return;
+// Sequencial azul->verde->amarelo->vermelho para t em [0,1].
+function corTemp(t){
+  t = Math.max(0, Math.min(1, t));
+  const paradas = [[88,166,255],[63,185,80],[210,153,34],[248,81,73]];
+  const f = t*(paradas.length-1); const i = Math.floor(f); const k = f-i;
+  const a = paradas[i], b = paradas[Math.min(i+1,paradas.length-1)];
+  return `rgb(${a[0]+(b[0]-a[0])*k|0},${a[1]+(b[1]-a[1])*k|0},${a[2]+(b[2]-a[2])*k|0})`;
+}
 
-  if (typeof L === 'undefined') {
-    document.getElementById('semfix').textContent =
-      'nao foi possivel carregar o mapa - este computador esta sem internet?';
+function desenhar(){
+  if(!traj || !traj.cru.length){
+    if(mapa){ mapa.remove(); mapa=null; }
+    $('#mapa').innerHTML = '';
+    $('#escala').style.display = 'none';
+    $('#acoes_sessao').style.display = 'none';
+    pontoMarcadores = [];
+    const p = document.createElement('div');
+    p.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:#8b949e;font-size:13px';
+    p.textContent = 'Esta coleta nao tem pontos de posicao.';
+    $('#mapa').appendChild(p);
     return;
   }
 
-  document.getElementById('semfix').style.display = 'none';
-  document.getElementById('mapa').style.display = 'block';
+  const pontos = (traj.pontos&&traj.pontos.length) ? traj.pontos
+               : traj.cru.map(([la,lo])=>({lat:la,lon:lo,temp:null,umid:null,vel:null}));
+  const linhaPts = (traj.kf&&traj.kf.length>1 ? traj.kf : traj.cru).map(([la,lo])=>[la,lo]);
 
-  if (!mapa) {
-    iniciarMapa(atual);
-    mapa.invalidateSize();   // o div estava escondido; sem isto os tiles saem tortos
+  if(!mapa){
+    iniciarMapa([pontos[0].lat, pontos[0].lon]);
+  } else {
+    marcadores.forEach(m => mapa.removeLayer(m));
+  }
+  marcadores = [];
+  trilha.setLatLngs(linhaPts);
+  trilha.addTo(mapa);  // idempotente - garante que volta se a cobertura tinha tirado
+
+  pontoMarcadores = [];
+  for(const p of pontos){
+    const marcador = L.circleMarker([p.lat, p.lon], {
+      radius: 6, className: 'pontotemp', color: 'rgba(13,17,23,.85)',
+      weight: 1.5, fillColor: '#7d8794', fillOpacity: .95,
+    }).addTo(mapa);
+    marcador.bindPopup(popupPonto(p));
+    pontoMarcadores.push({marcador, ponto:p});
+    marcadores.push(marcador);
+  }
+  // Marcadores de inicio/fim, por cima dos pontos de temperatura.
+  const ini = L.circleMarker([pontos[0].lat, pontos[0].lon],
+    {radius:9, color:'#fff', weight:2, fillColor:'#58a6ff', fillOpacity:1}).addTo(mapa);
+  ini.bindTooltip('inicio', {permanent:false});
+  const fim = L.circleMarker([pontos[pontos.length-1].lat, pontos[pontos.length-1].lon],
+    {radius:9, color:'#fff', weight:2, fillColor:'#f85149', fillOpacity:1}).addTo(mapa);
+  fim.bindTooltip('fim', {permanent:false});
+  marcadores.push(ini, fim);
+
+  mapa.invalidateSize();
+  mapa.fitBounds(L.latLngBounds(linhaPts.length>1?linhaPts:pontos.map(p=>[p.lat,p.lon])),
+    {padding:[30,30], maxZoom:19});
+
+  atualizarCores();
+
+  $('#acoes_sessao').style.display = 'block';
+}
+
+// "Ver cobertura do plano": botao a parte, alterna entre o trajeto colorido
+// por temperatura (o de sempre) e uma segunda visao - quais pontos desta
+// sessao cairam dentro da area planejada (plano ATIVO do medidor dela).
+// So calcula quando pedido (pos-processamento, ver planejamento.cobertura_sessao).
+async function alternarCobertura(){
+  if(coberturaAtiva){
+    coberturaAtiva = false;
+    camadaCobertura.clearLayers();
+    trilha.addTo(mapa);
+    marcadores.forEach(m => m.addTo(mapa));
+    $('#btn_cobertura').textContent = 'Ver cobertura do plano';
+    $('#cobertura_info').textContent = '';
+    return;
+  }
+  $('#cobertura_info').textContent = 'carregando...';
+  let cov;
+  try{ cov = await (await fetch('/sessao/cobertura?nome='+encodeURIComponent(sel), {cache:'no-store'})).json(); }
+  catch(e){ cov = {}; }
+  if(!cov || !cov.plano_nome){
+    $('#cobertura_info').textContent = 'este medidor nao tem plano ativo';
+    return;
   }
 
-  traceCru.setLatLngs(cru);
-  traceKf.setLatLngs(kf);
-  marcador.setLatLng(atual);
+  coberturaAtiva = true;
+  trilha.remove();
+  marcadores.forEach(m => m.remove());
+  camadaCobertura.clearLayers();
 
-  if (primeiroEnquadre && (cru.length > 1 || kf.length > 1)) {
-    const todos = cru.concat(kf);
-    mapa.fitBounds(L.latLngBounds(todos), { padding: [30, 30], maxZoom: 18 });
-    primeiroEnquadre = false;
-  } else if (document.getElementById('seguir').checked) {
-    mapa.panTo(atual, { animate: true, duration: .5 });
+  // A area planejada, de fundo.
+  const todosLatLng = [];
+  for(const t of (cov.tracos||[]))
+    for(const [lat,lon] of t.pontos){
+      todosLatLng.push([lat,lon]);
+      L.circle([lat,lon], {radius:t.raio_m, weight:0, stroke:false,
+        pane:'coberturaPane', fillColor:'#3fb950', fillOpacity:1}).addTo(camadaCobertura);
+    }
+
+  // Os pontos DESTA sessao - verde se cairam dentro da area, cinza apagado
+  // se nao. E a resposta direta de "o que desta caminhada contou".
+  const dentro = cov.pontos.filter(p => p.dentro);
+  for(const p of cov.pontos){
+    todosLatLng.push([p.lat, p.lon]);
+    L.circleMarker([p.lat,p.lon], {radius:6, color:'rgba(13,17,23,.85)', weight:1.5,
+      fillColor: p.dentro ? '#3fb950' : '#7d8794', fillOpacity: p.dentro ? .95 : .5})
+      .addTo(camadaCobertura)
+      .bindPopup(`<b>${p.temp!=null?p.temp.toFixed(1)+' °C':'--'}</b> &middot; ${p.dentro?'dentro da area':'fora da area'}`);
+  }
+  if(todosLatLng.length)
+    mapa.fitBounds(L.latLngBounds(todosLatLng), {padding:[30,30], maxZoom:19});
+
+  $('#btn_cobertura').textContent = 'Ver trajeto';
+  $('#cobertura_info').textContent = `plano "${cov.plano_nome}" · ${dentro.length}/${cov.pontos.length} pontos dentro da area`;
+}
+$('#btn_cobertura').onclick = () => alternarCobertura();
+
+window.addEventListener('resize', () => { if(mapa) mapa.invalidateSize(); if(mapaP) mapaP.invalidateSize(); });
+setInterval(()=>{ $('#relogio').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+carregarSessoes();
+setInterval(carregarSessoes, 5000);
+
+// =============================================================================
+// PLANEJAMENTO: PINTAR uma area no mapa (pincel) e salvar - so isso, o
+// PRE-processamento. Nao gera nem mostra nenhum ponto-alvo aqui: o usuario
+// sai e mede do jeito que sempre mediu, sem nenhum passo especial. Quando
+// esta tela reabre um plano, o POS-processamento roda na hora (GET
+// /plano/pontos) - cruza a area contra as amostras que ja existem no banco
+// (planejamento.pontos_do_plano) e monta o Voronoi com o raio de
+// abrangencia que o usuario escolher NAQUELE MOMENTO, nao gravado.
+//
+// Da pra ter VARIOS planos por medidor; "Ativar para o medidor" so marca
+// qual deles fica disponivel para aquele `dev` (o app busca isso em
+// GET /plano/ativo?dev= - fase seguinte, fora desta rodada, mas o dado ja
+// fica pronto).
+// =============================================================================
+let ultimoDev = 'esp32-01';
+
+document.querySelectorAll('.aba').forEach(b => b.onclick = () => mudarAba(b.dataset.aba));
+function mudarAba(aba){
+  document.querySelectorAll('.aba').forEach(b => b.classList.toggle('on', b.dataset.aba===aba));
+  $('#corpo').style.display = aba==='sessoes' ? 'flex' : 'none';
+  $('#corpo_planos').style.display = aba==='planos' ? 'flex' : 'none';
+  if(aba==='planos'){
+    if(mapaP) mapaP.invalidateSize();
+    carregarPlanos();
   }
 }
 
-function linha(r, v) { return '<tr><td>' + r + '</td><td>' + v + '</td></tr>'; }
+let mapaP=null, camadaPintura=null, camadaPontos=null, cursorPincel=null;
+let pintando=false, arrastando=false, tracoAtual=null, tracosNovo=[];
+let planoSelId=null, planoSel=null, ultimaAmostra=null;
+let modo='pintar';  // 'pintar' ou 'apagar'
 
-async function atualizar() {
-  try {
-    const d = await (await fetch('/dados', {cache:'no-store'})).json();
-    const vivo = d.broker && d.recebendo;
-    document.getElementById('bolinha').className = 'bolinha' + (vivo ? '' : ' ruim');
-    document.getElementById('conn').textContent =
-      !d.broker ? 'sem broker MQTT'
-                : (d.recebendo ? ('recebendo de ' + (d.dev || 'esp32'))
-                               : 'broker ok, ESP32 sem publicar');
+function iniciarMapaPlanos(centro){
+  mapaP = L.map('mapa_planos', {zoomControl:true}).setView(centro, 17);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(mapaP);
 
-    const n = (v, c) => v === null || v === undefined ? '--' : v.toFixed(c);
-    document.getElementById('vt').innerHTML = n(d.temp,1) + '<span>&deg;C</span>';
-    document.getElementById('vu').innerHTML = n(d.umid,1) + '<span>%</span>';
-    document.getElementById('vv').innerHTML = n(d.kf_vel,1) + '<span>km/h</span>';
-    document.getElementById('vs').textContent = d.sat;
+  // Pane propria para a pintura, entre os tiles (z~200) e os overlays normais
+  // (z~400, onde ficam os pontos calculados). A transparencia vai NELA, nao
+  // em cada disco: os discos sao pintados OPACOS (ver aplicarPincel) e so a
+  // pane inteira fica translucida por cima do mapa. Se a transparencia fosse
+  // por disco, dois discos sobrepostos ficariam mais escuros que um so - a
+  // pincelada sairia com manchas mais fortes onde o gesto se cruzou, o
+  // oposto de "tinta continua".
+  mapaP.createPane('pinturaPane');
+  mapaP.getPane('pinturaPane').style.zIndex = 350;
+  mapaP.getPane('pinturaPane').style.opacity = 0.45;
+  mapaP.getPane('pinturaPane').style.pointerEvents = 'none';
 
-    document.getElementById('tab').innerHTML =
-      linha('lat / lon (GPS)', d.lat === null ? '--' : n(d.lat,6) + ', ' + n(d.lon,6)) +
-      linha('lat / lon (Kalman)', d.kf_lat === null ? '--' : n(d.kf_lat,6) + ', ' + n(d.kf_lon,6)) +
-      linha('incerteza do Kalman', n(d.kf_sigma,1) + ' m') +
-      linha('altitude', n(d.alt,1) + ' m') +
-      linha('HDOP', n(d.hdop,2)) +
-      linha('estado', d.kf_parado ? 'parado' : 'em movimento') +
-      linha('passos', d.passos) +
-      linha('roll / pitch / yaw', n(d.roll,1)+' / '+n(d.pitch,1)+' / '+n(d.yaw,1)) +
-      linha('amostras de IMU', d.amostras_imu);
+  // Pane separada para o desenho de um plano JA SALVO (desenharPlano) -
+  // opacidade 100% (mancha bem solida, nao um verde lavado), mas com
+  // mix-blend-mode:multiply em vez de so opacity: opacity sozinha clareia
+  // tudo por baixo (ruas, predios, rotulos somem debaixo do verde); multiply
+  // MULTIPLICA a cor por cima do que ja esta no tile, entao o traco escuro
+  // de uma rua ou contorno de predio continua aparecendo, so tingido de
+  // verde - a area fica evidente sem apagar o mapa por baixo.
+  mapaP.createPane('planoPane');
+  mapaP.getPane('planoPane').style.zIndex = 350;
+  mapaP.getPane('planoPane').style.opacity = 1;
+  mapaP.getPane('planoPane').style.mixBlendMode = 'multiply';
+  mapaP.getPane('planoPane').style.pointerEvents = 'none';
 
-    atualizarMapa(d);
-    document.getElementById('rodape').textContent =
-      d.msgs + ' mensagens | ' + d.perdidos + ' perdidas | ' +
-      d.pontos.length + ' pontos GPS | ' + d.kf_pontos.length + ' pontos Kalman';
-  } catch (e) {
-    document.getElementById('bolinha').className = 'bolinha ruim';
-    document.getElementById('conn').textContent = 'servidor fora do ar';
+  camadaPintura = L.layerGroup().addTo(mapaP);
+  camadaPontos = L.layerGroup().addTo(mapaP);
+
+  // So o botao ESQUERDO pinta/apaga. Qualquer outro botao (o do meio, ex.)
+  // nao mexe em `dragging` e cai no comportamento padrao do Leaflet - que e
+  // mover o mapa. E assim que da pra navegar sem sair do modo de desenho.
+  mapaP.on('mousedown', ev => {
+    if(!pintando || ev.originalEvent.button !== 0) return;
+    arrastando = true; ultimaAmostra = null;
+    mapaP.dragging.disable();
+    if(modo==='pintar') tracoAtual = {raio_m: Number($('#raio_pincel').value), pontos:[]};
+    aplicarPincel(ev.latlng);
+  });
+  mapaP.on('mousemove', ev => {
+    moverCursorPincel(ev.latlng);
+    if(pintando && arrastando) aplicarPincel(ev.latlng);
+  });
+  const soltarPincel = () => {
+    if(!pintando || !arrastando) return;
+    arrastando = false;
+    mapaP.dragging.enable();
+    if(modo==='pintar' && tracoAtual && tracoAtual.pontos.length) tracosNovo.push(tracoAtual);
+    tracoAtual = null;
+  };
+  mapaP.on('mouseup', soltarPincel);
+  // Rede de seguranca: se o botao for solto fora do mapa, o mouseup do
+  // Leaflet as vezes nao dispara - sem isto a pincelada ficaria "presa".
+  window.addEventListener('mouseup', soltarPincel);
+  mapaP.on('mouseout', () => { if(cursorPincel) mapaP.removeLayer(cursorPincel); cursorPincel=null; });
+}
+
+// Circulo fantasma seguindo o cursor, do tamanho real do pincel - para o
+// usuario ver ANTES de clicar o quanto ele vai pintar (ou apagar).
+function moverCursorPincel(latlng){
+  if(!pintando) return;
+  const raio = Number($('#raio_pincel').value);
+  const cor = modo==='apagar' ? '#f85149' : '#3fb950';
+  if(!cursorPincel){
+    cursorPincel = L.circle(latlng, {radius:raio, color:cor, weight:2, dashArray:'4,4',
+      fill:false, interactive:false}).addTo(mapaP);
+  } else {
+    cursorPincel.setLatLng(latlng).setRadius(raio).setStyle({color:cor});
   }
 }
-atualizar();
-setInterval(atualizar, 1000);
+
+function aplicarPincel(latlng){
+  const raio = Number($('#raio_pincel').value);
+  // Amostra mais junta que antes (raio*0.28 em vez de *0.5): com o circulo
+  // SEM borda, sao os discos se sobrepondo bastante que dao a leitura de
+  // tinta continua - amostra rala deixava "furos" entre as bolinhas.
+  if(ultimaAmostra && mapaP.distance(ultimaAmostra, latlng) < raio*0.28) return;
+  ultimaAmostra = latlng;
+  if(modo==='pintar'){
+    tracoAtual.pontos.push([latlng.lat, latlng.lng]);
+    // Disco OPACO (fillOpacity:1) e sem contorno, na pinturaPane - a
+    // transparencia e da pane inteira (ver iniciarMapaPlanos), entao discos
+    // que se sobrepoem continuam com a MESMA cor solida, sem escurecer onde
+    // o gesto se cruzou. E o que da a leitura de tinta continua.
+    L.circle(latlng, {radius:raio, weight:0, stroke:false, pane:'pinturaPane',
+      fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+  } else {
+    apagarPerto(latlng, raio);
+  }
+}
+
+// Borracha: remove, das pinceladas AINDA NAO SALVAS desta sessao de edicao,
+// qualquer amostra dentro do raio do cursor. So opera em tracosNovo - editar
+// uma area ja salva e outra funcionalidade, fora desta rodada.
+function apagarPerto(latlng, raio){
+  let mudou = false;
+  tracosNovo = tracosNovo
+    .map(t => {
+      const pontos = t.pontos.filter(([lat,lon]) => {
+        const manter = mapaP.distance(latlng, [lat,lon]) > raio;
+        if(!manter) mudou = true;
+        return manter;
+      });
+      return {raio_m: t.raio_m, pontos};
+    })
+    .filter(t => t.pontos.length > 0);
+  if(mudou) redesenharPintura();
+}
+
+// Redesenha a camada de pintura do zero, cada pincelada com o RAIO QUE ELA
+// TINHA quando foi pintada - mexer no slider depois nao muda o que ja esta
+// no mapa, so vale para a proxima pincelada.
+function redesenharPintura(){
+  camadaPintura.clearLayers();
+  for(const t of tracosNovo) for(const [lat,lon] of t.pontos)
+    L.circle([lat,lon], {radius:t.raio_m, weight:0, stroke:false, pane:'pinturaPane',
+      fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+}
+
+$('#raio_pincel').addEventListener('input', () => {
+  $('#raio_val').textContent = $('#raio_pincel').value + ' m';
+  // O circulo fantasma acompanha o slider na hora, mesmo sem mover o mouse.
+  if(cursorPincel) cursorPincel.setRadius(Number($('#raio_pincel').value));
+});
+
+function setModo(m){
+  modo = m;
+  $('#btn_modo_pintar').classList.toggle('primario', m==='pintar');
+  $('#btn_modo_apagar').classList.toggle('primario', m==='apagar');
+}
+$('#btn_modo_pintar').onclick = () => setModo('pintar');
+$('#btn_modo_apagar').onclick = () => setModo('apagar');
+
+// `editandoId`: null quando pintando uma area NOVA; o id do plano quando
+// "Editar desenho" foi tocado num plano ja salvo - e o que faz "Salvar"
+// decidir entre criar (POST /plano) ou atualizar (POST /plano/atualizar)
+// o desenho por cima do que ja existia, sem virar um plano duplicado.
+let editandoId = null;
+
+$('#btn_novo_plano').onclick = () => {
+  planoSelId = null; planoSel = null; editandoId = null;
+  tracosNovo = []; tracoAtual = null;
+  setModo('pintar');
+  $('#placeholder_planos').style.display = 'none';
+  $('#mapa_planos').style.display = 'block';
+  if(!mapaP) iniciarMapaPlanos(ultimoCentro());
+  mapaP.invalidateSize();
+  camadaPintura.clearLayers(); camadaPontos.clearLayers();
+  pintando = true;
+  $('#dev_plano').value = ultimoDev;
+  $('#barra_pincel').style.display = 'flex';
+  $('#resumo_plano').style.display = 'none';
+  $('#btn_apagar_plano').style.display = 'none';
+  $('#btn_ativar_plano').style.display = 'none';
+  $('#btn_editar_plano').style.display = 'none';
+  document.querySelectorAll('#planos .sessao').forEach(el => el.classList.remove('sel'));
+};
+
+$('#btn_editar_plano').onclick = () => {
+  if(!planoSelId || !planoSel) return;
+  editandoId = planoSelId;
+  // Clona os tracos existentes para tracosNovo - dá pra continuar pintando
+  // ou apagar pedacos com a borracha, igual numa area nova.
+  tracosNovo = JSON.parse(JSON.stringify(planoSel.tracos || []));
+  tracoAtual = null;
+  setModo('pintar');
+  redesenharPintura();
+  camadaPontos.clearLayers();
+  pintando = true;
+  $('#dev_plano').value = planoSel.dev;
+  $('#barra_pincel').style.display = 'flex';
+};
+
+// Desfazer so cobre PINCELADAS (o que a borracha tira nao entra num
+// historico - "Limpar" e o reset confiavel se a borracha passar do ponto).
+$('#btn_desfazer').onclick = () => { tracosNovo.pop(); redesenharPintura(); };
+$('#btn_limpar').onclick = () => { tracosNovo=[]; redesenharPintura(); };
+$('#btn_cancelar_plano').onclick = () => {
+  pintando = false;
+  editandoId = null;
+  $('#barra_pincel').style.display = 'none';
+  if(cursorPincel){ mapaP.removeLayer(cursorPincel); cursorPincel=null; }
+  camadaPintura.clearLayers(); camadaPontos.clearLayers();
+  if(planoSelId) selecionarPlano(planoSelId);
+  else { $('#mapa_planos').style.display='none'; $('#placeholder_planos').style.display='flex'; }
+};
+$('#btn_salvar_plano').onclick = async () => {
+  if(!tracosNovo.length){ alert('Pinte pelo menos uma area antes de salvar.'); return; }
+  let r;
+  if(editandoId){
+    r = await (await fetch('/plano/atualizar', {method:'POST',
+      body: JSON.stringify({id: editandoId, tracos:tracosNovo})})).json();
+  } else {
+    const nome = prompt('Nome desta area:');
+    if(!nome) return;
+    const dev = $('#dev_plano').value.trim() || 'esp32-01';
+    r = await (await fetch('/plano', {method:'POST',
+      body: JSON.stringify({nome, dev, tracos:tracosNovo})})).json();
+  }
+  if(!r.ok){ alert('Erro ao salvar: ' + r.erro); return; }
+  const idFinal = editandoId || r.id;
+  pintando = false;
+  editandoId = null;
+  $('#barra_pincel').style.display = 'none';
+  if(cursorPincel){ mapaP.removeLayer(cursorPincel); cursorPincel=null; }
+  await carregarPlanos();
+  selecionarPlano(idFinal);
+};
+$('#btn_apagar_plano').onclick = async () => {
+  if(!planoSelId) return;
+  if(!confirm('Apagar esta area planejada?')) return;
+  await fetch('/plano/apagar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  planoSelId = null; planoSel = null;
+  camadaPontos.clearLayers(); camadaPintura.clearLayers();
+  $('#resumo_plano').style.display = 'none';
+  $('#btn_apagar_plano').style.display = 'none';
+  $('#btn_ativar_plano').style.display = 'none';
+  $('#btn_editar_plano').style.display = 'none';
+  $('#mapa_planos').style.display = 'none';
+  $('#placeholder_planos').style.display = 'flex';
+  carregarPlanos();
+};
+$('#btn_ativar_plano').onclick = async () => {
+  if(!planoSelId) return;
+  if(planoSel.ativo){
+    await fetch('/plano/desativar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  } else {
+    await fetch('/plano/ativar', {method:'POST', body: JSON.stringify({id: planoSelId})});
+  }
+  planoSel = await (await fetch('/plano?id='+planoSelId, {cache:'no-store'})).json();
+  atualizarBotaoAtivar();
+  carregarPlanos();
+};
+function atualizarBotaoAtivar(){
+  const btn = $('#btn_ativar_plano');
+  btn.textContent = planoSel.ativo ? 'Ativo para o medidor ✓' : 'Ativar para o medidor';
+  btn.classList.toggle('primario', !planoSel.ativo);
+}
+
+function ultimoCentro(){
+  if(planoSel && planoSel.tracos && planoSel.tracos.length && planoSel.tracos[0].pontos.length)
+    return planoSel.tracos[0].pontos[0];
+  if(traj && traj.cru && traj.cru.length) return traj.cru[0];
+  return [-21.2257, -44.9774];
+}
+
+async function carregarPlanos(){
+  let r;
+  try{ r = await (await fetch('/planos', {cache:'no-store'})).json(); }
+  catch(e){ return; }
+  if(r.length) ultimoDev = r[0].dev;
+  $('#vazio_planos').style.display = r.length ? 'none' : 'block';
+  const box = $('#planos');
+  box.innerHTML = r.map(p => `
+    <div class="sessao ${p.id===planoSelId?'sel':''}" data-id="${p.id}">
+      <div class="nome">${p.nome} ${p.ativo?'<span style="color:var(--verde)">&#9679; ativo</span>':''}</div>
+      <div class="sub">${p.dev} &middot; ${fmtData(p.criado_em)}</div>
+    </div>`).join('');
+  box.querySelectorAll('.sessao').forEach(el =>
+    el.onclick = () => selecionarPlano(Number(el.dataset.id)));
+}
+
+async function selecionarPlano(id){
+  pintando = false;
+  $('#barra_pincel').style.display = 'none';
+  planoSelId = id;
+  document.querySelectorAll('#planos .sessao').forEach(el =>
+    el.classList.toggle('sel', Number(el.dataset.id)===id));
+  planoSel = await (await fetch('/plano?id='+id, {cache:'no-store'})).json();
+  desenharPlano();
+}
+
+function desenharPlano(){
+  if(!planoSel || !planoSel.tracos) return;
+  $('#placeholder_planos').style.display = 'none';
+  $('#mapa_planos').style.display = 'block';
+  if(!mapaP) iniciarMapaPlanos(ultimoCentro());
+  mapaP.invalidateSize();
+
+  camadaPintura.clearLayers();
+
+  // A area pintada - e so isso que o plano guarda nesta fase (so
+  // planejamento de rota/area, sem nada de cobertura/Voronoi ainda - isso
+  // fica para depois, quando decidirmos o tamanho da area de abrangencia).
+  // Opaca (fillOpacity:1) na planoPane (tambem opacidade 1, ver
+  // iniciarMapaPlanos) para ficar uma mancha solida e bem visivel, nao um
+  // fundo apagado.
+  const todosLatLng = [];
+  for(const t of planoSel.tracos)
+    for(const [lat,lon] of t.pontos){
+      todosLatLng.push([lat,lon]);
+      L.circle([lat,lon], {radius: t.raio_m, weight:0, stroke:false,
+        pane:'planoPane', fillColor:'#3fb950', fillOpacity:1}).addTo(camadaPintura);
+    }
+  if(todosLatLng.length)
+    mapaP.fitBounds(L.latLngBounds(todosLatLng), {padding:[30,30], maxZoom:19});
+
+  $('#resumo_plano').style.display = 'block';
+  $('#resumo_plano').innerHTML = `<b>${planoSel.nome}</b> &mdash; ${planoSel.dev}`;
+  $('#btn_apagar_plano').style.display = 'inline-block';
+  $('#btn_ativar_plano').style.display = 'inline-block';
+  $('#btn_editar_plano').style.display = 'inline-block';
+  atualizarBotaoAtivar();
+}
 </script>
 </body>
 </html>
 """
 
 
+# ---------------------------------------------------------------------------
+# Servidor HTTP
+# ---------------------------------------------------------------------------
 class Manipulador(BaseHTTPRequestHandler):
     def log_message(self, formato, *args):
-        pass  # silencia o log por requisicao - o console mostra o resumo
+        pass
+
+    def _json(self, codigo, obj):
+        corpo = json.dumps(obj).encode()
+        self.send_response(codigo)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(corpo)))
+        self.end_headers()
+        self.wfile.write(corpo)
+
+    def do_POST(self):
+        if self.path == "/plano":
+            self._post_plano()
+            return
+        if self.path == "/plano/atualizar":
+            self._post_plano_atualizar()
+            return
+        if self.path == "/plano/apagar":
+            self._post_plano_apagar()
+            return
+        if self.path == "/plano/ativar":
+            self._post_plano_ativar()
+            return
+        if self.path == "/plano/desativar":
+            self._post_plano_desativar()
+            return
+        if self.path != "/sync":
+            self.send_error(404)
+            return
+
+        # Recepcao das coletas do celular. Manifesto por nome de arquivo: se a
+        # sessao ja chegou, nao regrava (evita duplicata quando o envio repete).
+        dev = self.headers.get("X-Dev", "desconhecido")
+        sessao = os.path.basename(self.headers.get("X-Sessao", ""))
+        if not sessao or "/" in sessao or "\\" in sessao:
+            self._json(400, {"ok": False, "erro": "cabecalho X-Sessao invalido"})
+            return
+        try:
+            corpo = _ler_corpo(self)
+        except (ValueError, OSError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo ilegivel: {e}"})
+            return
+
+        pasta_dev = os.path.join(_pasta_sincronizadas(), _limpar_nome(dev))
+        os.makedirs(pasta_dev, exist_ok=True)
+        destino = os.path.join(pasta_dev, sessao)
+        # Manifesto por TAMANHO, nao so por nome: se a sessao ja chegou mas o
+        # novo envio e MAIOR, e uma versao mais completa da mesma coleta (o caso
+        # de ter sincronizado durante a gravacao e reenviado depois de parar).
+        # Aceita a maior e reprocessa; um reenvio igual ou menor e no-op.
+        if os.path.exists(destino) and len(corpo) <= os.path.getsize(destino):
+            self._json(200, {"ok": True, "ja_tinha": True,
+                             "linhas": _contar_linhas(destino)})
+            return
+
+        # Grava em arquivo temporario e renomeia: uma queda no meio da escrita
+        # nao deixa um arquivo pela metade passar por sessao completa.
+        tmp = destino + ".parcial"
+        try:
+            with open(tmp, "wb") as f:
+                f.write(corpo)
+            os.replace(tmp, destino)
+        except OSError as e:
+            self._json(500, {"ok": False, "erro": str(e)})
+            return
+
+        linhas = _contar_linhas(destino)
+        print(f"\nsync: recebida {dev}/{sessao} - {linhas} registros")
+
+        # Processa na chegada. Uma falha aqui NAO perde a coleta - o cru ja esta
+        # salvo, a sessao pode ser reprocessada depois. Planos NAO entram
+        # aqui mais - o cruzamento com a area pintada e pos-processamento sob
+        # demanda (planejamento.pontos_do_plano), nao um passo do /sync.
+        n_deriv, erro = 0, None
+        try:
+            n_deriv = processar_sessao(destino, _caminho_banco())
+            print(f"sync: processada {sessao} - {n_deriv} pontos no banco")
+        except Exception as e:      # noqa: BLE001 - custodia acima de tudo
+            erro = str(e)
+            print(f"sync: cru salvo, processamento falhou: {e}")
+
+        self._json(200, {"ok": True, "ja_tinha": False, "linhas": linhas,
+                         "derivados": n_deriv, "erro_processamento": erro})
+
+    def _corpo_json(self):
+        corpo = _ler_corpo(self)
+        return json.loads(corpo.decode("utf-8")) if corpo else {}
+
+    def _post_plano(self):
+        try:
+            j = self._corpo_json()
+        except (ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo invalido: {e}"})
+            return
+        nome = str(j.get("nome") or "").strip()
+        dev = str(j.get("dev") or "").strip()
+        tracos = j.get("tracos")
+        if not nome or not dev:
+            self._json(400, {"ok": False, "erro": "esperado {nome, dev, tracos}"})
+            return
+        erro = _validar_tracos(tracos)
+        if erro:
+            self._json(400, {"ok": False, "erro": erro})
+            return
+        plano_id = planejamento.criar_plano(_caminho_banco(), nome, dev, tracos)
+        p = planejamento.obter_plano(_caminho_banco(), plano_id)
+        print(f"\nplano: criado '{nome}' ({dev})")
+        self._json(200, {"ok": True, "id": plano_id, "plano": p})
+
+    def _post_plano_atualizar(self):
+        """Reedita o desenho de um plano ja salvo (substitui os tracos) -
+        nome/dev/ativo continuam os mesmos, so a area pintada muda."""
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id, tracos}}: {e}"})
+            return
+        tracos = j.get("tracos")
+        erro = _validar_tracos(tracos)
+        if erro:
+            self._json(400, {"ok": False, "erro": erro})
+            return
+        ok = planejamento.atualizar_plano(_caminho_banco(), plano_id, tracos)
+        if not ok:
+            self._json(404, {"ok": False, "erro": "plano nao encontrado"})
+            return
+        p = planejamento.obter_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True, "plano": p})
+
+    def _post_plano_apagar(self):
+        try:
+            j = self._corpo_json()
+        except (ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"corpo invalido: {e}"})
+            return
+        try:
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError):
+            self._json(400, {"ok": False, "erro": "esperado {id}"})
+            return
+        planejamento.apagar_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True})
+
+    def _post_plano_ativar(self):
+        """Marca um plano como o ativo do seu medidor - so guarda o dado.
+        Quem vai LER isto (GET /plano/ativo?dev=) e o app, fase seguinte;
+        nesta rodada so deixamos a base pronta para quando isso acontecer."""
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id}}: {e}"})
+            return
+        ok = planejamento.ativar_plano(_caminho_banco(), plano_id)
+        if not ok:
+            self._json(404, {"ok": False, "erro": "plano nao encontrado"})
+            return
+        self._json(200, {"ok": True})
+
+    def _post_plano_desativar(self):
+        try:
+            j = self._corpo_json()
+            plano_id = int(j.get("id"))
+        except (TypeError, ValueError, OSError, json.JSONDecodeError) as e:
+            self._json(400, {"ok": False, "erro": f"esperado {{id}}: {e}"})
+            return
+        planejamento.desativar_plano(_caminho_banco(), plano_id)
+        self._json(200, {"ok": True})
 
     def do_GET(self):
         if self.path == "/":
-            corpo = PAGINA.encode()
-            tipo = "text/html; charset=utf-8"
-        elif self.path == "/dados":
-            with _lock:
-                instantaneo = dict(estado)
-                # O ESP32 e dado como ausente depois de 5 s sem publicar.
-                instantaneo["recebendo"] = (time.time() - estado["ultimo_pacote"]) < 5.0
-            corpo = json.dumps(instantaneo).encode()
+            corpo, tipo = PAGINA.encode(), "text/html; charset=utf-8"
+        elif self.path.startswith("/sessoes"):
+            corpo, tipo = json.dumps(_listar_sessoes()).encode(), "application/json"
+        elif self.path.startswith("/sessao/cobertura"):
+            # Cruza os pontos DESTA sessao com o plano ATIVO do medidor dela -
+            # "quais pontos desta caminhada cairam dentro da area planejada".
+            q = parse_qs(urlparse(self.path).query)
+            nome = (q.get("nome") or [""])[0]
+            dev = _dev_da_sessao(nome)
+            cov = planejamento.cobertura_sessao(_caminho_banco(), dev, nome) \
+                if dev else None
+            corpo = json.dumps(cov if cov else {}).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/sessao"):
+            q = parse_qs(urlparse(self.path).query)
+            nome = (q.get("nome") or [""])[0]
+            corpo, tipo = json.dumps(_trajeto_sessao(nome)).encode(), "application/json"
+        elif self.path.startswith("/planos"):
+            # `?dev=` filtra (o app so quer ver os planos da propria estacao);
+            # sem o parametro, lista todos (o painel da base quer ver tudo).
+            q = parse_qs(urlparse(self.path).query)
+            dev = (q.get("dev") or [None])[0]
+            corpo = json.dumps(
+                planejamento.listar_planos(_caminho_banco(), dev)).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano/ativo"):
+            # Endpoint pronto para o APP consumir (fase seguinte, fora desta
+            # rodada) - devolve o plano ativo daquele medidor, ou {} se
+            # nenhum plano estiver marcado ativo para ele.
+            q = parse_qs(urlparse(self.path).query)
+            dev = (q.get("dev") or [""])[0]
+            p = planejamento.plano_ativo(_caminho_banco(), dev)
+            corpo = json.dumps(p if p else {}).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano/pontos"):
+            # POS-processamento sob demanda: cruza a area do plano contra as
+            # amostras que ja existem no banco, na hora - nada pre-calculado
+            # (ver planejamento.pontos_do_plano).
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                plano_id = int((q.get("id") or ["0"])[0])
+            except ValueError:
+                plano_id = 0
+            corpo = json.dumps(
+                planejamento.pontos_do_plano(_caminho_banco(), plano_id)).encode()
+            tipo = "application/json"
+        elif self.path.startswith("/plano"):
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                plano_id = int((q.get("id") or ["0"])[0])
+            except ValueError:
+                plano_id = 0
+            p = planejamento.obter_plano(_caminho_banco(), plano_id)
+            corpo = json.dumps(p if p else {}).encode()
             tipo = "application/json"
         else:
             self.send_error(404)
             return
-
         self.send_response(200)
         self.send_header("Content-Type", tipo)
         self.send_header("Cache-Control", "no-store")
@@ -561,75 +1193,20 @@ class Manipulador(BaseHTTPRequestHandler):
         self.wfile.write(corpo)
 
 
-# ---------------------------------------------------------------------------
 def main():
     p = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--broker", default="localhost", help="endereco do broker MQTT")
-    p.add_argument("--porta-broker", type=int, default=1883)
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--porta", type=int, default=8771, help="porta do painel web")
-    p.add_argument("--dev", default=None,
-                   help="id da estacao a seguir (padrao: a primeira que publicar)")
-    p.add_argument("--csv", default=None,
-                   help="arquivo CSV de saida (padrao: data/telemetria-<data>.csv)")
     args = p.parse_args()
 
-    global _dev_alvo
-    if args.dev:
-        _dev_alvo = args.dev
-        print(f"seguindo apenas a estacao '{args.dev}'")
-
-    caminho = args.csv
-    if caminho is None:
-        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        pasta = os.path.join(raiz, "data")
-        os.makedirs(pasta, exist_ok=True)
-        caminho = os.path.join(
-            pasta, f"telemetria-{datetime.now():%Y%m%d-%H%M%S}.csv")
-    abrir_csv(caminho)
-
-    cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
-                          client_id="servidor-telemetria")
-    cliente.on_connect = ao_conectar
-    cliente.on_disconnect = ao_desconectar
-    cliente.on_message = ao_receber
-
-    print(f"broker:  {args.broker}:{args.porta_broker}")
-    try:
-        cliente.connect(args.broker, args.porta_broker, keepalive=30)
-    except OSError as erro:
-        print(f"\nnao consegui falar com o broker: {erro}")
-        print("O Mosquitto esta rodando?   systemctl status mosquitto")
-        return
-    cliente.loop_start()
-
+    os.makedirs(os.path.join(_raiz(), "data"), exist_ok=True)
     servidor = HTTPServer(("0.0.0.0", args.porta), Manipulador)
-    threading.Thread(target=servidor.serve_forever, daemon=True).start()
-    print(f"painel:  http://localhost:{args.porta}")
-    print("Ctrl+C para parar.\n")
-
-    ultimo = -1
+    print(f"base no ar em http://localhost:{args.porta}")
+    print("recebendo coletas em POST /sync   ·   Ctrl+C para parar")
     try:
-        while True:
-            time.sleep(1.0)
-            with _lock:
-                n, perdidos = estado["msgs"], estado["perdidos"]
-                vivo = (time.time() - estado["ultimo_pacote"]) < 5.0
-                temp, sigma = estado["temp"], estado["kf_sigma"]
-            if n != ultimo:
-                ultimo = n
-                t = f"{temp:.1f} C" if temp is not None else "--"
-                print(f"\r{'ok ' if vivo else '...'} {n} msgs  "
-                      f"{perdidos} perdidas  T={t}  sigma={sigma:.1f} m    ",
-                      end="", flush=True)
+        servidor.serve_forever()
     except KeyboardInterrupt:
         print("\nencerrando.")
-    finally:
-        cliente.loop_stop()
-        cliente.disconnect()
-        if _csv_arquivo:
-            _csv_arquivo.close()
 
 
 if __name__ == "__main__":

@@ -11,3 +11,16 @@ docs/datasheets/*.pdf
 
 # binários exportados pela Arduino IDE
 firmware/**/build/
+
+# Estado local, caches e backups do KiCad (preservados no computador)
+hardware/**/.history/
+hardware/**/*.bak
+hardware/**/*.kicad_prl
+hardware/**/fp-info-cache
+hardware/**/~*.lck
+# Arquivo de download duplicado pelos modelos extraidos ao lado
+hardware/skylog/modelos/*.snapshot.*.zip
+
+# Backups automáticos futuros do KiCad
+hardware/**/*-backups/
+hardware/**/_restore_backup_*/

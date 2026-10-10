@@ -18,15 +18,25 @@
         android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
-    <!-- Ate o Android 11 o scan BLE exigia permissao de localizacao, porque
-         dispositivos proximos revelam onde voce esta. Limitado ao 30 para nao
-         pedir isso a toa em celular novo. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
-        android:maxSdkVersion="30" />
+    <!-- Localizacao: usada tanto pelo scan BLE ate o Android 11 quanto,
+         agora, pelo GPS do proprio telefone (geolocator), que e a fonte de
+         posicao atual. SEM maxSdkVersion, porque o GPS do telefone precisa
+         dela em qualquer versao. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Solicitada somente ao iniciar o decibelimetro. O audio e processado
+         em memoria; o app nao grava conversas nem envia audio. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- O app so faz sentido com BLE; required=true tira do caminho um celular
          que nao tem o radio, em vez de instalar e falhar na primeira tela. -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+    <!-- Tiles do mapa (flutter_map busca da internet quando ha rede; offline
+         usa o cache). -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="Estacao Movel"

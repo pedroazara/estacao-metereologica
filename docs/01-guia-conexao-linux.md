@@ -1,4 +1,12 @@
-# Guia de conexão — WTGAHRS3-485 no Linux
+# Guia de conexão — WTGAHRS3-485 no Linux (legado)
+
+> **Referência histórica — arquitetura revisada em 09/10/2026.** O WTGAHRS3
+> não integra mais o hardware previsto para a estação. O ESP32 fica com
+> GY-302, KY-028, ENS160+AHT21 e o sensor ambiental RS485; GPS e nível sonoro
+> ficam a cargo do celular.
+> Este guia foi preservado para bancada e manutenção das coletas antigas.
+> Suas pinagens e alimentações são específicas do WTGAHRS3 e não devem ser
+> aplicadas ao sensor ambiental. Ver [arquitetura atual](04-telemetria.md).
 
 Do zero até ler latitude/longitude no terminal. Siga na ordem; cada passo tem
 uma verificação antes de avançar.

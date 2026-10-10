@@ -1,8 +1,17 @@
 # Base de processamento — Raspberry Pi
 
-Documento de referência da **base**: o Raspberry Pi que recebe o dado coletado
-em campo, roda o filtro de Kalman, guarda o histórico e mostra tudo para o
-pesquisador. Decidido em 17/08/2026.
+Documento de referência da **base**: o Raspberry Pi que recebe as sessões
+coletadas em campo, guarda o histórico e apoia a análise. A implantação foi
+proposta em 17/08/2026; a divisão dos sensores foi revisada em **09/10/2026**.
+
+Na arquitetura da V1, o ESP32 atende **GY-302, KY-028, ENS160+AHT21 e o sensor
+ambiental RS485**. O celular fornece **GPS e nível sonoro**, registra a sessão
+e a envia para a base. O aplicativo, o sistema de coleta e o site estão
+funcionais. WTGAHRS3, KY-038 e KY-013 não fazem parte do hardware previsto.
+
+As ferramentas MQTT, GPS/IMU do ESP32 e Kalman continuam no repositório, mas o
+servidor atual não consome MQTT nem executa Kalman. Os ensaios MQTT abaixo são
+históricos e não funcionam como teste do servidor atual.
 
 Ver [04-telemetria.md](04-telemetria.md) para a arquitetura completa e o
 contrato de dados. Este documento cobre só a máquina da base: para que ela
@@ -10,25 +19,53 @@ serve, como preparar e o que ela não aguenta.
 
 ---
 
+## Operação atual conferida em 10/10/2026
+
+Na raiz do projeto:
+
+```bash
+python3 src/servidor_telemetria.py --porta 8771
+```
+
+A base atual usa Python e SQLite da biblioteca padrão; recebe `POST /sync` e
+serve o painel em `http://<host>:8771`. Mosquitto é dispensável nesse fluxo.
+O bruto fica em `data/sincronizadas/`, e o derivado em `data/estacao.db`.
+O processamento associa o último ambiente ao GPS do telefone, sem Kalman.
+Sessões sem GPS geram zero pontos; som do telefone permanece somente no JSONL.
+O mapa atual usa Leaflet e tiles online; a proposta de canvas offline abaixo
+não foi a implementação adotada. Adaptar usuário/caminhos do arquivo real
+[`telemetria.service`](../servidor/telemetria.service) antes da instalação.
+
+A [documentação versionada](versoes/2026-10-10-2cd5977-local/documentacao-tecnica.md)
+contém interfaces, limitações, resultados de testes e roteiro de validação.
+Nenhuma implantação no Pi foi executada nesta revisão.
+
+## Histórico de decisões e preparação da base
+
+As seções seguintes preservam o estudo de 17/08/2026 e notas posteriores.
+Passos de broker, monitor `/dados` e simulador MQTT referem-se ao servidor
+antigo; não descrevem recursos do `servidor_telemetria.py` presente.
+
 ## Por que um Pi e não o notebook
 
 Tecnicamente o notebook é superior ao Pi 3B em tudo — CPU, RAM, disco, tela.
 Se o critério fosse só "rodar o Kalman", o Pi não acrescentaria nada.
 
-O critério é outro: **transformar o projeto em instrumento.** Com o notebook, o
-pesquisador precisa ter Python instalado, criar venv, descobrir que a porta é
-`/dev/ttyUSB0` e lembrar de rodar o script — e se fechar a tampa para ir a uma
-reunião, a coleta morre. Com a base, ele liga na tomada e funciona.
+O objetivo da base é oferecer um destino estável para enviar e analisar as
+sessões, sem depender de manter um notebook aberto com o servidor em execução.
+O celular grava a coleta localmente, mesmo sem acesso à base. Fechar o notebook
+ou desligar o Pi adia o envio e a análise; não interrompe essa gravação no
+telefone.
 
 Consequências que só a base entrega:
 
-- **Sempre ligada.** O `status` do MQTT é `retained` + LWT: o broker anuncia
-  sozinho quando o ESP32 cai. Esse aviso não vale nada se ninguém estiver
-  escutando — com notebook, "o ESP32 caiu às 3h" simplesmente não é registrado.
-- **Endereço fixo.** O ESP32 precisa de um destino que não mude quando alguém
-  abre ou fecha um notebook.
-- **Histórico que acumula.** SQLite crescendo por meses, não CSV solto na pasta
-  de quem por acaso estava com a máquina.
+- **Sempre ligada.** As sessões podem ser enviadas pelo celular quando a
+  base estiver acessível. Ferramentas MQTT separadas continuam disponíveis,
+  mas o servidor atual não as consome.
+- **Endereço fixo.** O aplicativo precisa de um destino estável para enviar
+  suas sessões por HTTP.
+- **Histórico que acumula.** A base reúne as sessões recebidas; o banco com
+  dados derivados já existe em SQLite; os arquivos crus ficam em JSONL separado.
 
 **Isto não é uma escolha de arquitetura, é de implantação.** O
 `src/servidor_telemetria.py` roda igual nos dois. Desenvolva no PC (iteração
@@ -71,6 +108,10 @@ O peso vem do framework, não do Pi. Painel leve roda liso até no 3B.
 
 ## Preparação — passo a passo
 
+Os passos de MQTT e simulação preservam a instalação e o diagnóstico do
+caminho antigo. Eles não substituem um teste de sessão do aplicativo com
+envio por `POST /sync`.
+
 ### 1. Gravar o cartão
 
 Use o **Raspberry Pi Imager** e abra a engrenagem de configuração **antes** de
@@ -111,10 +152,11 @@ escuta em `localhost` e recusa cliente anônimo. As armadilhas dessa instalaçã
 (chave duplicada, `exit-code 3` sem causa visível) estão documentadas na seção
 *Broker MQTT* de [04-telemetria.md](04-telemetria.md).
 
-### 5. Teste de ponta a ponta, sem hardware nenhum
+### 5. Teste do caminho MQTT legado, sem hardware nenhum
 
-Esta é a tarefa que vale mais — ela exercita **exatamente** o caminho que o
-ESP32 vai usar, usando o simulador que já existe.
+Este roteiro dependia do servidor antigo com assinatura MQTT. O simulador foi removido na limpeza de 10/10/2026; o servidor atual não recebe MQTT; o ensaio
+completo abaixo é apenas registro histórico. Teste a versão atual por `/sync`,
+conforme a documentação versionada.
 
 No Pi, suba o servidor:
 
@@ -128,8 +170,8 @@ E do **PC**, aponte o simulador para o Pi:
 python3 src/simular_estacao.py --broker raspberrypi.local
 ```
 
-O truque é rodar o simulador de outra máquina: assim você testa dispositivo
-externo → broker no Pi → filtro → painel, que é a topologia real. Abra
+Rodar o simulador de outra máquina testa dispositivo externo → broker no Pi
+→ filtro → painel, que é a topologia do caminho legado. Abra
 `http://raspberrypi.local:8771` do PC e veja o rastro cru e o filtrado.
 
 Num segundo SSH, espie o barramento cru — é o melhor jeito de entender o que
@@ -139,8 +181,9 @@ está trafegando:
 mosquitto_sub -h localhost -t 'estacao/#' -v
 ```
 
-Regra de diagnóstico: se aparece aqui, o problema está no servidor Python; se
-não aparece, está no ESP32 ou na rede.
+Para esse caminho MQTT: se a mensagem aparece aqui, a falha está depois do
+broker; se não aparece, investigue publicador e rede. Essa regra não cobre
+as sessões que o aplicativo envia por HTTP.
 
 ### 5.1 Monitor de terminal
 
@@ -172,7 +215,7 @@ Sem o atalho, o caminho longo é:
 Ele aplica a regra de diagnóstico acima **na mesma tela**, e é por isso que lê
 de duas fontes de propósito: assina o broker por conta própria (painel
 `BARRAMENTO`, o que o MQTT está entregando) e consulta o `/dados` do servidor
-(painéis `GPS`/`IMU`, o que o Kalman fez com aquilo). Barramento andando com o
+(painéis `GPS`/`IMU` do caminho legado, o que o Kalman fez com aquilo). Barramento andando com o
 resto congelado acusa o servidor Python; barramento parado acusa o ESP32 ou a
 rede. Com uma fonte só isso exigiria um segundo terminal.
 
@@ -188,17 +231,20 @@ monitorar a base a partir do notebook.
 > nada no arquivo denuncia isso. Corrija com
 > `sudo timedatectl set-timezone America/Sao_Paulo` e **reinicie o serviço**.
 
-### 6. Adaptador RS485-USB no Pi
+### 6. Adaptador RS485-USB no Pi — bancada legada
 
-A base normalmente não lê sensor — quem lê é o ESP32. Mas vale validar que o
-`src/` roda igual em ARM, e ter o caminho direto disponível para bancada:
+A base recebe as sessões do telefone; a leitura dos quatro módulos externos
+cabe ao ESP32. O adaptador direto no Pi é opcional para bancada e manutenção
+das ferramentas WTG antigas:
 
 ```bash
 sudo usermod -aG dialout $USER && ls -l /dev/ttyUSB*
 ```
 
-Depois de relogar, rode o `src/scan_barramento.py`. Ver
-[01-guia-conexao-linux.md](01-guia-conexao-linux.md) para permissões e driver.
+Depois de relogar, o `src/scan_barramento.py` atende o diagnóstico legado.
+Ver [01-guia-conexao-linux.md](01-guia-conexao-linux.md) para permissões e
+driver. Esse guia é específico do WTGAHRS3; não reutilize sua alimentação ou
+seu mapa de registradores para o sensor ambiental.
 
 ### 7. Systemd — o que transforma script em instrumento
 
@@ -238,24 +284,24 @@ SSD USB e aponte o banco para lá — o SD fica só com o sistema. Use `UUID=` n
 
 ## Divisão de responsabilidades
 
-| | ESP32 (campo) | Raspberry Pi (base) |
-|---|---|---|
-| lê sensores RS485 | ✅ | ❌ |
-| carimba `seq`, `ts`, `ms` | ✅ | ❌ |
-| grava tudo no cartão SD | ✅ | ❌ |
-| painel de conferência (dado cru) | ✅ | ❌ |
-| filtro de Kalman | ❌ | ✅ |
-| banco histórico | ❌ | ✅ |
-| painel de análise / tela touch | ❌ | ✅ |
-| reprocessamento com outra sintonia | ❌ | ✅ |
-| envio para API externa | ❌ | ✅ |
+| Responsabilidade | ESP32 | Celular | Raspberry Pi |
+|---|---|---|---|
+| Ler GY-302, KY-028 e ambiental RS485 | Implementado | Recebe por BLE | Recebe na sessão |
+| Ler ENS160+AHT21 | Teste separado; integração pendente | Ainda sem suporte | Ainda sem suporte |
+| Obter GPS | Fora do hardware previsto | Implementado | Recebe na sessão |
+| Medir níveis sonoros | Fora do hardware previsto | Implementado, sem guardar áudio | Recebe na sessão |
+| Gravar a sessão em campo | SD ainda não implementado | JSONL local implementado | — |
+| Carimbar os registros atuais da sessão | — | `ts_app` ao anexar o dado | Preserva o registro recebido |
+| Enviar a sessão para a base | — | HTTP `POST /sync` implementado | Recebe o arquivo |
+| Manter histórico e apoiar análise | — | Mantém a cópia local | Responsabilidade da base |
 
-O ESP32 é um **sensor honesto**: lê, carimba, guarda, publica, não perde dado.
-Toda interpretação é da base.
+As rotinas de Kalman para dados WTG e os planos anteriores de `seq`, `ts`,
+`ms` e cartão SD estão preservados como histórico em
+[04-telemetria.md](04-telemetria.md).
 
 ---
 
-## Pendente
+## Melhorias posteriores à V1
 
 - [ ] Tela touch. Preferir a **DSI oficial de 7"** a HDMI + USB: não ocupa porta
       USB, não precisa de conversor, driver de toque já vem no sistema. Somar o
@@ -264,9 +310,7 @@ Toda interpretação é da base.
       painel leve existir.
 - [ ] **Rootfs read-only (overlayfs).** Vira obrigatório quando for produto: um
       instrumento é desligado no botão da régua, sem shutdown gracioso.
-- [ ] Como o ESP32 acha a base: reserva de DHCP no roteador ou mDNS
-      (`ESPmDNS`). Decidir antes da primeira sincronização de verdade.
 - [ ] Acesso remoto (Tailscale ou equivalente), se for preciso abrir o painel
       fora da rede local.
-- [ ] Banco em duas camadas (cru imutável + derivado recomputável) — ver
-      [04-telemetria.md](04-telemetria.md).
+- [x] JSONL recebido e SQLite derivado implementados; reenvio maior substitui
+      o bruto anterior, portanto não há imutabilidade de todas as revisões.

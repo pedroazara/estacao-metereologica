@@ -5,8 +5,6 @@
 /// publicarAmbiente e publicarImu em painel_wifi.ino).
 library;
 
-import 'dart:math' as math;
-
 class Status {
   final String dev;
   final int uptimeS;
@@ -36,113 +34,39 @@ class Status {
       );
 }
 
-class Posicao {
-  final int seq;
-  final bool fix;
-  final double lat, lon, alt, vel, hdop, rumo;
-  final int satelites;
-
-  const Posicao({
-    required this.seq,
-    required this.fix,
-    required this.lat,
-    required this.lon,
-    required this.alt,
-    required this.vel,
-    required this.satelites,
-    required this.hdop,
-    required this.rumo,
-  });
-
-  factory Posicao.doJson(Map<String, dynamic> j) => Posicao(
-        seq: (j['seq'] ?? 0) as int,
-        fix: j['fix'] == true,
-        lat: _d(j['lat']),
-        lon: _d(j['lon']),
-        alt: _d(j['alt']),
-        vel: _d(j['vel']),
-        satelites: (j['sat'] ?? 0) as int,
-        hdop: _d(j['hdop']),
-        rumo: _d(j['rumo']),
-      );
-}
 
 class Ambiente {
   final int seq;
   final double temperatura, umidade;
 
+  /// Ruido (dB, Leq do ciclo - KY-038), temperaturas auxiliares pro Kalman
+  /// (KY-028/KY-013, ainda sem fusao no app) e luminosidade (lux - GY-302).
+  /// -1 em `luminosidade` significa sensor ausente ou sem leitura valida
+  /// naquele ciclo (ver publicarAmbiente() em painel_wifi.ino).
+  final double ruidoDb, temperaturaAux28, temperaturaAux13, luminosidade;
+
   const Ambiente({
     required this.seq,
     required this.temperatura,
     required this.umidade,
+    required this.ruidoDb,
+    required this.temperaturaAux28,
+    required this.temperaturaAux13,
+    required this.luminosidade,
   });
 
   factory Ambiente.doJson(Map<String, dynamic> j) => Ambiente(
         seq: (j['seq'] ?? 0) as int,
         temperatura: _d(j['temp']),
         umidade: _d(j['umid']),
+        ruidoDb: _d(j['db']),
+        temperaturaAux28: _d(j['t28']),
+        temperaturaAux13: _d(j['t13']),
+        luminosidade: j.containsKey('lux') ? _d(j['lux']) : -1.0,
       );
 }
 
-/// Um pedaco do lote de IMU.
-///
-/// O firmware fatia o lote porque ele nao cabe numa notificacao BLE. Cada
-/// pedaco e um envelope completo — `p` de `np` — entao o app nao precisa
-/// remontar nada para gravar: escreve o pedaco como veio. A remontagem, se um
-/// dia interessar, e trabalho da base, que tem CPU e memoria de sobra.
-class LoteImu {
-  final int seq, pedaco, totalPedacos;
-  final double dt;
-  final List<AmostraImu> amostras;
 
-  const LoteImu({
-    required this.seq,
-    required this.pedaco,
-    required this.totalPedacos,
-    required this.dt,
-    required this.amostras,
-  });
-
-  factory LoteImu.doJson(Map<String, dynamic> j) => LoteImu(
-        seq: (j['seq'] ?? 0) as int,
-        pedaco: (j['p'] ?? 0) as int,
-        totalPedacos: (j['np'] ?? 1) as int,
-        dt: _d(j['dt']),
-        amostras: ((j['m'] ?? []) as List)
-            .map((a) => AmostraImu.doJson(a as Map<String, dynamic>))
-            .toList(),
-      );
-}
-
-class AmostraImu {
-  final double ax, ay, az, gx, gy, gz, roll, pitch, yaw;
-
-  const AmostraImu({
-    required this.ax,
-    required this.ay,
-    required this.az,
-    required this.gx,
-    required this.gy,
-    required this.gz,
-    required this.roll,
-    required this.pitch,
-    required this.yaw,
-  });
-
-  factory AmostraImu.doJson(Map<String, dynamic> j) => AmostraImu(
-        ax: _d(j['ax']),
-        ay: _d(j['ay']),
-        az: _d(j['az']),
-        gx: _d(j['gx']),
-        gy: _d(j['gy']),
-        gz: _d(j['gz']),
-        roll: _d(j['roll']),
-        pitch: _d(j['pitch']),
-        yaw: _d(j['yaw']),
-      );
-
-  double get moduloG => math.sqrt(ax * ax + ay * ay + az * az);
-}
 
 /// Configuracao da estacao — o que a caracteristica `cfg` le e escreve.
 class Configuracao {

@@ -17,9 +17,8 @@ Documentation=file:/home/pedro/estacao/docs/04-telemetria.md
 ; arranque e ENCERRA se o broker recusar (ver main() em servidor_telemetria.py).
 ; Com Restart=always isso nao trava a base - ele volta e tenta de novo - mas
 ; ordenar aqui evita um ciclo de reinicios a cada boot.
-After=network-online.target mosquitto.service
+After=network-online.target
 Wants=network-online.target
-Requires=mosquitto.service
 
 [Service]
 Type=simple

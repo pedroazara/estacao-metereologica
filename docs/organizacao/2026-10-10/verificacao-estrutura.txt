@@ -1,0 +1,3 @@
+Contagens: {'links': 155, 'bibliotecas': 12, 'modelos': 16, 'footprints': 16}
+Resultado: OK
+Limites: não valida eletricamente a placa, bibliotecas padrão ou URLs externas.

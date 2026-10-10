@@ -25,6 +25,7 @@ class Gravador {
   File? _arquivo;
   int _linhas = 0;
   DateTime? _inicio;
+  Timer? _flush;
 
   bool get gravando => _saida != null;
   int get linhas => _linhas;
@@ -54,6 +55,16 @@ class Gravador {
     _saida = _arquivo!.openWrite(mode: FileMode.writeOnlyAppend);
     _linhas = 0;
     _inicio = agora;
+
+    // FLUSH PERIODICO. O IOSink guarda as escritas em memoria; sem isto, o
+    // arquivo no disco fica vazio ate `encerrar`. Se o usuario sincronizasse
+    // sem parar - ou o app fosse fechado - a coleta inteira se perdia (foi o
+    // que aconteceu com as primeiras sessoes). A cada 2 s o buffer vai pro
+    // disco, entao o pior caso de perda sao 2 s, nao a sessao toda.
+    _flush?.cancel();
+    _flush = Timer.periodic(const Duration(seconds: 2), (_) {
+      _saida?.flush();
+    });
   }
 
   /// Anexa um envelope.
@@ -74,11 +85,16 @@ class Gravador {
   }
 
   Future<void> encerrar() async {
+    _flush?.cancel();
+    _flush = null;
     final s = _saida;
     _saida = null;
     if (s == null) return;
-    await s.flush();
-    await s.close();
+    try {
+      await s.flush();
+    } finally {
+      await s.close();
+    }
   }
 
   static Future<List<File>> sessoes() async {

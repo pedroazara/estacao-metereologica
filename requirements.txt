@@ -1,7 +1,6 @@
+# Utilitários seriais preservados; a base HTTP usa somente a biblioteca padrão.
 pyserial>=3.5
 minimalmodbus>=2.1.1
 
-# Servidor de telemetria (src/servidor_telemetria.py): cliente MQTT que assina
-# o broker Mosquitto. O broker em si e pacote do sistema, nao do pip:
-#     sudo apt install mosquitto mosquitto-clients
+# Monitor MQTT legado (src/monitor_terminal.py); não é dependência da base HTTP.
 paho-mqtt>=2.1.0

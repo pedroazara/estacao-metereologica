@@ -1,0 +1,19 @@
+/* Keep cancellation reachable even when the controls extend below the fold. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 14px 0;
+  margin-top: -14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+footer > a {margin-bottom: 8px; font-size: 11px; text-decoration: none;}
+@media (min-width: 840px) and (max-width: 1040px) {
+  .xy-inner {grid-template-columns: 1fr 1fr; gap: 18px;}
+  .pad-grid {grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 54px);}
+  .z-pad {margin: 25px 18px;}
+}
+@media (min-width: 701px) and (max-width: 839px) {
+  .control-grid {grid-template-columns: minmax(0, 1.25fr) minmax(230px, 1fr);}
+}

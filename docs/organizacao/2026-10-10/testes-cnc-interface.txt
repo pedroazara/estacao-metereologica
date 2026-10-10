@@ -1,0 +1,16 @@
+✔ release before start reply sends higher-sequence stop and cannot resume (12.08517ms)
+✔ lost pointer capture stops the held gesture exactly once (4.430618ms)
+✔ joystick is inert at center and center return latches until full release (4.351608ms)
+✔ window blur sends stop and global cancel, disarms locally, and ends pulses (4.756806ms)
+✔ failed cancel stays blocked despite a fresh server report saying armed (3.42254ms)
+✔ mode change is not committed when cancellation cannot be confirmed (2.247264ms)
+✔ late successful arm reply after blur cannot clear local safety block (3.300378ms)
+✔ held keyboard key repeats do not create a queue and keyup stops (4.746416ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.615855

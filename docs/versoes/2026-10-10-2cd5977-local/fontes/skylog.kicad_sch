@@ -1,0 +1,3307 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "350f3427-bcec-49b0-ac2f-a03c28574f3d")
+	(paper "A4")
+	(title_block
+		(title "Projeto SkyLog")
+		(rev "Pedro Henrique Ázara de Almeida")
+		(company "Universidade Federal de Lavras")
+	)
+	(lib_symbols
+		(symbol "Espressif:ESP32-DevKitC"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at -30.48 38.1 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "ESP32-DevKitC"
+				(at -30.48 35.56 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "ESP32:ESP32-DevKitC"
+				(at 0 -43.18 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html"
+				(at 0 -45.72 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Development Kit"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "ESP32"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "ESP32-DevKitC_0_0"
+				(text "ESP32-DevKitC"
+					(at -2.54 -20.32 0)
+					(effects
+						(font
+							(size 2.54 2.54)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -35.56 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "14"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 35.56 270)
+					(length 2.54)
+					(name "5V"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "19"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "ESP32-DevKitC_0_1"
+				(rectangle
+					(start -30.48 33.02)
+					(end 30.48 -33.02)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "ESP32-DevKitC_1_1"
+				(pin power_in line
+					(at 2.54 35.56 270)
+					(length 2.54)
+					(name "3V3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -33.02 30.48 0)
+					(length 2.54)
+					(name "CHIP_PU"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -33.02 0 0)
+					(length 2.54)
+					(name "SENSOR_VP/GPIO36/ADC1_CH0"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -33.02 -2.54 0)
+					(length 2.54)
+					(name "SENSOR_VN/GPIO39/ADC1_CH3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -33.02 5.08 0)
+					(length 2.54)
+					(name "VDET_1/GPIO34/ADC1_CH6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at -33.02 2.54 0)
+					(length 2.54)
+					(name "VDET_2/GPIO35/ADC1_CH7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 25.4 0)
+					(length 2.54)
+					(name "32K_XP/GPIO32/ADC1_CH4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 22.86 0)
+					(length 2.54)
+					(name "32K_XN/GPIO33/ADC1_CH5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 0 180)
+					(length 2.54)
+					(name "DAC_1/ADC2_CH8/GPIO25"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -2.54 180)
+					(length 2.54)
+					(name "DAC_2/ADC2_CH9/GPIO26"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -5.08 180)
+					(length 2.54)
+					(name "ADC2_CH7/GPIO27"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "11"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 12.7 0)
+					(length 2.54)
+					(name "MTMS/GPIO14/ADC2_CH6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "12"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 17.78 0)
+					(length 2.54)
+					(name "MTDI/GPIO12/ADC2_CH5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "13"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 15.24 0)
+					(length 2.54)
+					(name "MTCK/GPIO13/ADC2_CH4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "15"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -20.32 180)
+					(length 2.54)
+					(name "SD_DATA2/GPIO9"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "16"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -22.86 180)
+					(length 2.54)
+					(name "SD_DATA3/GPIO10"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "17"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -25.4 180)
+					(length 2.54)
+					(name "CMD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "18"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -12.7 180)
+					(length 2.54)
+					(name "SD_CLK/GPIO6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "20"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -15.24 180)
+					(length 2.54)
+					(name "SD_DATA0/GPIO7"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "21"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -17.78 180)
+					(length 2.54)
+					(name "SD_DATA1/GPIO8"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "22"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -33.02 10.16 0)
+					(length 2.54)
+					(name "MTDO/GPIO15/ADC2_CH3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "23"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 20.32 180)
+					(length 2.54)
+					(name "ADC2_CH2/GPIO2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "24"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 22.86 180)
+					(length 2.54)
+					(name "GPIO0/BOOT/ADC2_CH1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "25"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 17.78 180)
+					(length 2.54)
+					(name "ADC2_CH0/GPIO4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "26"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -27.94 180)
+					(length 2.54)
+					(name "GPIO16"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "27"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 -30.48 180)
+					(length 2.54)
+					(name "GPIO17"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "28"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 15.24 180)
+					(length 2.54)
+					(name "GPIO5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "29"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 12.7 180)
+					(length 2.54)
+					(name "GPIO18"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "30"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 10.16 180)
+					(length 2.54)
+					(name "GPIO19"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "31"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -35.56 90)
+					(length 2.54)
+					(hide yes)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "32"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 7.62 180)
+					(length 2.54)
+					(name "GPIO21"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "33"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 27.94 180)
+					(length 2.54)
+					(name "U0RXD/GPIO3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "34"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 30.48 180)
+					(length 2.54)
+					(name "U0TXD/GPIO1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "35"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 5.08 180)
+					(length 2.54)
+					(name "GPIO22"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "36"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 33.02 2.54 180)
+					(length 2.54)
+					(name "GPIO23"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "37"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -35.56 90)
+					(length 2.54)
+					(hide yes)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "38"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Sensores_Modulos:GY-302_BH1750"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 3.81 10.16 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "GY-302_BH1750"
+				(at 10.16 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "Sensores_Modulos:GY-302_Conector_1x05_P2.54mm"
+				(at 10.16 -7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://github.com/usini/usini_kicad_sensors"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "GY302 GY-302 BH1750 luz luminosidade sensor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "GY-302_BH1750_0_1"
+				(rectangle
+					(start 2.54 8.89)
+					(end 17.78 -3.81)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(circle
+					(center 15.24 6.35)
+					(radius 1.27)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(circle
+					(center 15.24 -1.27)
+					(radius 1.27)
+					(stroke
+						(width 0)
+						(type solid)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "GY-302_BH1750_1_1"
+				(pin input line
+					(at 0 7.62 0)
+					(length 2.54)
+					(name "ADDR"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 0 5.08 0)
+					(length 2.54)
+					(name "SDA"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 0 2.54 0)
+					(length 2.54)
+					(name "SCL"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 0 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -2.54 0)
+					(length 2.54)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "Sensores_Modulos:KY-028"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at -2.54 8.89 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify right)
+				)
+			)
+			(property "Value" "KY-028"
+				(at -2.54 6.35 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify right)
+				)
+			)
+			(property "Footprint" "Sensores_Modulos:KY-028_Conector_1x04_P2.54mm"
+				(at 0 -10.16 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://sensorkit.joy-it.net/en/sensors/ky-028"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "KY028 KY-028 temperatura termistor NTC LM393 modulo sensor"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "KY-028_Conector_1x04_P2.54mm"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "KY-028_0_1"
+				(rectangle
+					(start -5.08 5.08)
+					(end 5.08 -5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "KY-028_1_1"
+				(pin output line
+					(at 7.62 2.54 180)
+					(length 2.54)
+					(name "AO"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at 0 7.62 270)
+					(length 2.54)
+					(name "VCC"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 7.62 -2.54 180)
+					(length 2.54)
+					(name "DO"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "skylog:RS485_TTL_V2_OSHWLab"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 15.24 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "RS485_TTL_V2_OSHWLab"
+				(at 0 17.78 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "skylog:RS485_TTL_V2_OSHWLab_PadGeometry"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" "https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Pinagem" "CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Montagem" "JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Validacao_eletrica" "Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Controle_direcao" "Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "RS485 TTL UART automatic module JST 2.50 Virendra"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "RS485_TTL_V2_OSHWLab*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "RS485_TTL_V2_OSHWLab_0_1"
+				(rectangle
+					(start -17.78 12.7)
+					(end 17.78 -12.7)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "RS485_TTL_V2_OSHWLab_1_1"
+				(pin input line
+					(at -22.86 7.62 0)
+					(length 5.08)
+					(name "TXD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN1.1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at -22.86 2.54 0)
+					(length 5.08)
+					(name "RXD"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN1.2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -22.86 -2.54 0)
+					(length 5.08)
+					(name "GND_TTL"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN1.3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -22.86 -7.62 0)
+					(length 5.08)
+					(name "+5V"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN1.4"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 22.86 5.08 180)
+					(length 5.08)
+					(name "B"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN2.1"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 22.86 0 180)
+					(length 5.08)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN2.2"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 22.86 -5.08 180)
+					(length 5.08)
+					(name "GND_RS485"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "CN2.3"
+						(effects
+							(font
+								(size 1.016 1.016)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "skylog:Sensor_TempUmid_RS485_5V_24V"
+			(pin_names
+				(offset 1.016)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Sensor_TempUmid_RS485_5V_24V"
+				(at 0 15.24 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "skylog:PinSocket_1x04_P2.54mm_Vertical"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Alimentação" "5–24 V CC — conforme etiqueta"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Comunicacao_testada" "Modbus RTU; endereço 1; 9600 baud; 8N1"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Temperatura" "Registrador 0x0000; int16 com sinal; dividir por 10"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Umidade" "Registrador 0x0001; dividir por 10"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Pressao" "Mencionada na etiqueta; não confirmada nos testes"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Dados_pendentes" "Precisão, consumo e faixa de medição não confirmados"
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Pinagem" "1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Validacao_mecanica" "Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física."
+				(at 0 12.7 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Sensor_TempUmid_RS485_5V_24V_0_1"
+				(rectangle
+					(start -12.7 10.16)
+					(end 12.7 -10.16)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "Sensor_TempUmid_RS485_5V_24V_1_1"
+				(pin power_in line
+					(at -17.78 7.62 0)
+					(length 5.08)
+					(name "VIN"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin power_in line
+					(at -17.78 2.54 0)
+					(length 5.08)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -17.78 -2.54 0)
+					(length 5.08)
+					(name "RS485_A+"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -17.78 -7.62 0)
+					(length 5.08)
+					(name "RS485_B-"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	
+(symbol "skylog:ENS160_AHT21_Interface"
+ (pin_names (offset 1.016) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 10.16 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "ki_keywords" "ENS160 AHT21 I2C interface conector externo 3V3" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "ENS160_AHT21_Interface_0_1"
+  (rectangle (start -15.24 5.08) (end 15.24 -5.08)
+   (stroke (width 0.254) (type default)) (fill (type background)))
+ 
+(text "3V3" (at -13.97 3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "GND" (at -13.97 1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SDA" (at -13.97 -1.27 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+(text "SCL" (at -13.97 -3.81 0) (effects (font (size 1.27 1.27)) (justify left)))
+)
+ (symbol "ENS160_AHT21_Interface_1_1"
+  (pin passive line (at -17.78 3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "1" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "2" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -1.27 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "3" (effects (font (size 1.27 1.27)))))
+  (pin passive line (at -17.78 -3.81 0) (length 2.54)
+   (name "~" (effects (font (size 1.27 1.27))))
+   (number "4" (effects (font (size 1.27 1.27)))))
+ )
+ (embedded_fonts no)
+)
+
+(symbol "skylog:Wire_Pad" (pin_names (offset 0) (hide yes))
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes)
+ (duplicate_pin_numbers_are_jumpers no)
+ (property "Reference" "J" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "Wire_Pad" (at 0 -3.81 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Ponto de solda para um fio: furo metalizado de 1.2 mm e pad de 3 mm." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (symbol "Wire_Pad_0_1"
+  (circle (center 0 0) (radius 1.27) (stroke (width 0.254) (type default)) (fill (type none))))
+ (symbol "Wire_Pad_1_1"
+  (pin passive line (at -5.08 0 0) (length 3.81) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+ ) (embedded_fonts no)
+)
+(symbol "power:PWR_FLAG"
+		(power global)
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "#FLG"
+			(at 0 1.905 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 0 3.81 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "flag power"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "PWR_FLAG_0_0"
+			(pin power_out line
+				(at 0 0 90)
+				(length 0)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(symbol "PWR_FLAG_0_1"
+			(polyline
+				(pts
+					(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+)
+	(junction
+		(at 146.05 34.29)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "1d11c450-f8ef-42c8-86d1-d6e4cec83793")
+	)
+	(junction
+		(at 135.89 113.03)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "25b683e9-160d-4aa8-ab99-20548fedac03")
+	)
+	(junction
+		(at 200.66 113.03)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "2e88a4f7-156e-4f16-a4df-7f28ba8b7650")
+	)
+	(junction
+		(at 182.88 121.92)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "6e4ff449-4c88-46c9-ad31-1173f8b86623")
+	)
+	(junction
+		(at 179.07 113.03)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "7efcae40-3943-4c23-8aa3-21119864a052")
+	)
+	(junction
+		(at 200.66 82.55)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "fcd72f52-b3c7-48c8-bf1b-c88be58ed860")
+	)
+	(wire
+		(pts
+			(xy 243.84 91.44) (xy 243.84 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0b244581-b146-4851-85fe-c91e4a37699c")
+	)
+	(wire
+		(pts
+			(xy 204.47 64.77) (xy 240.03 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "15d6c1ed-91fd-4aed-8609-f9d87207dd80")
+	)
+	(wire
+		(pts
+			(xy 254 104.14) (xy 254 99.06)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "16e65090-854b-45ed-98bf-e458f81f1438")
+	)
+	(wire
+		(pts
+			(xy 43.18 74.93) (xy 48.26 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "183edc51-baaa-41b9-9677-ef500cce954c")
+	)
+	(wire
+		(pts
+			(xy 146.05 76.2) (xy 149.86 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1aef3c66-4a10-4d8a-bfb1-a940f4fd07a6")
+	)
+	(wire
+		(pts
+			(xy 120.65 132.08) (xy 120.65 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1b5f9bf8-4453-42af-b710-33d489dc65cd")
+	)
+	(wire
+		(pts
+			(xy 195.58 63.5) (xy 208.28 63.5)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "402d4073-8729-4aec-9516-47936dd77eab")
+	)
+	(wire
+		(pts
+			(xy 195.58 68.58) (xy 204.47 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "476ab45f-f2fc-42b1-8d08-add2bf333302")
+	)
+	(wire
+		(pts
+			(xy 243.84 129.54) (xy 167.64 129.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4b4c163a-7b7c-46c0-966e-367a856ccd7f")
+	)
+(wire (pts (xy 167.64 129.54) (xy 123.19 129.54)) (stroke (width 0) (type default)) (uuid "f5b044a8-d640-4fab-8e30-7fc13a091493"))
+	(wire
+		(pts
+			(xy 129.54 41.91) (xy 83.82 41.91)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4b61bb9d-b51d-4aa8-be19-09ed60b25831")
+	)
+	(wire
+		(pts
+			(xy 81.28 113.03) (xy 135.89 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4f5c36ff-546d-4cad-870f-dda0007f7327")
+	)
+	(wire
+		(pts
+			(xy 208.28 63.5) (xy 208.28 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "56e53846-19de-497a-8783-9a11bc81c5bb")
+	)
+	(wire
+		(pts
+			(xy 243.84 113.03) (xy 200.66 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "58f93bf8-e8a1-40f0-8f77-f893b17a2da2")
+	)
+	(wire
+		(pts
+			(xy 203.2 59.69) (xy 240.03 59.69)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5f47015f-469a-4dcb-a0b6-bf4c21987157")
+	)
+	(wire
+		(pts
+			(xy 81.28 34.29) (xy 81.28 41.91)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5f7b22b3-8eee-4436-8936-9d9892edc255")
+	)
+	(wire
+		(pts
+			(xy 243.84 137.16) (xy 182.88 137.16)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6ba8a141-283c-4881-8466-e8a6494e19d9")
+	)
+	(wire
+		(pts
+			(xy 123.19 69.85) (xy 114.3 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6fe45ece-ff05-43c7-9858-d28ce55933e9")
+	)
+	(wire
+		(pts
+			(xy 259.08 91.44) (xy 259.08 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "76ef1ce7-e937-4782-accf-189da4ebff3b")
+	)
+	(wire
+		(pts
+			(xy 204.47 68.58) (xy 204.47 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "792ddaad-2198-4447-9e17-a0a691b5d2a7")
+	)
+	(wire
+		(pts
+			(xy 195.58 82.55) (xy 200.66 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7c77c901-e8a2-4900-b9a1-fcd23dff30c4")
+	)
+	(wire
+		(pts
+			(xy 43.18 124.46) (xy 43.18 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8435f42d-ccdb-48ed-a496-19e70557d0c5")
+	)
+	(wire
+		(pts
+			(xy 135.89 71.12) (xy 135.89 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8757b3cd-05a9-4322-bf6a-fad52654af7e")
+	)
+	(wire
+		(pts
+			(xy 208.28 69.85) (xy 240.03 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "884f0626-3eb2-4a50-be36-13e33a0d042f")
+	)
+	(wire
+		(pts
+			(xy 135.89 113.03) (xy 200.66 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "8bd34eda-1b48-414e-9108-a8325582daec")
+	)
+	(wire
+		(pts
+			(xy 243.84 134.62) (xy 179.07 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "917051e5-2d8d-4276-8fc2-758a7dab2d27")
+	)
+	(wire
+		(pts
+			(xy 182.88 121.92) (xy 129.54 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "999bd3c4-f8c7-47e5-89c6-ab245121db2d")
+	)
+	(wire
+		(pts
+			(xy 149.86 71.12) (xy 135.89 71.12)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9a5ec947-9a27-4e61-a0aa-e654ef214652")
+	)
+	(wire
+		(pts
+			(xy 157.48 124.46) (xy 43.18 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9cd703fb-721f-4bf6-9ad9-0aa99a393c7d")
+	)
+	(wire
+		(pts
+			(xy 120.65 72.39) (xy 114.3 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "aebc9475-fffa-4823-9c0b-edce581ed2f6")
+	)
+	(wire
+		(pts
+			(xy 214.63 54.61) (xy 240.03 54.61)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b068b45e-c609-4093-b5e0-f3a3baa63d28")
+	)
+	(wire
+		(pts
+			(xy 200.66 82.55) (xy 200.66 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b5347d52-f17d-4255-a297-f659eb34a1f4")
+	)
+	(wire
+		(pts
+			(xy 214.63 54.61) (xy 214.63 34.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b7499377-be26-4599-a254-cdeb80aa8de5")
+	)
+	(wire
+		(pts
+			(xy 182.88 137.16) (xy 182.88 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c31a6038-1078-4304-a1fa-24b0b18445c0")
+	)
+	(wire
+		(pts
+			(xy 179.07 134.62) (xy 179.07 113.03)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c4af3438-f322-43dc-adda-93e4bb28a0a1")
+	)
+	(wire
+		(pts
+			(xy 259.08 121.92) (xy 182.88 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c8034d66-8eaf-4ad9-9993-934d728e3e60")
+	)
+	(wire
+		(pts
+			(xy 203.2 82.55) (xy 200.66 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c9706c81-8bfc-4d52-aed9-3b7b4e250ac8")
+	)
+	(wire
+		(pts
+			(xy 123.19 129.54) (xy 123.19 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d1fb644d-6356-42b9-891d-9bce2e67663e")
+	)
+	(wire
+		(pts
+			(xy 146.05 34.29) (xy 146.05 76.2)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d5469714-3d59-4db2-8ac6-9d105ca75b86")
+	)
+	(wire
+		(pts
+			(xy 214.63 34.29) (xy 146.05 34.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d9dce782-3da4-428a-b5e5-1d8b35594aea")
+	)
+	(wire
+		(pts
+			(xy 243.84 132.08) (xy 170.18 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dc546d8c-a2bf-4333-9d90-e7519df53f90")
+	)
+(wire (pts (xy 170.18 132.08) (xy 120.65 132.08)) (stroke (width 0) (type default)) (uuid "3466e8a4-f28b-452e-bc93-765b9207f4ec"))
+	(wire
+		(pts
+			(xy 195.58 73.66) (xy 195.58 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dcd3a2d0-8666-4129-bb50-bd66127d2db0")
+	)
+	(wire
+		(pts
+			(xy 81.28 34.29) (xy 146.05 34.29)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e2e3128b-a49c-4531-8f51-daf03d54f582")
+	)
+	(wire
+		(pts
+			(xy 157.48 104.14) (xy 254 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ea173cde-beec-4777-8ccc-876d60cf3f79")
+	)
+	(wire
+		(pts
+			(xy 157.48 104.14) (xy 157.48 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ef1b890c-db48-4f09-8188-daee2af62e93")
+	)
+	(wire
+		(pts
+			(xy 129.54 41.91) (xy 129.54 121.92)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f4b144e0-6691-419c-95d4-e794982c0641")
+	)
+	(wire
+		(pts
+			(xy 203.2 59.69) (xy 203.2 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f685d8a8-2ec6-4149-a56e-1b737d0bc14f")
+	)
+	(wire
+		(pts
+			(xy 114.3 107.95) (xy 118.11 107.95)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "99216da8-64e8-46c6-90c7-f3778a575190")
+	)
+	(label "RS485_TX"
+		(at 118.11 107.95 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "0a2c6c39-43c3-47fe-b39b-5b2a0bed730d")
+	)
+	(wire
+		(pts
+			(xy 114.3 105.41) (xy 118.11 105.41)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d704dcbc-544b-42b4-9aee-d0cf43b272b0")
+	)
+	(label "RS485_RX"
+		(at 118.11 105.41 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify left bottom)
+		)
+		(uuid "f60babf4-a44f-4348-9e90-9cec4b75116f")
+	)
+	(wire
+		(pts
+			(xy 149.86 60.96) (xy 144.78 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c2fa84c-ab10-4ba2-9e26-e87ac71d6e9e")
+	)
+	(label "RS485_TX"
+		(at 144.78 60.96 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "8f1ac156-b090-4242-921a-54e085be3f58")
+	)
+	(wire
+		(pts
+			(xy 149.86 66.04) (xy 144.78 66.04)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dd001d35-55e5-429f-950f-dfece5d16036")
+	)
+	(label "RS485_RX"
+		(at 144.78 66.04 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "aafa6e3f-388f-4da5-a9fb-fbf87319d89f")
+	)
+	(wire
+		(pts
+			(xy 243.84 127) (xy 240.03 127)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f9cd87eb-a500-4278-8ce2-f07ac1904cd9")
+	)
+	(label "GND_SENSOR"
+		(at 240.03 127 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+			(justify right bottom)
+		)
+		(uuid "abeecee4-40e5-4b2c-9a49-a46afe71af02")
+	)
+	(label "RS485_A"
+		(at 214.63 64.77 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "2681b23f-ae02-4897-a9ed-d663606bfa2c")
+	)
+	(label "VIN_SENSOR"
+		(at 214.63 54.61 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "8334ff32-662b-41c3-a946-ca2c79ddf419")
+	)
+	(label "RS485_B"
+		(at 214.63 69.85 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "c034499e-7218-4b74-b80d-db134f5b88b5")
+	)
+	(label "GND_SENSOR"
+		(at 214.63 59.69 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "dbabb92f-d71e-45a1-97e2-2242c0bf9d40")
+	)
+	(symbol
+		(lib_id "Sensores_Modulos:KY-028")
+		(at 251.46 91.44 270)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "64677f1b-1f0f-4407-b5d5-9675d7108c0b")
+		(property "Reference" "U3"
+			(at 251.46 81.28 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "KY-028"
+			(at 251.46 83.82 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Sensores_Modulos:KY-028_Conector_1x04_P2.54mm"
+			(at 241.3 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://sensorkit.joy-it.net/en/sensors/ky-028"
+			(at 251.46 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Sensor externo KY-028 de temperatura com termistor NTC e saidas analogica/digital. Footprint representa somente o conector 1x04 de 2,54 mm, sem contorno ou furos de fixacao do modulo. Pinos 1=AO, 2=GND, 3=VCC, 4=DO."
+			(at 251.46 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "3"
+			(uuid "ea5a061c-a843-4c06-a33b-b47bcc54fdff")
+		)
+		(pin "2"
+			(uuid "ba07770f-72c8-4fb0-b942-5bdf5719a493")
+		)
+		(pin "1"
+			(uuid "d465fb40-1348-4973-bc83-ac4c62ef6fe8")
+		)
+		(pin "4"
+			(uuid "4aaf97ca-ef38-4c7e-a2f4-afedf99b2b61")
+		)
+		(instances
+			(project "skylog"
+				(path "/350f3427-bcec-49b0-ac2f-a03c28574f3d"
+					(reference "U3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "skylog:RS485_TTL_V2_OSHWLab")
+		(at 172.72 68.58 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "7e3701c5-c9a7-4853-9a55-e6ec2e707ece")
+		(property "Reference" "U5"
+			(at 172.72 50.8 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "RS485_TTL_V2_OSHWLab"
+			(at 172.72 53.34 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "skylog:RS485_TTL_V2_OSHWLab_PadGeometry"
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://oshwlab.com/virendra/rs485-to-ttl-converter-module_v2"
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Módulo pronto RS485 / TTL V2 de Virendra K; direção automática. CN1: TXD entrada, RXD saída, GND, +5V. CN2: B, A, GND. Geometria da PCB original; validar montagem."
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Pinagem" "CN1.1 TXD entrada; CN1.2 RXD saída; CN1.3 GND; CN1.4 +5V; CN2.1 B; CN2.2 A; CN2.3 GND"
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Montagem" "JST 2,50 mm no original. Footprint reproduz ilhas da placa do módulo, não o encaixe dos JST. Usar cabos com conectores compatíveis ou preparar terminais voltados para a placa-base e validar mecanicamente."
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Validacao_eletrica" "Original: valor U2 SN75176BDR, MPN SN75HVD08D, alimentação interna 3,3V. Confirmar CI instalado e níveis lógicos; ver conversor-rs485.md."
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Controle_direcao" "Automático; sem pinos DE/RE externos. No firmware Skylog, PINO_DE = -1."
+			(at 172.72 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "CN2.2"
+			(uuid "73047459-6856-4316-8f27-977a1fbafa55")
+		)
+		(pin "CN2.3"
+			(uuid "911ab2d6-1147-481e-b88f-6b3d609bbd85")
+		)
+		(pin "CN2.1"
+			(uuid "4cf1c523-f90a-4e5a-8db1-5e980ad67521")
+		)
+		(pin "CN1.2"
+			(uuid "1e8178a2-84fa-4025-944a-c359ed46858d")
+		)
+		(pin "CN1.1"
+			(uuid "1e5eb8fb-a973-4d1c-ae63-2cf9c01921c5")
+		)
+		(pin "CN1.3"
+			(uuid "6047d471-be8b-4439-bbb0-fcd7be4b7431")
+		)
+		(pin "CN1.4"
+			(uuid "e7405176-7bb8-477c-a55e-b26dfecab5a4")
+		)
+		(instances
+			(project "skylog"
+				(path "/350f3427-bcec-49b0-ac2f-a03c28574f3d"
+					(reference "U5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "skylog:Sensor_TempUmid_RS485_5V_24V")
+		(at 257.81 62.23 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "847fd542-db89-4297-b2d5-c671fd8c6ddb")
+		(property "Reference" "U2"
+			(at 257.81 49.53 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Sensor_TempUmid_RS485_5V_24V"
+			(at 257.81 46.99 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "skylog:PinSocket_1x04_P2.54mm_Vertical"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Interface do sensor externo de temperatura e umidade RS485. O footprint representa o conector na PCB; o sensor permanece externo. Alimentação 5–24 V CC conforme etiqueta. Fabricante e modelo não identificados."
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Alimentação" "5–24 V CC — conforme etiqueta"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Comunicacao_testada" "Modbus RTU; endereço 1; 9600 baud; 8N1"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Temperatura" "Registrador 0x0000; int16 com sinal; dividir por 10"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Umidade" "Registrador 0x0001; dividir por 10"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Pressao" "Mencionada na etiqueta; não confirmada nos testes"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Dados_pendentes" "Precisão, consumo e faixa de medição não confirmados"
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Pinagem" "1 VIN; 2 GND; 3 RS485_A+; 4 RS485_B−. Numeração adotada no projeto."
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Validacao_mecanica" "Barra fêmea vertical 1x04; passo 2,54 mm confirmado pela medição de 25,40 mm entre os centros dos pinos 1 e 11. Furo padrão de 1,00 mm e corpo de 2,54 x 10,16 mm: conferir com a peça física."
+			(at 257.81 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "3c9f0a2b-06b4-4f0e-be1e-825d2130cd15")
+		)
+		(pin "2"
+			(uuid "a3635182-55de-4594-ab92-c9fff2899c16")
+		)
+		(pin "3"
+			(uuid "20a20f29-2145-487f-b342-28d928c68848")
+		)
+		(pin "4"
+			(uuid "e2846f73-572f-44b2-9577-4f76b3f41869")
+		)
+		(instances
+			(project "skylog"
+				(path "/350f3427-bcec-49b0-ac2f-a03c28574f3d"
+					(reference "U2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Espressif:ESP32-DevKitC")
+		(at 81.28 77.47 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "93221c48-93ce-430b-94ff-24d820058ae5")
+		(property "Reference" "U1"
+			(at 83.4233 113.03 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "ESP32-DevKitC"
+			(at 83.4233 115.57 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "skylog:ESP32-DevKitC_BoardEdge"
+			(at 81.28 120.65 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html"
+			(at 81.28 123.19 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Development Kit"
+			(at 81.28 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "16"
+			(uuid "5e73637b-3252-48ab-b6ca-ed6a438e5c28")
+		)
+		(pin "37"
+			(uuid "ca08ea0f-2673-4b28-87cf-391d0066f529")
+		)
+		(pin "26"
+			(uuid "dc993836-e43a-490c-82c0-172dc20b9b05")
+		)
+		(pin "33"
+			(uuid "a0b44bd5-b23b-451e-9142-a69d44d64104")
+		)
+		(pin "11"
+			(uuid "0cd7c553-ccc8-474a-9181-ac9483ae9dcf")
+		)
+		(pin "30"
+			(uuid "4dc60295-3a14-4c64-bb8c-5577f75d568e")
+		)
+		(pin "28"
+			(uuid "89bb8d14-f6a4-42e3-9205-2d9e9e35ef18")
+		)
+		(pin "25"
+			(uuid "07b3cfcf-0ce7-46c1-962d-da7a70db8bba")
+		)
+		(pin "32"
+			(uuid "54a1b2b2-c3a8-4222-84d3-ab40284e7b76")
+		)
+		(pin "24"
+			(uuid "e45329c6-5875-4ed3-948c-ee4ee0e9ba55")
+		)
+		(pin "36"
+			(uuid "e53e3a64-aaae-426c-9f7e-5509257f6b64")
+		)
+		(pin "17"
+			(uuid "33972d31-9f18-4d6c-9b28-fa678d09c089")
+		)
+		(pin "12"
+			(uuid "bc4e930e-8a7b-4ef1-bb69-beb762faa1ef")
+		)
+		(pin "13"
+			(uuid "68250036-84a5-486a-900a-bac7c5bf6dbc")
+		)
+		(pin "18"
+			(uuid "8a0449d6-0c2b-41ea-98e7-11cabaa69ce2")
+		)
+		(pin "9"
+			(uuid "0d2a9cb7-2c8c-4b6b-97ec-23becd2d3f1e")
+		)
+		(pin "21"
+			(uuid "fc3f393d-ef6e-4307-98b4-f125d9bf2e9a")
+		)
+		(pin "6"
+			(uuid "e20351a3-2a4d-4e0c-badc-4418ff2b6b94")
+		)
+		(pin "38"
+			(uuid "a226b093-56a5-4cb7-8b7e-9365bb8663f6")
+		)
+		(pin "29"
+			(uuid "6f51dc75-c52c-47cd-931f-9487d3f70b1a")
+		)
+		(pin "8"
+			(uuid "4e95331f-8ba6-46f9-a921-dff7146e5d18")
+		)
+		(pin "34"
+			(uuid "e7f771f3-d41f-418c-8f05-df16d872d391")
+		)
+		(pin "22"
+			(uuid "f75c02a8-8c94-4c5c-bc26-578b3e79147e")
+		)
+		(pin "7"
+			(uuid "8930f5eb-6bb5-4a04-8702-4f566b2bd7d2")
+		)
+		(pin "20"
+			(uuid "90548213-5735-46ed-8904-9255e08a0f75")
+		)
+		(pin "15"
+			(uuid "65bddc75-c8a1-4604-845d-effda04d1311")
+		)
+		(pin "5"
+			(uuid "c5d3db86-d99d-456b-8996-397c304cdad5")
+		)
+		(pin "4"
+			(uuid "aea12639-49c2-4e25-8c35-e7528079ad1b")
+		)
+		(pin "3"
+			(uuid "a160e843-88db-4bee-97c0-16d5f0b2295b")
+		)
+		(pin "2"
+			(uuid "3905c34c-b867-49ef-85c5-cb56154d0def")
+		)
+		(pin "1"
+			(uuid "bb6a687c-6a3e-4ce4-bddb-9af7d38d6ff1")
+		)
+		(pin "19"
+			(uuid "11d4a5ae-3e50-441a-b1ac-e4de4a7979bf")
+		)
+		(pin "14"
+			(uuid "b1ddad67-e3d8-4377-8857-fbe9a348e25b")
+		)
+		(pin "31"
+			(uuid "0e0616d6-aeef-4dbf-955c-2f4f716d3c09")
+		)
+		(pin "27"
+			(uuid "d2bed41c-cc7a-4940-a64b-9e0f37856605")
+		)
+		(pin "23"
+			(uuid "3faa150c-76de-4a86-881f-5233121d98f9")
+		)
+		(pin "10"
+			(uuid "cc488bad-4412-4d0b-8436-5ab2a4b39394")
+		)
+		(pin "35"
+			(uuid "12a9fa18-0580-4ff2-982a-fb95520f472c")
+		)
+		(instances
+			(project "skylog"
+				(path "/350f3427-bcec-49b0-ac2f-a03c28574f3d"
+					(reference "U1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Sensores_Modulos:GY-302_BH1750")
+		(at 243.84 134.62 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f82e1865-ebb0-4805-b8b7-bff1aface0dc")
+		(property "Reference" "U4"
+			(at 262.89 130.8099 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "GY-302_BH1750"
+			(at 262.89 133.3499 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Sensores_Modulos:GY-302_Conector_1x05_P2.54mm"
+			(at 254 142.24 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://github.com/usini/usini_kicad_sensors"
+			(at 243.84 134.62 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Sensor externo de luminosidade GY-302 / BH1750, I2C. Footprint representa somente o conector 1x05 de 2,54 mm, sem corpo ou furos do modulo. Simbolo importado de usini; pinagem preservada: 1 ADDR, 2 SDA, 3 SCL, 4 GND, 5 VCC."
+			(at 243.84 134.62 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "4"
+			(uuid "51243ab1-1881-4e79-aac1-d52cd74d19a7")
+		)
+		(pin "5"
+			(uuid "d76c2217-1a1e-48bd-805d-9fd2e554bfd1")
+		)
+		(pin "3"
+			(uuid "b9aa4ea5-04f9-4690-9222-7c60f1a570d5")
+		)
+		(pin "2"
+			(uuid "bff1a455-fb02-4f7f-a718-42ab78787fc7")
+		)
+		(pin "1"
+			(uuid "b8ae4548-ea36-40a9-81b7-9771163593c3")
+		)
+		(instances
+			(project "skylog"
+				(path "/350f3427-bcec-49b0-ac2f-a03c28574f3d"
+					(reference "U4")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(junction (at 182.88 137.16) (diameter 0) (color 0 0 0 0) (uuid "0e0231f0-80cb-4d98-a3b1-dc7b5df4d138"))
+(wire (pts (xy 182.88 137.16) (xy 182.88 151.13)) (stroke (width 0) (type default)) (uuid "d7c56259-99d6-4e16-949a-ba74ab739ac5"))
+
+
+(junction (at 179.07 134.62) (diameter 0) (color 0 0 0 0) (uuid "5f40dcee-7484-42b0-ab50-0faf8192bd70"))
+(wire (pts (xy 179.07 134.62) (xy 179.07 153.67)) (stroke (width 0) (type default)) (uuid "edd6e410-4424-4dda-ab49-ea7399f95a13"))
+(wire (pts (xy 179.07 153.67) (xy 240.03 153.67)) (stroke (width 0) (type default)) (uuid "23cbe061-75d7-4667-b5d9-ac85b1a5247f"))
+(junction (at 167.64 129.54) (diameter 0) (color 0 0 0 0) (uuid "e057d5f1-a1c6-4518-a46a-e1630bf34a8c"))
+(wire (pts (xy 167.64 129.54) (xy 167.64 156.21)) (stroke (width 0) (type default)) (uuid "3374a0e8-a41f-4488-ac53-bd556f5633f1"))
+
+
+(junction (at 170.18 132.08) (diameter 0) (color 0 0 0 0) (uuid "8f54167f-57f2-417d-b5b9-de3c1792924b"))
+(wire (pts (xy 170.18 132.08) (xy 170.18 158.75)) (stroke (width 0) (type default)) (uuid "47ca382c-8755-42e9-8457-68b8a556def9"))
+(wire (pts (xy 170.18 158.75) (xy 240.03 158.75)) (stroke (width 0) (type default)) (uuid "1d4bc3c3-fd03-4a6b-870a-7c1bd4b26679"))
+(text "ENS160+AHT21 externo: alimentar em 3V3.\nJ1: 1=3V3; 2=GND; 3=SDA (GPIO21); 4=SCL (GPIO22).\nNumeros de J1 pertencem a esta PCB; montar cabo pelos rotulos do modulo.\nSe expostos no modulo: CS -> 3V3; ADD -> GND; INT sem uso.\nConexoes de 3V3 e SDA diretas, sem jumpers de fio." (at 48.26 144.78 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "ddfdccb2-7c6a-4076-920f-f17aa841e7dc"))
+(symbol (lib_id "skylog:ENS160_AHT21_Interface") (at 257.81 154.94 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "fb0e3071-73d6-4a05-b199-b7047537637a")
+ (property "Reference" "J1" (at 257.81 144.78 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "ENS160+AHT21" (at 257.81 147.32 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:ENS160_AHT21_1x04_P2.54mm" (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "https://github.com/pedroazara/estacao-metereologica/tree/wip/checkpoint-app-base/firmware/teste_ens160_aht21" (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Interface por cabo para modulo externo ENS160+AHT21, alimentado em 3V3. Numeros pertencem ao conector J1 desta PCB, nao a pinagem fisica do modulo: 1=3V3, 2=GND, 3=SDA, 4=SCL. Conferir rotulos do modulo ao montar o cabo." (at 257.81 154.94 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "da28aea7-f060-4099-bbf3-756485152877"))
+ (pin "2" (uuid "248fd2ce-464d-4d2e-9522-892ad57bbfe9"))
+ (pin "3" (uuid "f4f658b2-9eef-4880-99da-18ac9e64c347"))
+ (pin "4" (uuid "d5d2e6a6-09e8-4e0c-9fb5-a6186e64d477"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J1") (unit 1))))
+)
+	
+
+
+
+(wire (pts (xy 182.88 151.13) (xy 240.03 151.13)) (stroke (width 0) (type default)) (uuid "91a3bbb4-5514-4f3e-95ae-c2e3a952903b"))
+(wire (pts (xy 167.64 156.21) (xy 240.03 156.21)) (stroke (width 0) (type default)) (uuid "48500faf-bdeb-443d-8b23-f5b2bcd74018"))
+(wire (pts (xy 55.88 170.18) (xy 68.58 170.18)) (stroke (width 0) (type default)) (uuid "3b1fe392-32f8-4083-b995-cae30385e08a"))
+(label "VIN_SENSOR" (at 55.88 170.18 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4cd46e87-a0df-4639-904c-e36e9f88f51b"))
+(symbol (lib_id "skylog:Wire_Pad") (at 73.66 170.18 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "8d87177c-f641-43e9-9adc-a9dc22c07c2a")
+ (property "Reference" "J2" (at 73.66 166.37 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "WEMOS_5V" (at 73.66 173.99 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Entrada para a saida regulada de 5V do Wemos Battery Shield V3 externo. Nao conectar bateria crua nem 3V3. Conferir polaridade e desconectar o shield durante alimentacao USB do ESP32." (at 73.66 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "4b07e6b8-5810-4fc1-bec3-28b3bd322f2b"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J2") (unit 1))))
+)
+(wire (pts (xy 111.76 170.18) (xy 124.46 170.18)) (stroke (width 0) (type default)) (uuid "7dabd2d5-0e09-43ed-9e33-e99cff339ded"))
+(label "GND_SENSOR" (at 111.76 170.18 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "a0de5074-dd76-4704-899e-aaa7ea8a6c06"))
+(symbol (lib_id "skylog:Wire_Pad") (at 129.54 170.18 0) (unit 1) (body_style 1)
+ (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (dnp no)
+ (uuid "c6ae385a-ea91-4c1e-972f-9dbe5d2d097b")
+ (property "Reference" "J3" (at 129.54 166.37 0) (effects (font (size 1.27 1.27))))
+ (property "Value" "WEMOS_GND" (at 129.54 173.99 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "skylog:Wire_Pad_D1.2mm" (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Retorno GND do Wemos Battery Shield V3 externo. Conferir polaridade; usar com J2 conectado a saida regulada de 5V. Desconectar o shield durante alimentacao USB do ESP32." (at 129.54 170.18 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "dc1d48b4-de67-4615-9e7a-d43cea3356ee"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "J3") (unit 1))))
+)
+(text "Wemos Battery Shield V3 e bateria externos.\nJ2 = saida regulada de 5V; J3 = GND. Conferir polaridade.\nDesconectar o shield durante a alimentacao USB do ESP32." (at 48.26 180.34 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "409fad9a-619c-4a19-89fb-1f5da08e8a94"))
+(no_connect (at 48.26 54.61) (uuid "e767fa28-88db-4176-9f3f-516dab0550a0"))
+(no_connect (at 48.26 52.07) (uuid "2c507fdf-ef2a-4f39-ac2a-bcaf4550a031"))
+(no_connect (at 114.3 59.69) (uuid "7169cf34-882f-4771-8c87-ad7f4a3ef9f9"))
+(no_connect (at 114.3 57.15) (uuid "f9aeedea-ab33-439a-a9e4-9ad862aca165"))
+(no_connect (at 114.3 82.55) (uuid "a4194bbd-96ca-4fdd-99b1-839342fdac69"))
+(no_connect (at 48.26 46.99) (uuid "86ed5157-f19c-4595-b427-446aa303e8dc"))
+(no_connect (at 114.3 102.87) (uuid "14d71a21-8690-4787-91f8-4c3f6e332b6e"))
+(no_connect (at 114.3 77.47) (uuid "d5755ced-717f-42d1-8cf0-d4c21e129bdf"))
+(no_connect (at 114.3 80.01) (uuid "55658a1c-536c-4165-9e04-60d3b7c7e104"))
+(no_connect (at 114.3 54.61) (uuid "032521a8-7a7b-4e9e-8b9f-2eeb437bc616"))
+(no_connect (at 114.3 62.23) (uuid "95867491-0a1c-4c04-95e1-84a87ed59df2"))
+(no_connect (at 114.3 64.77) (uuid "7c1f7b6d-7c45-4330-a652-61a11741fce3"))
+(no_connect (at 114.3 67.31) (uuid "afc5b08f-9540-40f9-84e7-b8db91cebda3"))
+(no_connect (at 114.3 74.93) (uuid "50228a19-72c3-4e00-a9c7-8e05e16727cb"))
+(no_connect (at 48.26 62.23) (uuid "c99902a0-2681-47c7-9283-d4d5e0f07f1a"))
+(no_connect (at 48.26 59.69) (uuid "c3b6b561-775c-4149-9e11-4352e5918a5a"))
+(no_connect (at 48.26 67.31) (uuid "65fff3ee-1d02-4604-9e4e-ec055a131ee2"))
+(no_connect (at 48.26 64.77) (uuid "f3718ff2-59df-4512-85ce-482e5c01f27d"))
+(no_connect (at 114.3 90.17) (uuid "81ac61e9-7a0c-4630-8127-d7bfb4e5461d"))
+(no_connect (at 114.3 92.71) (uuid "a0bb53f6-eb7b-43e6-9a73-5d26c4676b87"))
+(no_connect (at 114.3 95.25) (uuid "e8d4b6cd-7a94-4b8d-a689-2db5b5ea707b"))
+(no_connect (at 114.3 97.79) (uuid "13bf985c-0746-4129-a907-105c17939924"))
+(no_connect (at 114.3 100.33) (uuid "33414077-814c-4738-8746-c2047584f987"))
+(no_connect (at 48.26 80.01) (uuid "9eae5a7d-bafd-4228-921b-2957db046c94"))
+(no_connect (at 48.26 77.47) (uuid "85f529b7-4673-4fe1-af78-d17293b7a874"))
+(no_connect (at 114.3 49.53) (uuid "fbe4e3a0-7be7-4763-92e5-f7ed1faf6c73"))
+(no_connect (at 114.3 46.99) (uuid "53f98916-59d0-475f-9713-d6c3006526f2"))
+(no_connect (at 48.26 72.39) (uuid "b4e68112-7ff5-4ac2-a6e4-9fae6ffdb59b"))
+(no_connect (at 248.92 99.06) (uuid "7fe5ef3b-aed9-42fc-9377-873d79eab065"))
+(wire (pts (xy 68.58 170.18) (xy 68.58 162.56)) (stroke (width 0) (type default)) (uuid "4b4c72a8-a79d-4363-ac83-e19014449a1d"))
+(junction (at 68.58 170.18) (diameter 0) (color 0 0 0 0) (uuid "819f8eea-7da4-4883-8fe9-94d50c541751"))
+(symbol (lib_id "power:PWR_FLAG") (at 68.58 162.56 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "f38db09e-9ef2-416b-a1be-c3b2f396f6da")
+ (property "Reference" "#FLG01" (at 68.58 160.655 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 68.58 158.75 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Fonte externa: saida regulada de 5V do Wemos Battery Shield V3 em J2; nao usar simultaneamente com USB do ESP32." (at 68.58 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "75fd50c8-fefe-453b-93fa-01b45f6d7f76"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG01") (unit 1))))
+)
+(wire (pts (xy 124.46 170.18) (xy 124.46 162.56)) (stroke (width 0) (type default)) (uuid "821d407e-b164-4915-a251-88c99064c683"))
+(junction (at 124.46 170.18) (diameter 0) (color 0 0 0 0) (uuid "3d6e7b27-1c99-41d0-957e-2c82b0c630b2"))
+(symbol (lib_id "power:PWR_FLAG") (at 124.46 162.56 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "4281ab36-d26a-45bc-8e85-0379ce72c918")
+ (property "Reference" "#FLG02" (at 124.46 160.655 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 124.46 158.75 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "Retorno da alimentacao externa ligado em J3." (at 124.46 162.56 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "2c1ff317-edc1-4cde-b879-1ff0d0a1db57"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG02") (unit 1))))
+)
+(junction (at 105.41 41.91) (diameter 0) (color 0 0 0 0) (uuid "12285fc2-b4d0-4ee1-b5f8-686c862a921a"))
+(symbol (lib_id "power:PWR_FLAG") (at 105.41 41.91 0) (unit 1) (body_style 1)
+ (exclude_from_sim yes) (in_bom no) (on_board no) (in_pos_files no) (dnp no)
+ (uuid "f232f30a-5f19-4a8d-ade1-3bd7fc7305e5")
+ (property "Reference" "#FLG03" (at 105.41 40.005 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Value" "PWR_FLAG" (at 105.41 38.1 0) (effects (font (size 1.27 1.27))))
+ (property "Footprint" "" (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Datasheet" "" (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (property "Description" "3V3 fornecido pelo regulador incorporado a placa ESP32-DevKitC completa, alimentada em 5V." (at 105.41 41.91 0) (hide yes) (effects (font (size 1.27 1.27))))
+ (pin "1" (uuid "ca8d3e80-6857-461e-b0be-3760117edd66"))
+ (instances (project "skylog" (path "/350f3427-bcec-49b0-ac2f-a03c28574f3d" (reference "#FLG03") (unit 1))))
+)
+(text "NC: contatos externos sem uso; U1 representa a DevKitC completa.\nEN/reset e regulador 3V3 pertencem a DevKitC.\nFlags: 5V externo em J2, retorno em J3 e 3V3 gerado por U1." (at 48.26 190.5 0) (effects (font (size 1.0 1.0)) (justify left top)) (uuid "6e15cce0-2fed-42e7-8517-0b4f8450e9b8"))
+(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# Abre o painel de verificacao do WT901C485, lendo a saida USB do ESP32.
+#
+#   estacao                      acha o ESP32 e abre o painel
+#   estacao --simular            sem hardware, com dados sinteticos
+#   estacao --porta /dev/ttyUSB1 forca uma porta
+#
+# Qualquer opcao do painel_wt901.py e repassada adiante.
+#
+# NAO CONFUNDA com `estacao-metereologica`, que abre o painel do WTGAHRS3
+# (GPS + IMU) falando Modbus direto pelo adaptador RS485-USB. Este aqui nao
+# fala com o sensor: ele le o texto que o ESP32 ja imprime na USB.
+
+set -euo pipefail
+
+# Resolve o proprio caminho seguindo symlinks, para achar a raiz do projeto
+# mesmo quando chamado por um link em ~/.local/bin.
+ORIGEM="${BASH_SOURCE[0]}"
+while [ -L "$ORIGEM" ]; do
+    DIR_LINK="$(cd -P "$(dirname "$ORIGEM")" && pwd)"
+    ORIGEM="$(readlink "$ORIGEM")"
+    [[ $ORIGEM != /* ]] && ORIGEM="$DIR_LINK/$ORIGEM"
+done
+RAIZ="$(cd -P "$(dirname "$ORIGEM")/.." && pwd)"
+
+PY="$RAIZ/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+    echo "erro: ambiente virtual nao encontrado em $RAIZ/.venv" >&2
+    echo "      crie com:  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+    exit 1
+fi
+
+# Se o usuario ja escolheu a porta (ou pediu simulacao), nao ha o que descobrir.
+PRECISA_DESCOBRIR=1
+for arg in "$@"; do
+    case "$arg" in
+        --porta|--porta=*|--simular) PRECISA_DESCOBRIR=0 ;;
+    esac
+done
+
+EXTRA=()
+if [ "$PRECISA_DESCOBRIR" -eq 1 ]; then
+    # O ESP32 e um conversor USB-serial comum (CP2102/CH340). Basta pegar a
+    # primeira porta USB existente - quem valida se ha dado e o proprio painel,
+    # que mostra na tela se nada chegar.
+    DEV="$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -1 || true)"
+
+    if [ -z "$DEV" ]; then
+        echo "Nenhuma porta serial USB encontrada." >&2
+        echo >&2
+        echo "  O ESP32 esta plugado? Confira com:  ls /dev/ttyUSB*" >&2
+        echo >&2
+        echo "  Para ver a interface sem hardware:  estacao --simular" >&2
+        exit 1
+    fi
+
+    if ! id -nG | grep -qw dialout; then
+        echo "aviso: voce nao esta no grupo 'dialout' - o acesso a $DEV pode ser negado." >&2
+        echo "       resolva com:  sudo usermod -aG dialout \$USER   (e reinicie a sessao)" >&2
+    fi
+
+    # A porta so aceita um dono. O Serial Monitor da IDE do Arduino e o
+    # concorrente mais comum, e o erro que ele causa nao e obvio - entao avisa
+    # antes, com o nome de quem esta segurando.
+    if command -v fuser >/dev/null 2>&1 && fuser "$DEV" >/dev/null 2>&1; then
+        QUEM="$(fuser -v "$DEV" 2>&1 | awk 'NR>1{print $NF}' | tr '\n' ' ')"
+        echo "aviso: $DEV ja esta em uso por: ${QUEM:-outro processo}" >&2
+        echo "       feche o Serial Monitor da IDE do Arduino - o painel conecta sozinho depois." >&2
+    fi
+
+    echo "abrindo o painel com $DEV"
+    EXTRA=(--porta "$DEV")
+fi
+
+cd "$RAIZ/src"
+exec "$PY" painel_wt901.py "${EXTRA[@]}" "$@"

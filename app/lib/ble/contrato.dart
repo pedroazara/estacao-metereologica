@@ -15,6 +15,8 @@ class Contrato {
   static const amb = 'e5710003-b100-4a1e-9d2f-7c3a5b8e1f40';
   static const imu = 'e5710004-b100-4a1e-9d2f-7c3a5b8e1f40';
   static const cfg = 'e5710005-b100-4a1e-9d2f-7c3a5b8e1f40';
+  // Escrita: o telefone manda o proprio GPS, e o ESP re-emite como `pos`.
+  static const loc = 'e5710006-b100-4a1e-9d2f-7c3a5b8e1f40';
 
   /// MTU pedido logo apos conectar.
   ///

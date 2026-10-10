@@ -1,0 +1,6 @@
+PASS: arquivos movidos restantes: 47 sem alteração; 5 com ajustes documentais/caminhos autorizados.
+Destinos removidos na limpeza posterior: 994 todos previstos no manifesto de remoções.
+PASS: esquemas, projetos e exportações mantidos sem alteração de conteúdo.
+PASS: PCBs/footprints com diferenças limitadas aos caminhos de modelos 3D.
+PASS: app, firmware principal, módulos ativos da base e dados rastreados preservados.
+Nenhuma comparação confirma validação física, ERC/DRC ou compatibilidade de módulos reais.

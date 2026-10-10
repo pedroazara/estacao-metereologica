@@ -1,0 +1,103 @@
+CIRCULO DE 20 mm — ENSAIO E GRAVACAO EXPERIMENTAL A 0,10 mm
+
+DOIS ARQUIVOS DIFERENTES
+
+1. circulo_20mm_ENSAIO_Z_POSITIVO.nc
+   Motor fisicamente desligado. A ponta percorre o circulo em Z=+1,90 mm,
+   com aproximacao em +2,50 mm e altura de deslocamento/retirada em +5 mm.
+   NAO zere Z no ar para este teste: ambos os arquivos usam o topo real do MDF.
+
+2. circulo_20mm_GRAVACAO_Z-0.10_F300.nc
+   Corte experimental: um circulo completo em Z=-0,10 mm. Avanco de XY
+   300 mm/min, escolhido pelo operador, que informou ja ter feito JOGs
+   cortando a 1000 mm/min. A descida de +0,50 a -0,10 usa 20 mm/min.
+   Aproximacao, retirada e deslocamentos fora do material usam 300 mm/min.
+
+Os valores sao uma proposta de ensaio supervisionado, NAO parametros
+validados ou calculados para esta ferramenta. Nao foi medida a rotacao, nem
+identificado o diametro da ponta. Mais lento nao significa necessariamente
+mais seguro: pode ocorrer atrito/aquecimento. Antes de cortar, o responsavel
+do laboratorio deve conferir ferramenta, fixacao e adequacao do conjunto.
+O relato de corte anterior nao comprova calibracao ou condicoes adequadas.
+
+Nenhum arquivo foi enviado ou executado na CNC. Nada foi alterado no firmware,
+nos parametros dos motores ou nos zeros da controladora pelo assistente.
+O .nc.template antigo e apenas rascunho historico; nao use nem renomeie.
+O arquivo SOMENTE_NO_AR anterior continua sendo outro teste, sem movimento Z.
+
+ZERO E POSICAO INICIAL — OBRIGATORIOS PARA OS DOIS NOVOS ARQUIVOS
+
+- Milimetros; referencial de trabalho G54; sem compensacao de comprimento.
+  Os programas selecionam G54 e cancelam compensacao de comprimento (G49)
+  e escala (G50). Se usa alguma dessas compensacoes, nao execute sem revisar
+  a preparacao; o zero precisa valer com esses modos. Nao pule erros do cabecalho.
+- X=0 e Y=0 sao o CENTRO escolhido do circulo.
+- Z=0 e o TOPO do MDF, nao a altura do motor, o fundo de um rasgo nem o ar.
+- Confirmar que Z positivo afasta fisicamente a ponta da peca.
+- Encostar a ponta nao zera o programa automaticamente. Para definir a
+  referencia sem girar a fresa, siga o metodo do papel em COMO_TESTAR_CIRCULO.txt.
+  Se usar papel, atribua a Z de trabalho a espessura POSITIVA conhecida do
+  papel quando sentir leve atrito. Nao confunda definir coordenada com Go To.
+- Depois de definir XY/Z, levante por JOG e posicione em X0 Y0 Z+5, conferindo
+  visualmente que a ponta esta realmente 5 mm acima da superficie no centro.
+  Nao use homing ou Go To para tentar corrigir uma referencia desconhecida.
+- Se voce nao consegue confirmar esse zero, fique somente na visualizacao;
+  mande uma captura das coordenadas do gSender antes de executar.
+
+VOLUME LIVRE E SEGURANCA
+
+- A trajetoria ocupa X/Y de -10 a +10 mm em torno do centro. Acrescente margem
+  para ferramenta, porca e suporte. A trajetoria da ponta tem diametro 20 mm;
+  a largura da fresa altera as dimensoes externas/internas do sulco.
+- +5 mm nao e uma altura universalmente segura: a area inteira precisa estar
+  livre nessa altura, incluindo grampos, cabos e bordas. Se nao estiver, e
+  preciso revisar a altura/percurso. Tambem precisa haver curso de Z disponivel.
+- Z=-0,10 e a menor coordenada do ARQUIVO. Nao cria um limite global de
+  seguranca: um zero errado, perda de passos, outro comando ou material
+  irregular podem produzir profundidade diferente. Planicidade importa aqui.
+- MDF preso com fixacao adequada, nunca a mao. Ferramenta corretamente presa
+  e inspecionada. Protecao ocular, extracao de po e parada fisica acessivel.
+- Confira ausencia de macros/eventos de inicio, fim e retomada que introduzam
+  outros movimentos/modos. Override de avanco em 100%. Nao use Outline.
+- O regulador nao fornece RPM: o arquivo nao comanda nem verifica a rotacao.
+  Nao altere o regulador durante o ensaio. Se houver vibracao, travamento,
+  fumaca ou cheiro de queimado, interrompa, desligue o motor com seguranca e
+  aguarde a parada antes de inspecionar. Nao deixe a maquina sozinha.
+- Pause/Stop/M5 nao garantem desligamento do motor manual. Numa interrupcao,
+  nao deixe a fresa girando parada no MDF; acione a parada adequada ao risco.
+
+IMPORTAR NO GSENDER
+
+Use Load File / Carregar arquivo, escolha primeiro ENSAIO_Z_POSITIVO.nc e
+confira a previa. As linhas radiais aparecem na visualizacao, mas estao em
+Z=+5 mm. O circulo de ensaio esta em Z=+1,90 mm, nunca abaixo do zero.
+Faca o ensaio com o motor desligado e observe inclusive descida e retirada.
+Se houver erro, alarme, movimento inesperado ou diferenca de altura, pare.
+Nao pule linhas e nao aumente velocidades para vencer um bloqueio.
+
+PAUSAS PROGRAMADAS — HA TRES EM CADA ARQUIVO
+
+M0 pausa o programa; o envio pode parecer travado, mas esta aguardando voce.
+Use Resume / Retomar somente apos verificar o motivo da pausa:
+
+Pausa 1: antes de qualquer movimento. Conferir zero, area, fixacao e altura.
+         Nos dois arquivos, o motor ainda deve estar desligado.
+Pausa 2: na borda do circulo, acima do MDF.
+         ENSAIO: manter motor desligado.
+         GRAVACAO: ligar o motor manualmente, aguardar estabilizar e confirmar
+         extracao de po/area livre. A retomada inicia aproximacao e corte.
+Pausa 3: depois de completar o circulo e retirar a ponta a Z+5.
+         Na GRAVACAO, desligar o motor fisicamente e aguardar parar.
+         Retomar para retornar ao centro em Z+5 e encerrar.
+
+Nao confundir M0/Resume com destravar alarme ou com parada de emergencia.
+Nao usar Start from Line / Retomar da linha depois de abortar. Reavaliar zero,
+posicao, fixacao e estado do motor antes de reiniciar do comeco.
+
+O circulo em corte leva cerca de 13 segundos em F300, alem de entrada,
+retirada, deslocamentos e das pausas que dependem do operador.
+
+Referencias:
+https://github.com/grblHAL/core
+https://resources.sienci.com/view/gs-using-gsender/
+https://www.harveyperformance.com/in-the-loupe/the-experts-guide-to-cnc-engraving/

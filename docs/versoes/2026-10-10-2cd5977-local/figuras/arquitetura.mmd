@@ -1,0 +1,14 @@
+flowchart LR
+  R[Sensor ambiental RS485] --> C[Conversor automático RS485/TTL]
+  C --> E[ESP32: painel_wifi]
+  K[KY-028: ADC GPIO35] --> E
+  L[BH1750: I2C] --> E
+  Q[ENS160+AHT21: teste separado] -. integração pendente .-> E
+  E -->|BLE ambiente e status| A[Aplicativo Android]
+  G[GPS do telefone] --> A
+  S[Microfone: cálculo de níveis] --> A
+  A --> J[JSONL no telefone]
+  J -->|POST /sync| B[Base Python HTTP]
+  B --> O[JSONL recebido]
+  B --> D[SQLite: pontos GPS + último ambiente]
+  D --> W[Site: sessões, mapa e planos]
